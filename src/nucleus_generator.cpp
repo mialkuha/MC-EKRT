@@ -1,0 +1,128 @@
+//Copyright (c) 2021 Mikko Kuha
+
+#include "nucleus_generator.hpp"
+
+std::uniform_real_distribution<double> nucleus_generator::unif_dist = std::uniform_real_distribution<double>(0.0,1.0);
+
+std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const momentum & mom, 
+        const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
+{
+    std::vector<nucleon> generated_nucleus;
+    std::vector<coords> generated_coords;
+    generated_nucleus.reserve(params.N);
+    generated_coords.reserve(params.N);
+
+    coords new_coords;
+    bool coords_do_fit;
+    auto count=0;
+
+    do // while (generated_coords.size() < params.N);
+    {
+        do // while (!coords_do_fit);
+        {
+            new_coords = nucleus_generator::throw_nucleon_coords(random_generator, radial_sampler);
+            coords_do_fit = nucleus_generator::coords_fit(new_coords, generated_coords, params.min_distance);
+            //std::cout<<"coords "<<new_coords.x<<' '<<new_coords.y<<' '<<new_coords.z<<" fit? "<<coords_do_fit<<std::endl;
+            if (params.correct_overlap_bias && !coords_do_fit)
+            {
+                break;
+            }
+
+        } while (!coords_do_fit);
+
+        if (params.correct_overlap_bias && !coords_do_fit)
+        {
+            generated_coords.clear();
+            count++;
+            //std::cout<<"throw! "<<count<<' '<<std::flush;
+        }
+        generated_coords.push_back(std::move(new_coords));
+
+    } while (generated_coords.size() < params.N);
+    
+    //std::cout<<"threw away "<<count<<" times\n";
+
+    coords com{0.0,0.0,0.0}; //center of mass
+
+    if (params.shift_cms)
+    {
+        for (const auto& co : generated_coords)
+        {
+            com += co;
+        }
+        com /= static_cast<double>(generated_coords.size());
+    }
+
+    for (auto& co : generated_coords)
+    {
+        if (params.shift_cms)
+        {
+            co -= com; //Shift all nucleons so that CoM is (0,0,0)
+        }
+        co.x += xshift;
+        generated_nucleus.emplace_back(co, mom);
+    }
+
+    nucleus_generator::throw_neutrons(&generated_nucleus, params.Z, random_generator);
+
+    return generated_nucleus;
+}
+
+coords&& nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
+{
+    double new_r, new_phi, new_cos_theta, new_sin_theta, rand1,rand2;
+    new_r = radial_sampler->throw_one(*random_generator, true);
+    rand1 = nucleus_generator::unif_dist(*random_generator);
+    rand2 = nucleus_generator::unif_dist(*random_generator);
+    new_phi = 2*M_PI*rand1;
+    new_cos_theta = 2*rand2-1.;
+    new_sin_theta = sqrt(1 - pow(new_cos_theta,2));
+
+    coords ret = coords({new_r * new_sin_theta * cos(new_phi),
+                         new_r * new_sin_theta * sin(new_phi),
+                         new_r * new_cos_theta});
+
+    //std::cout<<"threw: "<<ret.x<<' '<<ret.y<<' '<<ret.z<<' '<<std::endl;
+    //std::cout<<"threw: "<<new_r<<' '<<rand1<<' '<<rand2<<' '<<std::endl;
+
+    return std::move(ret);
+}
+
+void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, const uint & Z, std::shared_ptr<std::mt19937> random_generator) noexcept
+{
+    for (uint i=0,iz=0; i<nucleus->size(); ++i)
+    {
+        double frac = static_cast<double>(Z-iz) / static_cast<double>(nucleus->size()-i);
+        double rn = nucleus_generator::unif_dist(*random_generator);
+        if (rn<frac) 
+        {
+            nucleus->at(i).is_neutron = false;
+            ++iz;
+        }
+        else
+        {
+            nucleus->at(i).is_neutron = true;
+        }
+    }
+
+}
+
+bool nucleus_generator::coords_fit(const coords& co, const std::vector<coords>& other_coords, const spatial& min_distance) noexcept
+{
+    if (min_distance<=0)
+    {
+        return true;
+    }
+    
+    const spatial md2 = pow(min_distance,2);
+    
+    for (const auto& oco : other_coords)
+    {
+        if ((co - oco).mag2() < md2) 
+        {
+            //std::cout<<co.x<<' '<<co.y<<' '<<co.z<<" is too near to "<<oco.x<<' '<<oco.y<<' '<<oco.z<<'\n';
+            return false;
+        }
+    }
+    return true;
+}
