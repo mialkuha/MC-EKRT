@@ -48,6 +48,7 @@ struct AA_collision_params
 {
   bool mc_glauber_mode;
   bool calculate_end_state;
+  bool reduce_nucleon_energies;
   xsectval sigma_inel_for_glauber;
   const std::function<spatial(const spatial&)> Tpp;
   B2_normalization_mode normalize_to;
