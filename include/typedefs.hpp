@@ -47,6 +47,7 @@ enum class B2_normalization_mode
 struct AA_collision_params
 {
   bool mc_glauber_mode;
+  bool spatial_pdfs;
   bool calculate_end_state;
   bool reduce_nucleon_energies;
   xsectval sigma_inel_for_glauber;
@@ -61,9 +62,13 @@ struct coords {
   double x{0};
   double y{0};
   double z{0};
-  double mag2()
+  double mag2() const
   {
     return pow(this->x,2)+pow(this->y,2)+pow(this->z,2);
+  }
+  double magt2() const
+  {
+    return pow(this->x,2)+pow(this->y,2);
   }
   coords& operator+=(const coords& rhs)
   {
