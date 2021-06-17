@@ -1,6 +1,7 @@
 //Copyright (c) 2021 Mikko Kuha
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -12,6 +13,7 @@
 #include <random>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 #include <tuple>
 #include <variant>
 #include <vector>
@@ -19,11 +21,15 @@
 #include "ars.hpp"
 #include "LHAPDF/GridPDF.h"
 #include "linear_interpolator.hpp"
+#include "linterp.h"
 #include "nn_coll.hpp"
 #include "nucleon.hpp"
 #include "nucleus_generator.hpp"
 #include "pqcd.hpp"
 #include "typedefs.hpp"
+
+double largest_taa=0, largest_sumtpp=0;
+double smallest_taa=1000, smallest_sumtpp=1000; 
 
 class Coll {
 
@@ -423,6 +429,27 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
 
     spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, Tpp);
     spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, Tpp);
+
+    if (largest_taa<tAA_0) 
+    {
+        largest_taa = tAA_0;
+        std::cout<<"NEW largest_taa= "<<largest_taa<<std::endl;
+    }
+    if (smallest_taa>tAA_0) 
+    {
+        smallest_taa = tAA_0;
+        std::cout<<"NEW smallest_taa= "<<smallest_taa<<std::endl;
+    }
+    if (largest_taa<tBB_0) 
+    {
+        largest_taa = tBB_0;
+        std::cout<<"NEW largest_taa= "<<largest_taa<<std::endl;
+    }
+    if (smallest_taa>tBB_0) 
+    {
+        smallest_taa = tBB_0;
+        std::cout<<"NEW smallest_taa= "<<smallest_taa<<std::endl;
+    }
     
     if (verbose)
     {
@@ -432,10 +459,30 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
     for (auto &A : pro)
     {
         sum_tppa = calculate_sum_tpp(A, pro, Tpp);
+        if (largest_sumtpp<sum_tppa) 
+        {
+            largest_sumtpp = sum_tppa;
+            std::cout<<"NEW largest_sumtpp= "<<largest_sumtpp<<std::endl;
+        }
+        if (smallest_sumtpp>sum_tppa) 
+        {
+            smallest_sumtpp = sum_tppa;
+            std::cout<<"NEW smallest_sumtpp= "<<smallest_sumtpp<<std::endl;
+        }
         
         for (auto &B : tar)
         {
             sum_tppb = calculate_sum_tpp(B, tar, Tpp);
+            if (largest_sumtpp<sum_tppb) 
+            {
+                largest_sumtpp = sum_tppb;
+                std::cout<<"NEW largest_sumtpp= "<<largest_sumtpp<<std::endl;
+            }
+            if (smallest_sumtpp>sum_tppb) 
+            {
+                smallest_sumtpp = sum_tppb;
+                std::cout<<"NEW smallest_sumtpp= "<<smallest_sumtpp<<std::endl;
+            }
 
             n_pairs++;
             if ((A.mom < params.energy_threshold) || (B.mom < params.energy_threshold))
@@ -452,7 +499,7 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
             }
             else
             {
-                sigma_jet = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
+                sigma_jet = 0;//pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
             }
             
             newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
@@ -492,18 +539,288 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
     }
 }
 
+// return an evenly spaced 1-d grid of doubles.
+std::vector<double> linspace(const double &first, const double &last, const size_t &len) noexcept
+{
+    std::vector<double> result(len);
+    double step = (last-first) / (len - 1);
+    for (size_t i=0; i<len; i++) { result[i] = first + i*step; }
+    return result;
+}
+
+InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets(const double &tolerance, std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+        std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, const momentum &mand_s, const momentum &kt02, const pqcd::sigma_jet_params &jet_params, 
+        const double &upper_tAA_0_limit, const double &lower_tAA_0_limit, const double &upper_sumTpp_limit, const double &lower_sumTpp_limit) noexcept
+{
+    const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
+    std::array<size_t,4> dim_Ns; //How many points to calculate in each dimension
+    std::array<xsectval,16> corners;
+    corners[0]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[0]<<' '<<std::flush;
+    corners[1]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[1]<<' '<<std::flush;
+    corners[2]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[2]<<' '<<std::flush;
+    corners[3]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[3]<<' '<<std::flush;
+    corners[4]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[4]<<' '<<std::flush;
+    corners[5]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[5]<<' '<<std::flush;
+    corners[6]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[6]<<' '<<std::flush;
+    corners[7]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &upper_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[7]<<' '<<std::flush;
+    corners[8]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[8]<<' '<<std::flush;
+    corners[9]  = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[9]<<' '<<std::flush;
+    corners[10] = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[10]<<' '<<std::flush;
+    corners[11] = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[11]<<' '<<std::flush;
+    corners[12] = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[12]<<' '<<std::flush;
+    corners[13] = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[13]<<' '<<std::flush;
+    corners[14] = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
+    std::cout<<corners[14]<<' '<<std::flush;
+    corners[15] = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &lower_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
+    std::cout<<corners[15]<<' '<<std::endl;
+    xsectval max_corner = *std::max_element(corners.begin(), corners.end());
+    std::cout<<max_corner<<' '<<std::endl;
+
+    //sum_Tpp_A
+    std::array<xsectval,8> differences{abs(corners[0]-corners[8]), abs(corners[1]-corners[9]), abs(corners[2]-corners[10]), abs(corners[3]-corners[11]), 
+                                       abs(corners[4]-corners[12]), abs(corners[5]-corners[13]), abs(corners[6]-corners[14]), abs(corners[7]-corners[15])};
+    xsectval max_diff = *std::max_element(differences.begin(), differences.end());
+    dim_Ns[0] = static_cast<size_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+
+    //sum_Tpp_B
+    differences = std::array<xsectval,8>({abs(corners[0]-corners[4]), abs(corners[1]-corners[5]), abs(corners[2]-corners[6]), abs(corners[3]-corners[7]), 
+                                       abs(corners[8]-corners[12]), abs(corners[9]-corners[13]), abs(corners[10]-corners[14]), abs(corners[11]-corners[15])});
+    max_diff = *std::max_element(differences.begin(), differences.end());
+    dim_Ns[1] = static_cast<size_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+
+    //TAA(0)
+    differences = std::array<xsectval,8>({abs(corners[0]-corners[2]), abs(corners[1]-corners[3]), abs(corners[4]-corners[6]), abs(corners[5]-corners[7]), 
+                                       abs(corners[8]-corners[10]), abs(corners[9]-corners[11]), abs(corners[12]-corners[14]), abs(corners[13]-corners[15])});
+    max_diff = *std::max_element(differences.begin(), differences.end());
+    dim_Ns[2] = static_cast<size_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+    
+    //TBB(0)
+    differences = std::array<xsectval,8>({abs(corners[0]-corners[1]), abs(corners[2]-corners[3]), abs(corners[4]-corners[5]), abs(corners[6]-corners[7]), 
+                                       abs(corners[8]-corners[9]), abs(corners[10]-corners[11]), abs(corners[12]-corners[13]), abs(corners[14]-corners[15])});
+    max_diff = *std::max_element(differences.begin(), differences.end());
+    dim_Ns[3] = static_cast<size_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+
+    for (auto c : dim_Ns) std::cout<<c<<' ';
+std::cout<<std::endl;
+
+    for (auto & n : dim_Ns)
+    {
+        if (!std::isnormal(n) || n<2)
+        {
+            n=2;
+        }
+    }
+
+    for (auto c : dim_Ns) std::cout<<c<<' ';
+std::cout<<std::endl;
+
+    // construct the grid in each dimension. 
+    // note that we will pass in a sequence of iterators pointing to the beginning of each grid
+    std::vector<spatial> grid1 = linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
+    std::vector<spatial> grid2 = linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
+    std::vector<spatial> grid3 = linspace(lower_tAA_0_limit, upper_tAA_0_limit, dim_Ns[2]);
+    std::vector<spatial> grid4 = linspace(lower_tAA_0_limit, upper_tAA_0_limit, dim_Ns[3]);
+    std::vector< std::vector<spatial>::iterator > grid_iter_list;
+    grid_iter_list.push_back(grid1.begin());
+    grid_iter_list.push_back(grid2.begin());
+    grid_iter_list.push_back(grid3.begin());
+    grid_iter_list.push_back(grid4.begin());
+  
+    // total number of elements
+    size_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3];
+    std::cout<<num_elements<<' '<<std::endl;
+  
+
+    std::ofstream sigma_jet_grid_file;
+    sigma_jet_grid_file.open("sigma_jet_grid.dat", std::ios::out);
+    sigma_jet_grid_file << "%mand_s=" << mand_s << " kt02=" << kt02 << " p_pdf=" << p_p_pdf->info().get_entry("SetIndex") << std::endl;
+    sigma_jet_grid_file << "%num_elements=" << num_elements << std::endl;
+    sigma_jet_grid_file << "%num_sum_T_pp_A=" << dim_Ns[0] << std::endl;
+    sigma_jet_grid_file << "%num_sum_T_pp_B=" << dim_Ns[1] << std::endl;
+    sigma_jet_grid_file << "%num_T_AA(0)=" << dim_Ns[2] << std::endl;
+    sigma_jet_grid_file << "%num_T_BB(0)=" << dim_Ns[3] << std::endl;
+    sigma_jet_grid_file << std::endl;
+    sigma_jet_grid_file << "%sum_T_pp_A" << std::endl;
+    for (auto g : grid1) sigma_jet_grid_file << g << ' ';
+    sigma_jet_grid_file << std::endl << std::endl;
+    sigma_jet_grid_file << "%sum_T_pp_B" << std::endl;
+    for (auto g : grid2) sigma_jet_grid_file << g << ' ';
+    sigma_jet_grid_file << std::endl << std::endl;
+    sigma_jet_grid_file << "%T_AA(0)" << std::endl;
+    for (auto g : grid3) sigma_jet_grid_file << g << ' ';
+    sigma_jet_grid_file << std::endl << std::endl;
+    sigma_jet_grid_file << "%T_BB(0)" << std::endl;
+    for (auto g : grid4) sigma_jet_grid_file << g << ' ';
+    sigma_jet_grid_file << std::endl << std::endl;
+    sigma_jet_grid_file << "%sigma_jet_values" << std::endl;
+
+    // fill in the values of f(x) at the gridpoints. 
+    // we will pass in a contiguous sequence, values are assumed to be laid out C-style
+    std::vector<xsectval> f_values(num_elements);
+    xsectval dummy;
+    for (size_t i=0; i<dim_Ns[0]; i++)
+    {
+        for (size_t j=0; j<dim_Ns[1]; j++)
+        {
+    	    for (size_t k=0; k<dim_Ns[2]; k++)
+            {
+                for (size_t l=0; l<dim_Ns[3]; l++)
+                {   
+                    dummy = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[i], &grid2[j], &grid3[k], &grid4[l]);
+            	    f_values[i*dim_Ns[1]*dim_Ns[2]*dim_Ns[3] + j*dim_Ns[2]*dim_Ns[3] + k*dim_Ns[3] + l] = dummy;
+                    sigma_jet_grid_file << dummy << ' ' <<std::flush;
+            	}
+                sigma_jet_grid_file << std::endl;
+            }
+            sigma_jet_grid_file << std::endl;
+    	}
+        sigma_jet_grid_file << std::endl;
+    }
+    sigma_jet_grid_file.close();
+
+    for (auto c : f_values) std::cout<<c<<' ';
+std::cout<<std::endl;
+
+
+    return InterpMultilinear<4, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
+}
+
+InterpMultilinear<4, xsectval> read_sigma_jets(const std::string filename) noexcept
+{
+
+    std::ifstream input(filename);
+
+    std::array<size_t,4> dim_Ns;
+    std::vector<spatial> grid1, grid2, grid3, grid4;
+    std::vector< std::vector<spatial>::iterator > grid_iter_list;
+    std::vector<xsectval> f_values;
+    size_t num_elements;
+
+    if (input.is_open())
+    {
+        std::string line;
+        std::getline(input, line); //#1 Don't need anything from here
+
+        std::getline(input, line); //#2
+        std::istringstream line_stream(line);
+        line_stream.ignore(256,'=');
+        line_stream >> num_elements;
+
+        std::getline(input, line); //#3
+        line_stream = std::istringstream(line);
+        line_stream.ignore(256,'=');
+        line_stream >> dim_Ns[0];
+        std::getline(input, line); //#4
+        line_stream = std::istringstream(line);
+        line_stream.ignore(256,'=');
+        line_stream >> dim_Ns[1];
+        std::getline(input, line); //#5
+        line_stream = std::istringstream(line);
+        line_stream.ignore(256,'=');
+        line_stream >> dim_Ns[2];
+        std::getline(input, line); //#6
+        line_stream = std::istringstream(line);
+        line_stream.ignore(256,'=');
+        line_stream >> dim_Ns[3];
+
+        std::getline(input, line); //#7 empty
+        std::getline(input, line); //#8 Don't need anything from here
+        std::getline(input, line); //#9
+        line_stream = std::istringstream(line);
+        spatial num;
+        while (line_stream >> num)
+        {
+            grid1.push_back(num);
+        }
+        std::getline(input, line); //#10 empty
+        std::getline(input, line); //#11 Don't need anything from here
+        std::getline(input, line); //#12
+        line_stream = std::istringstream(line);
+        while (line_stream >> num)
+        {
+            grid2.push_back(num);
+        }
+        std::getline(input, line); //#13 empty
+        std::getline(input, line); //#14 Don't need anything from here
+        std::getline(input, line); //#15
+        line_stream = std::istringstream(line);
+        while (line_stream >> num)
+        {
+            grid3.push_back(num);
+        }
+        std::getline(input, line); //#16 empty
+        std::getline(input, line); //#17 Don't need anything from here
+        std::getline(input, line); //#18
+        line_stream = std::istringstream(line);
+        while (line_stream >> num)
+        {
+            grid4.push_back(num);
+        }
+        grid_iter_list.push_back(grid1.begin());
+        grid_iter_list.push_back(grid2.begin());
+        grid_iter_list.push_back(grid3.begin());
+        grid_iter_list.push_back(grid4.begin());
+        
+        std::getline(input, line); //#19 empty
+        std::getline(input, line); //#20 Don't need anything from here
+        f_values.reserve(num_elements);
+        size_t i=0, j=0, k=0, l=0;
+        xsectval sigma_jet;
+
+        for (size_t i=0; i<dim_Ns[0]; i++)
+        {
+            for (size_t j=0; j<dim_Ns[1]; j++)
+            {
+                for (size_t k=0; k<dim_Ns[2]; k++)
+                {
+                    std::getline(input, line);
+                    line_stream = std::istringstream(line);
+                    while (line_stream >> sigma_jet)
+                    {
+                        f_values[i*dim_Ns[1]*dim_Ns[2]*dim_Ns[3] + j*dim_Ns[2]*dim_Ns[3] + k*dim_Ns[3] + l] = sigma_jet;
+                        l++;
+                    }
+                    l=0;
+                }
+                std::getline(input, line); //empty
+            }
+            std::getline(input, line); //empty
+        }
+    }
+    else
+    {
+        std::cout<<"ERROR READING SIGMA_JETS"<<std::endl;
+    }
+
+    return InterpMultilinear<4, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
+}
+
 int main()
 {
     //A lot of printing
-    bool verbose = true;
+    bool verbose = false;
 
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
     //General parameters for the simulation
     const bool read_nuclei_from_file = false, end_state_filtering = false;
-    uint desired_N_events = 1000, AA_events = 0, nof_collisions = 0;
+    uint desired_N_events = 10000, AA_events = 0, nof_collisions = 0;
     const spatial b_min=0, b_max=20;
-    auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
+    auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
     std::uniform_real_distribution<double> unirand(0.0, 1.0);
 
@@ -539,6 +856,7 @@ int main()
     std::vector<Coll> collisions_for_reporting;
 
     //sigma_jet stuff
+    const bool read_sigmajets_from_file = true;
     const pqcd::sigma_jet_params jet_params = pqcd::sigma_jet_params(
     /*scale_choice=             */pqcd::scaled_from_kt,
     /*scalar=                   */1.0,
@@ -555,23 +873,20 @@ int main()
     //Only one sigma_jet
     //std::variant<linear_interpolator, xsectval> sigma_jets = xsectval(179.2);
     //std::variant<linear_interpolator, xsectval> sigma_jets = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params);
-    spatial tAA_0=37.6393, tBB_0=39.1377, sum_tppa=0, sum_tppb=0;
-    xsectval sigma;
-    
-    for (int i=0; i<10;i++)
-    {
-        sum_tppa += 0.1;
 
-        for (int j=0; j<10;j++)
-        {
-            sum_tppb += 0.1;
-            std::cout<< pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0)<<' ';
-            std::cout<<std::flush;
-        }
-        sum_tppb = 0;
-        std::cout<<std::endl;
+    if (read_sigmajets_from_file)
+    {
+        InterpMultilinear<4, xsectval> sigma_jets = read_sigma_jets("sigma_jet_grid.dat");
     }
-    
+    else
+    {
+        double tolerance=0.05, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
+        //double tolerance=0.05, upper_tAA_0_limit=42.0, lower_tAA_0_limit = 33.0, upper_sumTpp_limit=0.5, lower_sumTpp_limit=0.03411;
+        InterpMultilinear<4, xsectval> sigma_jets = calculate_spatial_sigma_jets(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, upper_tAA_0_limit, lower_tAA_0_limit, upper_sumTpp_limit, lower_sumTpp_limit);
+        //array<spatial,4> args{0.1, 0.3, 35.0, 40.0};
+        //std::cout<<sigma_jets.interp(args.begin())<<std::endl;
+        //std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
+    }    
 
     if (verbose) std::cout<<"Done!"<<std::endl;
     
@@ -591,7 +906,7 @@ int main()
         {
             binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
         
-            if (verbose || (nof_collisions%1)==0)
+            if (verbose || (nof_collisions%1000)==0)
             {
                 std::cout << std::endl << "A+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events << std::endl << std::endl;
             }
@@ -606,7 +921,7 @@ int main()
         
         binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
         
-        if (verbose || (nof_collisions%1)==0)
+        if (verbose || (nof_collisions%1000)==0)
         {
             std::cout << std::endl << "A+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events << std::endl << std::endl;
         }

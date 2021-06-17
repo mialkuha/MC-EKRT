@@ -23,7 +23,7 @@ LIBS=-L/usr/local/lib -lgsl \
 _SRCS_CPP = ars.cpp hcubature.cpp linear_interpolator.cpp nn_coll.cpp nucleon.cpp nucleus_generator.cpp pqcd.cpp
 SRCS_CPP = $(patsubst %,$(SDIR)/%,$(_SRCS_CPP))
 
-_SRCS_H = ars.hpp converged.h cubature.h linear_interpolator.hpp nn_coll.hpp nucleon.hpp nucleus_generator.hpp pqcd.hpp typedefs.hpp vwrapper.h
+_SRCS_H = ars.hpp converged.h cubature.h linear_interpolator.hpp linterp.h nn_coll.hpp nucleon.hpp nucleus_generator.hpp pqcd.hpp typedefs.hpp vwrapper.h
 SRCS_H = $(patsubst %,$(IDIR)/%,$(_SRCS_H))
 SRCS = $(SRCS_CPP) $(SRCS_H)
 
