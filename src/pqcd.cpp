@@ -263,9 +263,9 @@ xsectval pqcd::diff_sigma::spatial_sigma_jet_mf(const rapidity *const p_x1, cons
     const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
 
     const double scaA = A * *p_sum_tppa / *p_tAA_0 , intA = 1.0 - scaA;//c=A*(R-1)/TAA(0)
-    auto rA_spatial = [&](double & r){return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+    auto rA_spatial = [&](double const &r){return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
     const double scaB = B * *p_sum_tppb / *p_tBB_0 , intB = 1.0 - scaB;
-    auto rB_spatial = [&](double & r){return r*scaB + intB;};
+    auto rB_spatial = [&](double const &r){return r*scaB + intB;};
 
     double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
     double ru = 1.0, rd = 1.0;
