@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstring>
+#include <execution>
 #include <fstream>
 #include <functional>
 #include <future>
@@ -425,7 +426,7 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
                                       const AA_collision_params &params, const bool &verbose, const std::function<spatial(const spatial&)> Tpp) noexcept
 {
 
-    uint n_pairs = 0, mombroke = 0, nof_softs = 0;
+    uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
     spatial sum_tppa=0, sum_tppb=0;
 
     spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, Tpp);
@@ -442,6 +443,11 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
         
         for (auto &B : tar)
         {
+            if (A.calculate_bsquared(B) > 35.)
+            {
+                skipped++;
+                continue;
+            }
             sum_tppb = calculate_sum_tpp(B, tar, Tpp);
 
             n_pairs++;
@@ -459,7 +465,8 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
             }
             else
             {
-                sigma_jet = 0;//pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
+                array<spatial,4> args{sum_tppa, sum_tppb, tAA_0, tBB_0};
+                sigma_jet = sigma_jets.interp(args.begin());//pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
             }
             
             newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
@@ -495,7 +502,7 @@ void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nuc
 
     if (verbose)
     {
-        std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , momentum threshold broke " << mombroke << " times" << std::endl;
+        std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , momentum threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
     }
 }
 
@@ -513,48 +520,38 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets(const double &tolera
         const double &upper_tAA_0_limit, const double &lower_tAA_0_limit, const double &upper_sumTpp_limit, const double &lower_sumTpp_limit) noexcept
 {
     const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
-    uint32_t max_threads = std::thread::hardware_concurrency(); //How many threads will be used in the calculation
-    std::array<uint16_t,4> dim_Ns; //How many points to calculate in each dimension
-    std::array<xsectval,16> corners;
+    std::array<uint16_t,4> dim_Ns{0}; //How many points to calculate in each dimension
+    std::array<xsectval,16> corners{0};
 
-    //std::mutex value_lock;
-    std::function<void(std::promise<xsectval>, const spatial *const,const spatial *const,const spatial *const,const spatial *const)> sigma_jet_function
-        = [=](std::promise<xsectval> prom, const spatial *const sum_tppa, const spatial *const sum_tppb, const spatial *const tAA_0, const spatial *const tBB_0)
+    auto sigma_jet_function = [=](std::promise<xsectval> prom, const spatial sum_tppa, const spatial sum_tppb, const spatial tAA_0, const spatial tBB_0)
     {
-        //std::cout<<"HEP 1"<<std::endl;
-        //std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        //std::unique_lock<std::mutex> lock(value_lock);
-        //xsectval value = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, sum_tppa, sum_tppb, tAA_0, tBB_0); 
-        //std::cout<<"HEP 2"<<std::endl;
-        prom.set_value(pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, sum_tppa, sum_tppb, tAA_0, tBB_0));
-        //lock.unlock();
-        //std::cout<<"HEP 2"<<std::endl;
+        prom.set_value(pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0));        
     };
 
-    std::vector<std::promise<xsectval> > corner_promises(16);
-    std::vector<std::future<xsectval> > corner_futures(16);
-    std::vector<std::thread> corner_threads(16);
+    std::array<std::promise<xsectval>,16> corner_promises{};
+    std::array<std::future<xsectval>, 16> corner_futures{};
+    std::array<std::thread,           16> corner_threads{};
     for (uint8_t i=0; i<16; i++)
     {
         corner_futures[i] = corner_promises[i].get_future();
     }
 
-    corner_threads[0]  = std::thread(sigma_jet_function, std::move(corner_promises[0]),  &upper_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[1]  = std::thread(sigma_jet_function, std::move(corner_promises[1]),  &upper_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[2]  = std::thread(sigma_jet_function, std::move(corner_promises[2]),  &upper_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[3]  = std::thread(sigma_jet_function, std::move(corner_promises[3]),  &upper_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[4]  = std::thread(sigma_jet_function, std::move(corner_promises[4]),  &upper_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[5]  = std::thread(sigma_jet_function, std::move(corner_promises[5]),  &upper_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[6]  = std::thread(sigma_jet_function, std::move(corner_promises[6]),  &upper_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[7]  = std::thread(sigma_jet_function, std::move(corner_promises[7]),  &upper_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[8]  = std::thread(sigma_jet_function, std::move(corner_promises[8]),  &lower_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[9]  = std::thread(sigma_jet_function, std::move(corner_promises[9]),  &lower_sumTpp_limit, &upper_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[10] = std::thread(sigma_jet_function, std::move(corner_promises[10]), &lower_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[11] = std::thread(sigma_jet_function, std::move(corner_promises[11]), &lower_sumTpp_limit, &upper_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[12] = std::thread(sigma_jet_function, std::move(corner_promises[12]), &lower_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[13] = std::thread(sigma_jet_function, std::move(corner_promises[13]), &lower_sumTpp_limit, &lower_sumTpp_limit, &upper_tAA_0_limit, &lower_tAA_0_limit);
-    corner_threads[14] = std::thread(sigma_jet_function, std::move(corner_promises[14]), &lower_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &upper_tAA_0_limit);
-    corner_threads[15] = std::thread(sigma_jet_function, std::move(corner_promises[15]), &lower_sumTpp_limit, &lower_sumTpp_limit, &lower_tAA_0_limit, &lower_tAA_0_limit);
+    corner_threads[0]  = std::thread(sigma_jet_function, std::move(corner_promises[0]),  upper_sumTpp_limit, upper_sumTpp_limit, upper_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[1]  = std::thread(sigma_jet_function, std::move(corner_promises[1]),  upper_sumTpp_limit, upper_sumTpp_limit, upper_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[2]  = std::thread(sigma_jet_function, std::move(corner_promises[2]),  upper_sumTpp_limit, upper_sumTpp_limit, lower_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[3]  = std::thread(sigma_jet_function, std::move(corner_promises[3]),  upper_sumTpp_limit, upper_sumTpp_limit, lower_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[4]  = std::thread(sigma_jet_function, std::move(corner_promises[4]),  upper_sumTpp_limit, lower_sumTpp_limit, upper_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[5]  = std::thread(sigma_jet_function, std::move(corner_promises[5]),  upper_sumTpp_limit, lower_sumTpp_limit, upper_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[6]  = std::thread(sigma_jet_function, std::move(corner_promises[6]),  upper_sumTpp_limit, lower_sumTpp_limit, lower_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[7]  = std::thread(sigma_jet_function, std::move(corner_promises[7]),  upper_sumTpp_limit, lower_sumTpp_limit, lower_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[8]  = std::thread(sigma_jet_function, std::move(corner_promises[8]),  lower_sumTpp_limit, upper_sumTpp_limit, upper_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[9]  = std::thread(sigma_jet_function, std::move(corner_promises[9]),  lower_sumTpp_limit, upper_sumTpp_limit, upper_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[10] = std::thread(sigma_jet_function, std::move(corner_promises[10]), lower_sumTpp_limit, upper_sumTpp_limit, lower_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[11] = std::thread(sigma_jet_function, std::move(corner_promises[11]), lower_sumTpp_limit, upper_sumTpp_limit, lower_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[12] = std::thread(sigma_jet_function, std::move(corner_promises[12]), lower_sumTpp_limit, lower_sumTpp_limit, upper_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[13] = std::thread(sigma_jet_function, std::move(corner_promises[13]), lower_sumTpp_limit, lower_sumTpp_limit, upper_tAA_0_limit, lower_tAA_0_limit);
+    corner_threads[14] = std::thread(sigma_jet_function, std::move(corner_promises[14]), lower_sumTpp_limit, lower_sumTpp_limit, lower_tAA_0_limit, upper_tAA_0_limit);
+    corner_threads[15] = std::thread(sigma_jet_function, std::move(corner_promises[15]), lower_sumTpp_limit, lower_sumTpp_limit, lower_tAA_0_limit, lower_tAA_0_limit);
 
     for (uint8_t i=0; i<16; i++)
     {
@@ -639,33 +636,54 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets(const double &tolera
 
     // fill in the values of f(x) at the gridpoints. 
     // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-    if (max_threads<dim_Ns[2]*dim_Ns[3])
+    std::vector<size_t> c_style_indexes(num_elements);
+    std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3], rad2 = dim_Ns[2]*dim_Ns[3], rad3 = dim_Ns[3]; //These will help untangle the C-style index into coordinates
+    // c_index = ii*rad1 + jj*rad2 + kk*rad3 + ll
+    std::mutex cout_guard;
+    std::vector<xsectval> f_values(num_elements);
+    size_t running_count=num_elements;
+    
+    std::for_each(std::execution::par, c_style_indexes.begin(), c_style_indexes.end(), [=, &f_values, &cout_guard, &running_count](const size_t index) {
+        uint16_t ll = index % rad1 % rad2 % rad3;
+        size_t i_dummy = (index - ll); 
+        uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
+        i_dummy = (i_dummy - kk*rad3); 
+        uint16_t jj = (i_dummy % rad1) / rad2;
+        uint16_t ii = (i_dummy - jj*rad2) / rad1;
+        xsectval dummy = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[ii], &grid2[jj], &grid3[kk], &grid4[ll]);
+        f_values[index] = dummy;
+        std::lock_guard<std::mutex> guard(cout_guard);
+        std::cout<<'\r'<<--running_count<<" left of "<<num_elements<<" grid points to be calculated";
+    });
+
+
+    /*if (max_threads<dim_Ns[2]*dim_Ns[3])
     {
-        std::cout<<"Too few possible threads!!!!"<<std::endl;
-        std::cout<<"Need "<<dim_Ns[2]*dim_Ns[3]<<", have "<<max_threads<<std::endl;
         max_threads=dim_Ns[2]*dim_Ns[3];
     }
 
-    std::vector<std::promise<xsectval> > grid_promises(dim_Ns[2]*dim_Ns[3]);
-    std::vector<std::future<xsectval> > grid_futures(max_threads);
-    std::vector<std::thread> grid_threads(max_threads);
+    std::vector<std::promise<xsectval> > grid_promises(num_elements);
+    std::vector<std::future<xsectval> > grid_futures(num_elements);
+    std::vector<std::thread> grid_threads(num_elements);
 
     std::vector<xsectval> f_values(num_elements);
     size_t running_count=0;
     xsectval dummy;
     std::mutex dummy_lock;
 
-    for (uint16_t i=14; i<dim_Ns[0]; i++)
-    {
-        for (uint16_t j=14; j<dim_Ns[1]; j++)
-        {
-            for (uint16_t ii=0; ii<max_threads; ii++)
+
+            for (uint16_t ii=0; ii<num_elements; ii++)
             {
                 grid_promises[ii] = std::promise<xsectval>();
                 grid_futures[ii] = grid_promises[ii].get_future();
             }
-            uint16_t gi=0;
+    size_t gi=0;
 
+    for (uint16_t i=0; i<dim_Ns[0]; i++)
+    {
+        for (uint16_t j=0; j<dim_Ns[1]; j++)
+        {
     	    for (uint16_t k=0; k<dim_Ns[2]; k++)
             {
                 for (uint16_t l=0; l<dim_Ns[3]; l++,gi++)
@@ -673,28 +691,22 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets(const double &tolera
                     grid_threads[gi] = std::thread(sigma_jet_function, std::move(grid_promises[gi]), &grid1[i], &grid2[j], &grid3[k], &grid4[l]);
             	}
             }
-
-            gi=0;
-
+        }
+    }
+*/  
+    for (uint16_t i=0; i<dim_Ns[0]; i++)
+    {
+        for (uint16_t j=0; j<dim_Ns[1]; j++)
+        {
     	    for (uint16_t k=0; k<dim_Ns[2]; k++)
             {
-                for (uint16_t l=0; l<dim_Ns[3]; l++,gi++)
+                for (uint16_t l=0; l<dim_Ns[3]; l++)
                 {
-
-                    std::unique_lock<std::mutex> lock(dummy_lock);
-                    dummy = grid_futures[gi].get();
-            	    f_values[i*dim_Ns[1]*dim_Ns[2]*dim_Ns[3] + j*dim_Ns[2]*dim_Ns[3] + k*dim_Ns[3] + l] = dummy;
-                    sigma_jet_grid_file << dummy << ' ' <<std::flush;
-                    dummy_lock.unlock();
-                    std::cout<<"\rCalculated "<<++running_count<<" of "<<num_elements<<" grid points";
+                    sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k*rad3 + l] << ' ';
             	}
                 sigma_jet_grid_file << std::endl;
             }
             sigma_jet_grid_file << std::endl;
-            for (uint16_t ii=0; ii<max_threads; ii++)
-            {
-                grid_threads[ii].join();
-            }
         }
         sigma_jet_grid_file << std::endl;
     }
@@ -823,7 +835,7 @@ int main()
     
     //General parameters for the simulation
     const bool read_nuclei_from_file = false, end_state_filtering = false;
-    uint desired_N_events = 10000, AA_events = 0, nof_collisions = 0;
+    uint desired_N_events = 50000, AA_events = 0, nof_collisions = 0;
     const spatial b_min=0, b_max=20;
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
@@ -836,12 +848,12 @@ int main()
     nucleus_generator::nucleus_params nuc_params = {/*.N=*/208, /*.Z=*/82, /*.min_distance=*/0.4, /*.shift_cms=*/true, /*.correct_overlap_bias=*/true};
     
     //Parameters for the hard collisions
-    const spatial proton_width_2 = pow(0.483, 2);
+    const spatial proton_width_2 = pow(0.573, 2);
     const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared) { return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); }}; // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-    const xsectval sigma_inel_for_glauber = 70;//mb
-    const momentum sqrt_s = 2760;//GeV
+    const xsectval sigma_inel_for_glauber = 41.5;//mb
+    const momentum sqrt_s = 5020;//GeV
     const momentum mand_s = pow(sqrt_s, 2);//GeV^2
-    momentum kt0 = 2.0;//GeV
+    momentum kt0 = 2.728321;//GeV
     momentum kt02 = pow(kt0, 2);//GeV^2
     //rapidity ycut = 10.0;
     std::shared_ptr<LHAPDF::GridPDF> p_pdf(new LHAPDF::GridPDF("CT14lo", 0));
@@ -861,7 +873,7 @@ int main()
     std::vector<Coll> collisions_for_reporting;
 
     //sigma_jet stuff
-    const bool read_sigmajets_from_file = true;
+    const bool read_sigmajets_from_file = false;
     const pqcd::sigma_jet_params jet_params = pqcd::sigma_jet_params(
     /*scale_choice=             */pqcd::scaled_from_kt,
     /*scalar=                   */1.0,
@@ -876,16 +888,16 @@ int main()
     //std::vector<double> ys({0, 0.0935744, 0.188578, 0.239477, 0.291646, 0.344675, 0.398283, 0.452277, 0.506536, 0.560964, 0.615471, 0.670006, 0.724548, 0.778992, 0.833378, 0.887649, 0.941796, 0.995794, 1.04965, 1.10332, 1.15682, 1.21014, 1.26326, 1.31619, 1.36894, 1.42145, 1.47379, 1.52593, 1.57785, 1.62955, 1.68108, 1.73237, 1.78347, 1.83436, 1.88503, 1.93555, 1.98579, 2.08574, 2.18488, 2.28324, 2.38082, 2.47764, 2.57371, 2.66905, 2.76367, 2.85758, 2.95079, 3.04331, 3.13519, 3.22638, 3.31701, 3.40697, 3.49631, 3.58507, 3.67318, 3.76075, 3.84775, 3.93419, 4.02008, 4.10543, 4.19026, 4.27459, 4.35839, 4.44168, 4.5245, 4.60684, 4.68873, 4.77011, 4.85103, 4.93156, 5.01159, 5.09122, 5.17041, 5.24917, 5.32755, 5.40549, 5.48306, 5.56022, 5.63701, 5.71337, 5.78938, 5.86503, 5.94031, 6.01522, 6.08979, 6.16402, 6.23788, 6.3114, 6.38459, 6.45747, 6.53004, 6.60226, 6.67419, 6.74577, 6.8171, 6.88808, 6.95879, 7.02916, 7.09927, 7.16904, 7.23856, 7.30779, 7.37676, 7.4454, 7.5138, 7.58196, 7.64985, 7.71746, 7.78485, 7.85195, 7.91882, 7.98543, 8.05181, 8.11793, 8.18377, 8.2494, 8.3148, 8.37998, 8.44489, 8.50958, 8.57407, 8.63833, 8.70236, 8.76619, 8.82976, 8.89314, 8.95633, 9.01921, 9.08198, 9.14453, 9.20687, 9.26901, 9.33096, 9.39269, 9.45423, 9.51552, 9.57669, 9.63761, 9.69837, 9.759, 9.8194, 9.8796, 9.93964, 9.99949, 10.0592, 10.1187, 10.178, 10.2372, 10.2962, 10.355, 10.4136, 10.472, 10.5303, 10.5885, 10.6465, 10.7043, 10.7619, 10.8195, 10.8768, 10.934, 10.991, 11.0479, 11.1046, 11.1612, 11.2176, 11.3299, 11.4417, 11.5528, 11.6634, 11.7735, 11.883, 11.992, 12.1004, 12.2083, 12.3157, 12.4225, 12.5289, 12.6348, 12.7401, 12.8451, 12.9494, 13.0533, 13.1567, 13.2597, 13.3623, 13.4644, 13.566, 13.6672, 13.7679, 13.8683, 13.9682, 14.0677, 14.1668, 14.2655, 14.3637, 14.4616, 14.5591, 14.6562, 14.7529, 14.8492, 14.9452, 15.0408, 15.136, 15.2309, 15.3254, 15.4196, 15.5134, 15.6064, 15.7, 15.7928, 15.8853, 15.9774, 16.0692, 16.1606, 16.2517, 16.3426, 16.4331, 16.5233, 16.6131, 16.7026, 16.7919, 16.8809, 16.9695, 17.0579, 17.146, 17.2338, 17.3213, 17.4955, 17.6685, 17.8405, 18.0115, 18.1814, 18.3503, 18.5181, 18.6849, 18.8505, 19.0154, 19.1793, 19.3423, 19.5043, 19.6635, 19.8258, 19.9853, 20.1437, 20.3014, 20.4582, 20.6144, 20.7696, 20.924, 21.0776, 21.2303, 21.3817, 21.5337, 21.6841, 21.834, 21.9831, 22.1315, 22.2792, 22.4262, 22.5725, 22.7182, 22.863, 23.0073, 23.151, 23.294, 23.4364, 23.5781, 23.719, 23.8595, 23.9994, 24.1386, 24.2776, 24.4156, 24.5531, 24.6901, 24.8266, 24.9625, 25.0978, 25.233, 25.3673, 25.501, 25.6342, 25.7668, 25.8953, 26.0306, 26.2923, 26.5522, 26.81, 27.0662, 27.3207, 27.5731, 27.8237, 28.0725, 28.3195, 28.5649, 28.8088, 29.0509, 29.2916, 29.5306, 29.7682, 30.0043, 30.2389, 30.472, 30.7036, 30.9339, 31.1627, 31.3902, 31.6163, 31.8412, 32.0648, 32.2871, 32.5082, 32.728, 32.9465, 33.164, 33.3803, 33.5953, 33.8093, 34.0219, 34.2336, 34.4442, 34.6539, 34.8623, 35.0697, 35.2761, 35.4814, 35.6857, 35.8889, 36.0913, 36.2927, 36.4931, 36.6927, 36.8912, 37.0896, 37.2855, 37.4813, 37.6763, 37.8703, 38.0635, 38.256, 38.6383, 39.0172, 39.3929, 39.7655, 40.135, 40.5015, 40.865, 41.2257, 41.5835, 41.9386, 42.2908, 42.6407, 42.9878, 43.3325, 43.6746, 44.0136, 44.3508, 44.6858, 45.0184, 45.3494, 45.6776, 46.0035, 46.3273, 46.6491, 46.9687, 47.2862, 47.6017, 47.9152, 48.2269, 48.5367, 48.845, 49.151, 49.4553, 49.7577, 50.0586, 50.3576, 50.6544, 50.9501, 51.244, 51.5364, 51.8271, 52.1151, 52.404, 52.69, 52.9746, 53.2584, 53.5392, 53.8193, 54.098, 54.3751, 54.651, 55.1987, 55.7411, 56.2781, 56.8102, 57.3372, 57.8595, 58.3771, 58.89, 59.3983, 59.9023, 60.402, 60.8974, 61.3887, 61.8761, 62.3595, 62.8392, 63.315, 63.7871, 64.2556, 64.7202, 65.1818, 65.6392, 66.094, 66.5454, 66.9944, 67.4393, 67.8811, 68.3199, 68.7558, 69.1888, 69.6188, 70.0461, 70.4706, 70.8923, 71.3115, 71.7278, 72.1415, 72.5528, 72.9614, 73.3675, 73.7679, 74.0824, 74.5719, 74.9685, 75.3629, 75.755, 76.1448, 76.5324, 76.918, 77.682, 78.439, 79.1876, 79.9279, 80.661, 81.3864, 82.1047, 82.8156, 83.5201, 84.2178, 84.9089, 85.5936, 86.2722, 86.9445, 87.6111, 88.2717, 88.9267, 89.576, 90.22, 90.8587, 91.4924, 92.1207, 92.7441, 93.3627, 93.9764, 94.5857, 95.19, 95.79, 96.3855, 96.9767, 97.5627, 98.1454, 98.7241, 99.2995, 99.8702, 100.437, 101, 101.559, 102.114, 102.666, 103.215, 103.759, 104.3, 104.838, 105.373, 105.904, 106.957, 107.997, 109.025, 110.041, 111.046, 112.04, 113.023, 113.996, 114.958, 115.909, 116.851, 117.784, 118.707, 119.622, 120.528, 121.425, 122.313, 123.194, 124.067, 124.932, 125.79, 126.639, 127.482, 128.318, 129.146, 129.968, 130.783, 131.591, 132.393, 133.189, 133.978, 134.762, 135.539, 136.311, 137.077, 137.837, 138.592, 139.342, 140.087, 140.824, 141.558, 142.287, 143.011, 144.445, 145.86, 147.256, 148.635, 149.997, 151.343, 152.673, 153.987, 155.286, 156.569, 157.839, 159.095, 160.337, 161.566, 162.783, 163.989, 165.179, 166.359, 167.528, 168.685, 169.832, 170.968, 172.093, 173.21, 174.316, 175.408, 176.494, 177.571, 178.639, 179.698, 180.747, 181.788, 182.821, 183.845, 184.861, 185.869, 186.87, 187.863, 188.849, 189.827, 190.798, 191.761, 193.668, 195.548, 197.402, 199.231, 201.037, 202.818, 204.577, 206.315, 208.03, 209.726, 211.406, 213.057, 214.695, 216.313, 217.913, 219.496, 221.064, 222.613, 224.147, 225.666, 227.169, 228.658, 230.133, 231.592, 233.038, 234.471, 235.893, 237.3, 238.691, 240.072, 241.442, 242.8, 244.147, 245.485, 246.809, 248.112, 249.421, 250.713, 251.995, 253.267, 255.782, 258.259, 260.711, 263.11, 265.474, 267.813, 270.12, 272.396, 274.643, 276.861, 279.051, 281.215, 283.354, 285.466, 287.553, 289.617, 291.657, 293.675, 295.67, 297.643, 299.597, 301.531, 303.444, 305.338, 307.215, 309.072, 310.911, 312.733, 314.537, 316.325, 318.096, 319.851, 321.591, 323.315, 325.024, 326.719, 328.399, 330.065, 333.363, 336.596, 339.784, 342.932, 346.016, 349.064, 352.067, 355.028, 357.948, 360.828, 363.67, 366.488, 369.246, 371.982, 374.684, 377.353, 379.99, 382.596, 385.173, 387.721, 390.24, 392.732, 395.199, 397.638, 400.39, 403.11, 405.798, 408.457, 411.086, 413.685, 416.257, 418.802, 421.32, 423.812, 426.279, 428.72, 431.139, 433.533, 435.905, 438.255, 440.583, 442.888, 445.173, 447.447, 451.907, 456.301, 460.622, 464.871, 469.052, 473.168, 477.222, 481.216, 485.149, 489.027, 492.87, 496.648, 500.343, 504.014, 507.636, 511.213, 514.746, 518.234, 521.683, 525.089, 528.456, 531.783, 535.074, 538.327, 541.545, 544.725, 547.875, 550.992, 554.076, 557.13, 560.153, 563.15, 566.114, 569.05, 571.957, 574.838, 580.521, 586.104, 591.588, 596.98, 602.282, 607.499, 612.632, 617.687, 622.665});
     //std::variant<linear_interpolator, xsectval> sigma_jets = linear_interpolator(xs, ys);
     //Only one sigma_jet
-    //std::variant<linear_interpolator, xsectval> sigma_jets = xsectval(179.2);
+    //std::variant<linear_interpolator, xsectval> sigma_jets = xsectval(143.481);
+    //std::cout<<pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params)<<std::endl;
     //std::variant<linear_interpolator, xsectval> sigma_jets = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params);
-
-    InterpMultilinear<4, xsectval> sigma_jets = read_sigma_jets("sigma_jet_grid (copy).dat");
+    InterpMultilinear<4, xsectval> sigma_jets = read_sigma_jets("sigma_jet_grid.dat");
     
     if (!read_sigmajets_from_file)
     {
-        double tolerance=0.01, upper_tAA_0_limit=40.0, lower_tAA_0_limit = 35.0, upper_sumTpp_limit=0.40, lower_sumTpp_limit=0.30;
+        double tolerance=0.05, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
         //double tolerance=0.05, upper_tAA_0_limit=42.0, lower_tAA_0_limit = 33.0, upper_sumTpp_limit=0.5, lower_sumTpp_limit=0.03411;
-        InterpMultilinear<4, xsectval> sigma_jets = calculate_spatial_sigma_jets(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, upper_tAA_0_limit, lower_tAA_0_limit, upper_sumTpp_limit, lower_sumTpp_limit);
+        sigma_jets = calculate_spatial_sigma_jets(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, upper_tAA_0_limit, lower_tAA_0_limit, upper_sumTpp_limit, lower_sumTpp_limit);
         //array<spatial,4> args{0.1, 0.3, 35.0, 40.0};
         //std::cout<<sigma_jets.interp(args.begin())<<std::endl;
         //std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
@@ -909,10 +921,11 @@ int main()
         {
             binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
         
-            if (verbose || (nof_collisions%1000)==0)
+            /*if (verbose || (nof_collisions%100)==0)
             {
                 std::cout << std::endl << "A+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events << std::endl << std::endl;
-            }
+            }*/
+            std::cout<<"\rA+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events;
             continue;
         }
         AA_events++;
@@ -924,10 +937,13 @@ int main()
         
         binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
         
-        if (verbose || (nof_collisions%1000)==0)
+        /*if (verbose || (nof_collisions%100)==0)
         {
             std::cout << std::endl << "A+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events << std::endl << std::endl;
-        }
+        }*/
+
+        std::cout<<"\rA+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events;
+
 
         uint Npart=0;
         for (auto &A : pro)
