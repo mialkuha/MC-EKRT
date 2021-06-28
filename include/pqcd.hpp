@@ -5,6 +5,7 @@
 
 #include <cmath>
 #include <memory>
+#include <mutex>
 #include <tuple>
 
 #include <gsl/gsl>
@@ -33,7 +34,6 @@ public:
             explicit params(bool projectile_with_npdfs_ = false, bool target_with_npdfs_ = false, bool isoscalar_projectile_ = false, bool isoscalar_target_ = false, int npdf_setnumber_ = 1) noexcept
                 : projectile_with_npdfs(projectile_with_npdfs_), target_with_npdfs(target_with_npdfs_), isoscalar_projectile(isoscalar_projectile_), isoscalar_target(isoscalar_target_), npdf_setnumber(npdf_setnumber_) {}
         };
-
         ///sigma_qiqj_qiqj
         ///Calculates and returns the cross section of the subprocess qiqj->qiqj. Return value should be real.
         ///
