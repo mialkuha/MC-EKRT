@@ -2,6 +2,9 @@
 //TODO parallellize A+A colls
 //TODO sigma_jet with full spatial nPDF calculation
 //TODO sigma_inel calculation???
+//TODO kuinka hyvin pätee ave(sum(T_pp(si-si~)))==T_AA(0) ??
+//TODO voidaanko laskea <T_AA> ilman sigma_inel ??
+//TODO <T_AA> = <<sigma_inel>_event> * <N_bin> 
 
 #include <algorithm>
 #include <array>
@@ -496,7 +499,94 @@ spatial calculate_sum_tpp(const nucleon &nuc, const std::vector<nucleon> &nucleu
     return sum_tpp;
 }
 
-void collide_nuclei_with_spatial_pdfs(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::vector<nn_coll> &binary_collisions, const InterpMultilinear<4, xsectval> &sigma_jets,
+void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::vector<nn_coll> &binary_collisions, const InterpMultilinear<4, xsectval> &sigma_jets,
+                                      std::uniform_real_distribution<double> unirand, std::shared_ptr<std::mt19937> eng, 
+                                      const AA_collision_params &params, const bool &verbose, const std::function<spatial(const spatial&)> Tpp) noexcept
+{
+
+    uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
+    spatial sum_tppa=0, sum_tppb=0;
+
+    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, Tpp);
+    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, Tpp);
+    
+    if (verbose)
+    {
+        std::cout << "T_AA(0)= " << tAA_0 << ", T_BB(0)= " << tBB_0 << std::endl;
+    }
+
+    for (auto &A : pro)
+    {
+        sum_tppa = calculate_sum_tpp(A, pro, Tpp);
+        
+        for (auto &B : tar)
+        {
+            if (A.calculate_bsquared(B) > 35.)
+            {
+                skipped++;
+                continue;
+            }
+            sum_tppb = calculate_sum_tpp(B, tar, Tpp);
+
+            n_pairs++;
+            if ((A.mom < params.energy_threshold) || (B.mom < params.energy_threshold))
+            {
+                mombroke++;
+                continue;
+            }
+
+            nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
+            xsectval sigma_jet;
+            if (params.reduce_nucleon_energies) 
+            {
+                //TODO
+            }
+            else
+            {
+                array<spatial,4> args{sum_tppa, sum_tppb, tAA_0, tBB_0};
+                sigma_jet = sigma_jets.interp(args.begin());//pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
+            }
+            
+            newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
+
+            if (verbose)
+            {
+                std::cout << "<T_pp>_i= " << sum_tppa << ", <T_pp>_j= " << sum_tppb << ", sigma_jet= " 
+                          << sigma_jet <<  ", sigma_inel_eff= " << newpair.getcr_effective_inel_xsect() 
+                          << ", sigma_tot_eff= " << newpair.getcr_effective_tot_xsect() << std::endl;
+            }
+
+            auto ran = unirand(*eng)*M_PI;
+            
+            if (ran > newpair.getcr_effective_inel_xsect())
+            {
+                if (ran > newpair.getcr_effective_tot_xsect())
+                {
+                    continue;
+                }
+                nof_softs++;
+                continue;
+            }
+            if (params.calculate_end_state)
+            {
+                pqcd::generate_bin_NN_coll(&newpair);
+                newpair.push_end_states_to_collider_frame();
+                newpair.reduce_energy();
+            }
+            newpair.wound();
+            binary_collisions.push_back(newpair);
+        }
+    }
+
+    if (verbose)
+    {
+        std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , momentum threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
+    }
+}
+
+
+
+void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::vector<nn_coll> &binary_collisions, const InterpMultilinear<4, xsectval> &sigma_jets,
                                       std::uniform_real_distribution<double> unirand, std::shared_ptr<std::mt19937> eng, 
                                       const AA_collision_params &params, const bool &verbose, const std::function<spatial(const spatial&)> Tpp) noexcept
 {
@@ -627,6 +717,8 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets(const double &tolera
     {
         corners[i] = corner_futures[i].get();
     }
+
+    //Determine the grid spacings in all directions
 
     xsectval max_corner = *std::max_element(corners.begin(), corners.end());
 
@@ -898,7 +990,7 @@ int main()
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
     //General parameters for the simulation
-    const bool read_nuclei_from_file = false, end_state_filtering = false;
+    const bool read_nuclei_from_file = false, end_state_filtering = false, average_spatial_taas=false;
     uint desired_N_events = 50000, AA_events = 0, nof_collisions = 0;
     const spatial b_min=0, b_max=20;
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
@@ -924,6 +1016,7 @@ int main()
     const AA_collision_params coll_params{
     /*mc_glauber_mode=          */false,
     /*spatial_pdfs=             */true,
+    /*spatial_averaging=        */true,
     /*calculate_end_state=      */false,
     /*reduce_nucleon_energies=  */false,
     /*sigma_inel_for_glauber=   */sigma_inel_for_glauber,
@@ -981,7 +1074,15 @@ int main()
 
         auto [pro, tar] = generate_nuclei(nuc_params, sqrt_s, impact_parameter, eng, radial_sampler, read_nuclei_from_file, verbose);        
         //collide_nuclei(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose);
-        collide_nuclei_with_spatial_pdfs(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp);
+
+        if (average_spatial_taas)
+        {
+            collide_nuclei_with_spatial_pdfs_averaging(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp);
+        }
+        else
+        {
+            collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp);
+        }
 
         nof_collisions++;
         ulong NColl=binary_collisions.size();

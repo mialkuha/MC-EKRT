@@ -48,6 +48,7 @@ struct AA_collision_params
 {
   bool mc_glauber_mode;
   bool spatial_pdfs;
+  bool spatial_averaging;
   bool calculate_end_state;
   bool reduce_nucleon_energies;
   xsectval sigma_inel_for_glauber;
