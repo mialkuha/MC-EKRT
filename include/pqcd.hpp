@@ -125,13 +125,17 @@ public:
         ///\param p_t_hat = pointer to subprocess mandelstam variable t
         ///\param p_u_hat = pointer to subprocess mandelstam variable u
         ///
-        static xsectval sigma_jet(const rapidity * p_x1, const rapidity * p_x2,  const momentum * p_q2, std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-                                  const momentum * p_s_hat, const momentum * p_t_hat, const momentum * p_u_hat, const params * p_params) noexcept;
-        static xsectval spatial_sigma_jet_mf(const rapidity * p_x1, const rapidity * p_x2,  const momentum * p_q2, std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,  
-                                          const momentum * p_s_hat, const momentum * p_t_hat, const momentum * p_u_hat, const params * p_params, 
-                                          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, const spatial *const p_sum_tppa, const spatial *const p_sum_tppb, 
-                                          const spatial *const p_tAA_0, const spatial *const p_tBB_0) noexcept;
-    };
+        static xsectval sigma_jet(const rapidity * p_x1,    const rapidity * p_x2, 
+                                  const momentum * p_q2,    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+                                  const momentum * p_s_hat, const momentum * p_t_hat, 
+                                  const momentum * p_u_hat, const params * p_params) noexcept;
+        static xsectval spatial_sigma_jet(const rapidity *const p_x1,    const rapidity *const p_x2, 
+                                          const momentum *const p_q2,    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+                                          const momentum *const p_s_hat, const momentum *const p_t_hat, 
+                                          const momentum *const p_u_hat, const pqcd::diff_sigma::params *const p_params, 
+                                          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
+                                          std::function<double(double const&)> rA_spatial,
+                                          std::function<double(double const&)> rB_spatial) noexcept;
     enum scale_choice
     {
         scaled_from_kt,
@@ -156,13 +160,16 @@ public:
     static void scale_limits_from_0_1(const rapidity & z1, const rapidity & z2, const rapidity & z3,                      //variables between 0 and 1
                                       const momentum *const kt2_lower_cutoff, const momentum *const mand_s,               //parameters
                                       momentum * p_kt2, rapidity * p_y1, rapidity * p_y2, xsectval * p_jacobian) noexcept;//output
-    static int spatial_sigma_jet_mf_integrand(unsigned ndim, const double *p_x, void *p_fdata, unsigned fdim, double *p_fval) noexcept;
+    static int spatial_sigma_jet_integrand(unsigned ndim, const double *p_x, void *p_fdata, unsigned fdim, double *p_fval) noexcept;
     static xsectval f_ses(const rapidity * p_x, const momentum * p_q2, std::shared_ptr<LHAPDF::GridPDF> p_pdf) noexcept;
     static momentum s_hat_from_ys(const rapidity * p_y1, const rapidity * p_y2, const momentum * p_kt2) noexcept;
     static momentum t_hat_from_ys(const rapidity * p_y1, const rapidity * p_y2, const momentum * p_kt2) noexcept;
     static momentum u_hat_from_ys(const rapidity * p_y1, const rapidity * p_y2, const momentum * p_kt2) noexcept;
     static xsectval calculate_sigma_jet(std::shared_ptr<LHAPDF::GridPDF> p_pdf, const momentum *const p_mand_s, const momentum *const p_kt2_lower_cutoff, const pqcd::sigma_jet_params *const p_params) noexcept;
     static xsectval calculate_spatial_sigma_jet_mf(std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, const momentum *const p_mand_s, 
+                                                    const momentum *const p_kt2_lower_cutoff, const pqcd::sigma_jet_params *const p_params, const spatial *const p_sum_tppa, 
+                                                    const spatial *const p_sum_tppb, const spatial *const p_tAA_0, const spatial *const p_tBB_0) noexcept;
+    static xsectval calculate_spatial_sigma_jet_full(std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, const momentum *const p_mand_s, 
                                                     const momentum *const p_kt2_lower_cutoff, const pqcd::sigma_jet_params *const p_params, const spatial *const p_sum_tppa, 
                                                     const spatial *const p_sum_tppb, const spatial *const p_tAA_0, const spatial *const p_tBB_0) noexcept;
 protected:

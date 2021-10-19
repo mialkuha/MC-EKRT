@@ -985,13 +985,13 @@ InterpMultilinear<4, xsectval> read_sigma_jets(const std::string &filename) noex
 int main()
 {
     //A lot of printing
-    bool verbose = false;
+    bool verbose = true;
 
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
     //General parameters for the simulation
-    const bool read_nuclei_from_file = false, end_state_filtering = false, average_spatial_taas=false;
-    uint desired_N_events = 50000, AA_events = 0, nof_collisions = 0;
+    const bool read_nuclei_from_file = false, end_state_filtering = false, average_spatial_taas=true;
+    uint desired_N_events = 500, AA_events = 0, nof_collisions = 0;
     const spatial b_min=0, b_max=20;
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
