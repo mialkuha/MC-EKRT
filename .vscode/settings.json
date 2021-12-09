@@ -75,6 +75,7 @@
         "bit": "cpp",
         "*.ipp": "cpp",
         "runglauber_v3.2.C": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "gsl_assert": "cpp"
     }
 }
