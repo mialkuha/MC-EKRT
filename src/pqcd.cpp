@@ -56,31 +56,29 @@ xsectval pqcd::calculate_spatial_sigma_jet_full(std::shared_ptr<LHAPDF::GridPDF>
                                                 const momentum *const p_mand_s, 
                                                 const momentum *const p_kt2_lower_cutoff, 
                                                 const pqcd::sigma_jet_params *const p_params,
-                                                const spatial &sum_tppa, 
-                                                const spatial &sum_tppb, 
+                                                const std::array<const double, 3> &T_sums,
                                                 const spatial &tAA_0, 
                                                 const spatial &tBB_0) noexcept
-{TODO
+{
     xsectval sigma_jet, error;
     const double upper_limits[3] = {1, 1, 1};
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
 
     const int A=208, B=208;
-    const double scaA = A * sum_tppa / tAA_0 , intA = 1.0 - scaA;//c=A*(R-1)/TAA(0)
-    std::function<double(double const&)> rA_spatial = 
-        [&](double const &r){return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
-    const double scaB = B * sum_tppb / tBB_0 , intB = 1.0 - scaB;
-    std::function<double(double const&)> rB_spatial = 
-        [&](double const &r){return r*scaB + intB;};
+    const double scaA = A / tAA_0;//c=A*(R-1)/TAA(0)
+    std::function<double(double const&)> cA = [&](double const &r){return scaA*(r-1);};
+    const double scaB = B / tBB_0;
+    std::function<double(double const&)> cB = [&](double const &r){return scaB*(r-1);};
 
     std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
                const momentum *const, const momentum *const, 
                const pqcd::sigma_jet_params *const, 
                std::shared_ptr<LHAPDF::GridPDF>, 
                std::function<double(double const&)>, 
-               std::function<double(double const&)> > fdata =
-        {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params, p_n_pdf, rA_spatial, rB_spatial};
+               std::function<double(double const&)>,
+               const std::array<const double, 3> > fdata =
+        {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params, p_n_pdf, cA, cB, T_sums};
 
     int not_success;
 
@@ -763,13 +761,14 @@ int pqcd::spatial_sigma_jet_integrand_full(unsigned ndim,
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
-    auto [ p_pdf, p_mand_s, p_p02, p_params, p_n_pdf, rA_spatial, rB_spatial ]
+    auto [ p_pdf, p_mand_s, p_p02, p_params, p_n_pdf, cA, cB, T_sums ]
         = *(static_cast<std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
                                    const momentum *const, const momentum *const, 
                                    const pqcd::sigma_jet_params *const, 
                                    std::shared_ptr<LHAPDF::GridPDF>, 
                                    std::function<double(double const&)>, 
-                                   std::function<double(double const&)> > *>(p_fdata));
+                                   std::function<double(double const&)>,
+                                   const std::array<const double, 3> > *>(p_fdata));
 
     momentum kt2;
     rapidity y1, y2;
@@ -806,8 +805,8 @@ int pqcd::spatial_sigma_jet_integrand_full(unsigned ndim,
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = 0.5 * (pqcd::diff_sigma::spatial_sigma_jet_full(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params, p_n_pdf, rA_spatial, rB_spatial) 
-        + pqcd::diff_sigma::spatial_sigma_jet_full(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params, p_n_pdf, rA_spatial, rB_spatial)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+        p_fval[0] = 0.5 * (pqcd::diff_sigma::spatial_sigma_jet_full(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params, p_n_pdf, cA, cB, T_sums) 
+        + pqcd::diff_sigma::spatial_sigma_jet_full(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params, p_n_pdf, cA, cB, T_sums)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success

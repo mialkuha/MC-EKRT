@@ -110,6 +110,19 @@ struct coords {
     lhs /= rhs;
     return lhs;
   }
+  coords& operator*=(const double& rhs)
+  {
+    this->x *= rhs;
+    this->y *= rhs;
+    this->z *= rhs;
+    return *this;
+  }
+  
+  friend coords operator*(coords lhs, const double& rhs)
+  {
+    lhs *= rhs;
+    return lhs;
+  }
 };
 
 #endif // TYPEDEFS_HPP

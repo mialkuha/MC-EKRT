@@ -216,8 +216,7 @@ public:
                                                      const momentum *const p_mand_s, 
                                                      const momentum *const p_kt2_lower_cutoff, 
                                                      const pqcd::sigma_jet_params *const p_params, 
-                                                     const spatial &sum_tppa, 
-                                                     const spatial &sum_tppb, 
+                                                     const std::array<const double, 3> &T_sums,
                                                      const spatial &tAA_0, 
                                                      const spatial &tBB_0) noexcept;
 
