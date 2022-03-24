@@ -585,12 +585,13 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
 }
 
 
-    double lowest1 = 100, lowest2 = 100, lowest3 = 100;
-    double biggest1 = 0, biggest2 = 0, biggest3 = 0;
+/*    double lowest1 = 100, lowest2 = 100, lowest3 = 100;
+    double biggest1 = 0, biggest2 = 0, biggest3 = 0;*/
 
 void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::vector<nn_coll> &binary_collisions, const InterpMultilinear<5, xsectval> &sigma_jets,
                                       std::uniform_real_distribution<double> unirand, std::shared_ptr<std::mt19937> eng, 
-                                      const AA_collision_params &params, const bool &verbose, const std::function<spatial(const spatial&)> Tpp, const spatial &sigma2, const coords &b_vector) noexcept
+                                      const AA_collision_params &params, const bool &verbose, const std::function<spatial(const spatial&)> Tpp, const spatial &sigma2, const coords &b_vector,
+                                      std::ofstream &log_file) noexcept
 {
 
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
@@ -598,7 +599,7 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
     const spatial inv8pi2sigma4 = 1/(8*M_PI*M_PI*sigma2*sigma2),  inv8sigma2 = 1/(8*sigma2);
     std::array<double, 3> T_sums {-0.5, -0.5, 1.0};
     size_t A_size=pro.size(), B_size=tar.size();
-    coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0}, dummy5{0,0,0};//For speeding up the calculations of the sums
+    coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0};//For speeding up the calculations of the sums
 
     spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, Tpp);
     spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, Tpp);
@@ -626,37 +627,34 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
                 continue;
             }
 
-            dummy = A.co + B.co;
+            dummy = A.co + B.co; //= s_i + s_j
 
             T_sums[0]=0.0;
-            dummy2 = dummy + b_vector;
             for (auto &i_prime : pro)
             {
-                T_sums[0] += inv3pisigma2*exp(-inv12sigma2*(dummy2 - i_prime.co*2.0).magt2());
+                T_sums[0] += inv3pisigma2*exp(-inv12sigma2*(dummy - i_prime.co*2.0).magt2()); //= b_ij - 2b_ii' = s_j - s_i - 2(s_i' - s_i) = s_i + s_j - 2s_i' 
             }
 
             T_sums[1]=0.0;
-            dummy2 = dummy - b_vector;
             for (auto &j_prime : tar)
             {
-                T_sums[1] += inv3pisigma2*exp(-inv12sigma2*(dummy2 - j_prime.co*2.0).magt2());
+                T_sums[1] += inv3pisigma2*exp(-inv12sigma2*(dummy - j_prime.co*2.0).magt2()); //= b_ij - 2b_ij' = s_j - s_i - 2(s_j' - s_i) = s_i + s_j - 2s_j' 
             }
 
             T_sums[2]=0.0;
             for (auto &i_prime : pro)
             {
-                dummy2 = i_prime.co;
-                dummy3 = dummy - dummy2;
-                dummy4 = dummy2 - b_vector;
+                dummy2 = i_prime.co; //= s_i'
+                dummy3 = dummy - dummy2; //= s_i + s_j - s_i'
                 for (auto &j_prime : tar)
                 {
-                    dummy5 = j_prime.co;
-                    T_sums[2] += inv8pi2sigma4*exp(-inv8sigma2*( (dummy2 - dummy5).magt2()
-                                                                +2*(dummy4 - dummy5).magt2() ));
+                    dummy4 = j_prime.co; //= s_j'
+                    T_sums[2] += inv8pi2sigma4*exp(-inv8sigma2*( (dummy3 - dummy4).magt2() //= b_ij - b_ii' - b_ij' = s_i + s_j - s_i' - s_j'
+                                                                +2*(dummy2 - dummy4).magt2() )); //= b_ii' - b_ij' = s_i' - s_j'
                 }
             }
 
-            if (T_sums[0] < lowest1)
+            /*if (T_sums[0] < lowest1)
             {
                 lowest1 = T_sums[0]*0.999;
                 std::cout << "lowest T_sums[0]= " << T_sums[0] << std::endl;
@@ -687,8 +685,8 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
             {
                 biggest3 = T_sums[2]*1.001;
                 std::cout << "biggest T_sums[2]= " << T_sums[2] << std::endl;
-            }
-/*
+            }*/
+
             nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
             xsectval sigma_jet;
             if (params.reduce_nucleon_energies) 
@@ -703,6 +701,8 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
             
             newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
 
+            log_file << sigma_jet << ' ' << T_sums[0] << ' ' << T_sums[1] << ' ' << T_sums[2] << ' ' << tAA_0 << ' ' << tBB_0
+                     << ' ' << newpair.getcr_effective_inel_xsect() << ' ' << newpair.getcr_effective_tot_xsect() << std::endl;
             if (verbose)
             {
                 std::cout << "T_sums[0]= " << T_sums[0] << ", T_sums[1]= " << T_sums[1] 
@@ -730,7 +730,7 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
             }
             newpair.wound();
             binary_collisions.push_back(newpair);
-*/
+
         }
     }
 
@@ -959,41 +959,46 @@ InterpMultilinear<5, xsectval> calculate_spatial_sigma_jets_full(const double &t
     
     //First calculation in a single thread, so the PDF gets fully initialized thread-safe
     corners[0]         = sigma_jet_function(                                upper_limits[0], upper_limits[1], upper_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[1]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[2]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[3]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
+    std::cout<<corners[0]<<std::endl;
+    //corner_futures[1]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[2]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[3]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[4]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[5]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[6]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[7]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
+    //corner_futures[5]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[6]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[7]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[8]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[9]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[10] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[11] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
+    //corner_futures[9]  = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[10] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[11] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[12] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[13] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[14] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[15] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
+    //corner_futures[13] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[14] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[15] = std::async(std::launch::async, sigma_jet_function, upper_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[16] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[17] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[18] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[19] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
+    //corner_futures[17] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[18] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[19] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[20] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[21] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[22] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[23] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
+    //corner_futures[21] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[22] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[23] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], upper_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[24] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[25] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[26] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[27] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
+    //corner_futures[25] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[26] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[27] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], upper_limits[2], lower_limits[3], lower_limits[3]);
     corner_futures[28] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], upper_limits[3]);
-    corner_futures[29] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
-    corner_futures[30] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
-    corner_futures[31] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
-
-    for (uint8_t i=1; i<32; i++)
+    //corner_futures[29] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
+    //corner_futures[30] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
+    //corner_futures[31] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
+uint8_t iiii=0;
+    for (uint8_t i=4; i<32; i+=4)
     {
         corners[i] = corner_futures[i].get();
+        iiii=1;
+        corners[i+iiii++] = corners[i];
+        corners[i+iiii++] = corners[i];
+        corners[i+iiii++] = corners[i];
     }
 
     //Determine the grid spacings in all directions
@@ -1039,6 +1044,7 @@ InterpMultilinear<5, xsectval> calculate_spatial_sigma_jets_full(const double &t
     dim_Ns[2] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
     //TAA(0)
+    /*
     j=0;
     for (uint8_t i=0; i<16; i++)
     {
@@ -1047,9 +1053,11 @@ InterpMultilinear<5, xsectval> calculate_spatial_sigma_jets_full(const double &t
         j+=4;
     }
     max_diff = *std::max_element(differences.begin(), differences.end());
-    dim_Ns[3] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+    dim_Ns[3] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));*/
+    dim_Ns[3] = 1;
     
     //TBB(0)
+    /*
     j=0;
     for (uint8_t i=0; i<16; i++)
     {
@@ -1057,13 +1065,14 @@ InterpMultilinear<5, xsectval> calculate_spatial_sigma_jets_full(const double &t
         j+=2;
     }
     max_diff = *std::max_element(differences.begin(), differences.end());
-    dim_Ns[4] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+    dim_Ns[4] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));*/
+    dim_Ns[4] = 1;
 
     for (auto & n : dim_Ns)
     {
-        if (!std::isnormal(n) || n<2)
+        if (!std::isnormal(n) || n<1)
         {
-            n=2;
+            n=1;
         }
         std::cout<< n<< ' ';
     }
@@ -1074,8 +1083,8 @@ InterpMultilinear<5, xsectval> calculate_spatial_sigma_jets_full(const double &t
     std::vector<spatial> grid1 = linspace(lower_limits[0], upper_limits[0], dim_Ns[0]);
     std::vector<spatial> grid2 = linspace(lower_limits[1], upper_limits[1], dim_Ns[1]);
     std::vector<spatial> grid3 = linspace(lower_limits[2], upper_limits[2], dim_Ns[2]);
-    std::vector<spatial> grid4 = linspace(lower_limits[3], upper_limits[3], dim_Ns[3]);
-    std::vector<spatial> grid5 = linspace(lower_limits[3], upper_limits[3], dim_Ns[4]);
+    std::vector<spatial> grid4 = /*linspace(*/{lower_limits[3]}/*, upper_limits[3], dim_Ns[3])*/;
+    std::vector<spatial> grid5 = /*linspace(*/{lower_limits[3]}/*, upper_limits[3], dim_Ns[4])*/;
     std::vector< std::vector<spatial>::iterator > grid_iter_list;
     grid_iter_list.push_back(grid1.begin());
     grid_iter_list.push_back(grid2.begin());
@@ -1275,7 +1284,7 @@ InterpMultilinear<4, xsectval> read_sigma_jets_mf(const std::string &filename) n
 }
 
 InterpMultilinear<5, xsectval> read_sigma_jets_full(const std::string &filename) noexcept
-{//TODO
+{
 
     std::ifstream input(filename);
 
@@ -1413,7 +1422,7 @@ int main()
     
     //General parameters for the simulation
     const bool read_nuclei_from_file = false, end_state_filtering = false, average_spatial_taas=false;
-    uint desired_N_events = 500, AA_events = 0, nof_collisions = 0;
+    uint desired_N_events = 130, AA_events = 0, nof_collisions = 0;
     const spatial b_min=0, b_max=20;
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
@@ -1423,7 +1432,7 @@ int main()
     const spatial rad_min=0, rad_max=20;
     const std::function<double(const double&)> rad_pdf{[](const double & x){return x*x/(1+exp((x-6.62)/0.546));}};
     auto radial_sampler = std::make_shared<ars>(rad_pdf, rad_min, rad_max);
-    nucleus_generator::nucleus_params nuc_params = {/*.N=*/208, /*.Z=*/82, /*.min_distance=*/0.4, /*.shift_cms=*/true, /*.correct_overlap_bias=*/true};
+    nucleus_generator::nucleus_params nuc_params = {/*.N=*/208, /*.Z=*/82, /*.min_distance=*/0.4, /*.shift_cms=*/true, /*.correct_overlap_bias=*/false};
     
     //Parameters for the hard collisions
     const spatial proton_width_2 = pow(0.573, 2);
@@ -1487,20 +1496,24 @@ int main()
         ////std::cout<<sigma_jets.interp(args.begin())<<std::endl;
         ////std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
 
-        double tolerance=1.25, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
+        double tolerance=0.25;//, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
         //                                            1.35134e-186, 1.4788e-177, 1.02829e-215       4.24149, 3.609, 10.7237
         //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.0}, upper_limits = {4.5, 4.5, 11.0, 46.0};
-        const std::array<const double, 4>  lower_limits = {3.0, 3.0, 6.0, 35.0}, upper_limits = {4.0, 4.0, 8.0, 40.0};
+        //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 28.4}, upper_limits = {3.6, 3.6, 8.8, 41.2};
+        const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.5}, upper_limits = {3.6, 3.6, 8.8, 30.5};
         //double tolerance=0.05, upper_tAA_0_limit=42.0, lower_tAA_0_limit = 33.0, upper_sumTpp_limit=0.5, lower_sumTpp_limit=0.03411;
-InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, lower_limits, upper_limits);
-        array<spatial,5> args{3.5, 4.3, 8.0, 39.0, 42.0}; //-304.782
+        InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, lower_limits, upper_limits);
+        //array<spatial,5> args{3.5, 4.3, 8.0, 39.0, 42.0}; //-304.782
+        //std::cout<<sigma_jets.interp(args.begin())<<std::endl;
 
-        std::cout<<sigma_jets.interp(args.begin())<<std::endl;
         //std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
     //}    
 
     if (verbose) std::cout<<"Done!"<<std::endl;
     
+    std::ofstream log_file;
+    log_file.open("log.dat", std::ios::out);
+
     do // while (AA_events < desired_N_events);
     {
         spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); //B^2 from a uniform distribution
@@ -1515,7 +1528,9 @@ InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(to
         }
         else
         {
-            collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0});
+            log_file << impact_parameter << std::endl;
+            collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
+            log_file << std::endl;
         }
 
         nof_collisions++;
@@ -1573,6 +1588,8 @@ InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(to
     } while (AA_events < desired_N_events);
 
     std::cout << collisions_for_reporting.size() << " collisions generated" << std::endl;
+
+    log_file.close();
 
     uint nBins = 16;
     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0};

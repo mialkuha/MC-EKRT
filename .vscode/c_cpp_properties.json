@@ -17,6 +17,7 @@
             "includePath": [
                 "/usr/local/include",
                 "/usr/local/include/boost",
+                "/usr/local/include/boost/boost",
                 "include/",
                 "/home/mikko/vcpkg/installed/x64-linux/include",
                 "${default}"
