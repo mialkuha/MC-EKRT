@@ -599,10 +599,10 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
     const spatial inv8pi2sigma4 = 1/(8*M_PI*M_PI*sigma2*sigma2),  inv8sigma2 = 1/(8*sigma2);
     std::array<double, 3> T_sums {-0.5, -0.5, 1.0};
     size_t A_size=pro.size(), B_size=tar.size();
-    coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0};//For speeding up the calculations of the sums
+    coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0}, dummy5{0,0,0}, dummy6{0,0,0};//For speeding up the calculations of the sums
 
-    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, Tpp);
-    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, Tpp);
+    spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, Tpp);
+    spatial tBB_0 = 30.5;//calculate_tAB({0,0,0}, tar, tar, Tpp);
 
     
     if (verbose)
@@ -627,19 +627,23 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
                 continue;
             }
 
-            dummy = A.co + B.co; //= s_i + s_j
+            dummy5 = A.co; //= s_i
+            dummy6 = B.co; //= s_j
+            dummy = dummy5 + dummy6; //= s_i + s_j
 
             T_sums[0]=0.0;
             for (auto &i_prime : pro)
             {
                 T_sums[0] += inv3pisigma2*exp(-inv12sigma2*(dummy - i_prime.co*2.0).magt2()); //= b_ij - 2b_ii' = s_j - s_i - 2(s_i' - s_i) = s_i + s_j - 2s_i' 
             }
+            T_sums[0] -= inv3pisigma2*exp(-inv12sigma2*(dummy - dummy5*2.0).magt2());
 
             T_sums[1]=0.0;
             for (auto &j_prime : tar)
             {
                 T_sums[1] += inv3pisigma2*exp(-inv12sigma2*(dummy - j_prime.co*2.0).magt2()); //= b_ij - 2b_ij' = s_j - s_i - 2(s_j' - s_i) = s_i + s_j - 2s_j' 
             }
+            T_sums[1] -= inv3pisigma2*exp(-inv12sigma2*(dummy - dummy6*2.0).magt2());
 
             T_sums[2]=0.0;
             for (auto &i_prime : pro)
@@ -652,7 +656,15 @@ void collide_nuclei_with_spatial_pdfs_full(std::vector<nucleon> &pro, std::vecto
                     T_sums[2] += inv8pi2sigma4*exp(-inv8sigma2*( (dummy3 - dummy4).magt2() //= b_ij - b_ii' - b_ij' = s_i + s_j - s_i' - s_j'
                                                                 +2*(dummy2 - dummy4).magt2() )); //= b_ii' - b_ij' = s_i' - s_j'
                 }
+                T_sums[2] -= inv8pi2sigma4*exp(-inv8sigma2*( (dummy3 - dummy6).magt2() + 2*(dummy2 - dummy6).magt2() ));
             }
+            dummy3 = dummy - dummy5; //= s_i + s_j - s_i'
+            for (auto &j_prime : tar)
+            {
+                dummy4 = j_prime.co; //= s_j'
+                T_sums[2] -= inv8pi2sigma4*exp(-inv8sigma2*( (dummy3 - dummy4).magt2() + 2*(dummy5 - dummy4).magt2() ));
+            }
+            T_sums[2] += inv8pi2sigma4*exp(-inv8sigma2*( (dummy3 - dummy6).magt2() + 2*(dummy5 - dummy6).magt2() ));
 
             /*if (T_sums[0] < lowest1)
             {
@@ -1416,7 +1428,7 @@ InterpMultilinear<5, xsectval> read_sigma_jets_full(const std::string &filename)
 int main()
 {
     //A lot of printing
-    bool verbose = true;
+    bool verbose = false;
 
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
@@ -1485,7 +1497,7 @@ int main()
 
 
     //InterpMultilinear<4, xsectval> sigma_jets = read_sigma_jets_mf("sigma_jet_mf_grid.dat");
-    //InterpMultilinear<5, xsectval> sigma_jets = read_sigma_jets_full("sigma_jet_full_grid.dat");
+    InterpMultilinear<5, xsectval> sigma_jets = read_sigma_jets_full("sigma_jet_full_grid.dat");
     
     //if (!read_sigmajets_from_file)
     //{
@@ -1500,9 +1512,9 @@ int main()
         //                                            1.35134e-186, 1.4788e-177, 1.02829e-215       4.24149, 3.609, 10.7237
         //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.0}, upper_limits = {4.5, 4.5, 11.0, 46.0};
         //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 28.4}, upper_limits = {3.6, 3.6, 8.8, 41.2};
-        const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.5}, upper_limits = {3.6, 3.6, 8.8, 30.5};
+    //    const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.5}, upper_limits = {3.6, 3.6, 8.8, 30.5};
         //double tolerance=0.05, upper_tAA_0_limit=42.0, lower_tAA_0_limit = 33.0, upper_sumTpp_limit=0.5, lower_sumTpp_limit=0.03411;
-        InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, lower_limits, upper_limits);
+    //    InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, lower_limits, upper_limits);
         //array<spatial,5> args{3.5, 4.3, 8.0, 39.0, 42.0}; //-304.782
         //std::cout<<sigma_jets.interp(args.begin())<<std::endl;
 

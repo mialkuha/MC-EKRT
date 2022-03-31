@@ -76,6 +76,11 @@
         "*.ipp": "cpp",
         "runglauber_v3.2.C": "cpp",
         "variant": "cpp",
-        "gsl_assert": "cpp"
+        "gsl_assert": "cpp",
+        "any": "cpp",
+        "charconv": "cpp",
+        "csetjmp": "cpp",
+        "source_location": "cpp",
+        "scoped_allocator": "cpp"
     }
 }
