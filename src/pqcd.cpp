@@ -12,10 +12,13 @@ void pqcd::generate_bin_NN_coll(nn_coll * coll) noexcept
     //TODO
 }
 
-xsectval pqcd::calculate_sigma_jet(std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-                                   const momentum *const p_mand_s,
-                                   const momentum *const p_kt2_lower_cutoff, 
-                                   const pqcd::sigma_jet_params *const p_params) noexcept
+auto pqcd::calculate_sigma_jet
+(
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    const momentum *const p_mand_s,
+    const momentum *const p_kt2_lower_cutoff, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> xsectval
 {
     xsectval sigma_jet, error;
     const double upper_limits[3] = {1, 1, 1};
@@ -51,14 +54,17 @@ xsectval pqcd::calculate_sigma_jet(std::shared_ptr<LHAPDF::GridPDF> p_pdf,
     return sigma_jet;
 }
 
-xsectval pqcd::calculate_spatial_sigma_jet_full(std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-                                                std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,
-                                                const momentum *const p_mand_s, 
-                                                const momentum *const p_kt2_lower_cutoff, 
-                                                const pqcd::sigma_jet_params *const p_params,
-                                                const std::array<const double, 3> &T_sums,
-                                                const spatial &tAA_0, 
-                                                const spatial &tBB_0) noexcept
+auto pqcd::calculate_spatial_sigma_jet_full
+(
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,
+    const momentum *const p_mand_s, 
+    const momentum *const p_kt2_lower_cutoff, 
+    const pqcd::sigma_jet_params *const p_params,
+    const std::array<const double, 3> &T_sums,
+    const spatial &tAA_0, 
+    const spatial &tBB_0
+) noexcept -> xsectval
 {
     xsectval sigma_jet, error;
     const double upper_limits[3] = {1, 1, 1};
@@ -102,6 +108,57 @@ xsectval pqcd::calculate_spatial_sigma_jet_full(std::shared_ptr<LHAPDF::GridPDF>
     }
 
     return sigma_jet;
+}
+
+auto pqcd::calculate_spatial_sigma_jet_factored
+(
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,
+    const momentum *const p_mand_s, 
+    const momentum *const p_kt2_lower_cutoff, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> std::array<xsectval,4>
+{
+    std::array<xsectval,4> sigma_jets, errors;
+    const double upper_limits[3] = {1, 1, 1};
+    const double lower_limits[3] = {0, 0, 0};
+    const unsigned fdim = 1;
+
+    pqcd::sigma_jet_params params = *p_params;
+    params.p_d_params->projectile_with_npdfs = false;
+    params.p_d_params->target_with_npdfs = false;
+
+    std::tuple
+    <
+      std::shared_ptr<LHAPDF::GridPDF>, 
+      const momentum *const, const momentum *const, 
+      const pqcd::sigma_jet_params *const, 
+      std::shared_ptr<LHAPDF::GridPDF> 
+    > fdata =
+    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, &params, p_n_pdf};
+
+    int not_success;
+
+    not_success = hcubature(fdim,                               //Integrand dimension
+                            pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
+                            &fdata,                             //Pointer to additional arguments
+                            3,                                  //Variable dimension
+                            lower_limits,                       //Variables minimum
+                            upper_limits,                       //Variables maximum
+                            0,                                  //Max n:o of function evaluations
+                            0,                                  //Required absolute error
+                            pqcd::g_error_tolerance,            //Required relative error
+                            ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
+                            &sigma_jets[0],                         //Pointer to output
+                            &errors[0]);                            //Pointer to error output
+
+    if (not_success != 0)
+    {
+        std::cout << "Problem with integration" << std::endl;
+        return {-1,-1,-1,-1};
+    }
+
+    return sigma_jets;
 }
 
 xsectval pqcd::calculate_spatial_sigma_jet_mf(std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
