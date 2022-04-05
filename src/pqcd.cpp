@@ -319,66 +319,90 @@ auto pqcd::calculate_spatial_sigma_jet_mf
     return sigma_jet;
 }
 
-xsectval pqcd::diff_sigma::sigma_qiqj_qiqj(const momentum &s, 
-                                           const momentum &t, 
-                                           const momentum &u, 
-                                           const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_qiqj_qiqj
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((s * s + u * u) / (t * t)) / 9;
 }
 
-xsectval pqcd::diff_sigma::sigma_qiqi_qiqi(const momentum &s, 
-                                           const momentum &t, 
-                                           const momentum &u, 
-                                           const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_qiqi_qiqi
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((s * s + u * u) / (t * t) + (s * s + t * t) / (u * u) - (2 * s * s) / (3 * t * u)) / 9;
 }
 
-xsectval pqcd::diff_sigma::sigma_qiaqi_qjaqj(const momentum &s, 
-                                             const momentum &t, 
-                                             const momentum &u, 
-                                             const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_qiaqi_qjaqj
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((t * t + u * u) / (s * s)) / 9;
 }
 
-xsectval pqcd::diff_sigma::sigma_qiaqi_qiaqi(const momentum &s, 
-                                             const momentum &t, 
-                                             const momentum &u, 
-                                             const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_qiaqi_qiaqi
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((s * s + u * u) / (t * t) + (t * t + u * u) / (s * s) - (2 * u * u) / (3 * s * t)) / 9;
 }
 
-xsectval pqcd::diff_sigma::sigma_qiaqi_gg(const momentum &s, 
-                                          const momentum &t, 
-                                          const momentum &u, 
-                                          const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_qiaqi_gg
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 8 * (t * t + u * u) * (4 / (9 * t * u) - 1 / (s * s)) / 3;
 }
 
-xsectval pqcd::diff_sigma::sigma_gg_qaq(const momentum &s, 
-                                        const momentum &t, 
-                                        const momentum &u, 
-                                        const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_gg_qaq
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 3 * (t * t + u * u) * (4 / (9 * t * u) - 1 / (s * s)) / 8;
 }
 
-xsectval pqcd::diff_sigma::sigma_gq_gq(const momentum &s, 
-                                       const momentum &t, 
-                                       const momentum &u, 
-                                       const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_gq_gq
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * (s * s + u * u) * (1 / (t * t) - 4 / (9 * s * u));
 }
 
-xsectval pqcd::diff_sigma::sigma_gg_gg(const momentum &s, 
-                                       const momentum &t, 
-                                       const momentum &u, 
-                                       const momentum &alpha_s) noexcept
+auto pqcd::diff_sigma::sigma_gg_gg
+(
+    const momentum &s, 
+    const momentum &t, 
+    const momentum &u, 
+    const momentum &alpha_s
+) noexcept -> xsectval
 {
     return (M_PI * alpha_s * alpha_s / (s * s)) * 4.5 * (3.0 - (u * t) / (s * s) - (u * s) / (t * t) - (s * t) / (u * u));
 }
@@ -893,11 +917,14 @@ int pqcd::sigma_jet_integrand(unsigned ndim,
     return 0; // success
 }
 
-int pqcd::spatial_sigma_jet_integrand_mf(unsigned ndim, 
-                                         const double *p_x, 
-                                         void *p_fdata, 
-                                         unsigned fdim, 
-                                         double *p_fval) noexcept
+auto pqcd::spatial_sigma_jet_integrand_mf
+(
+    unsigned ndim, 
+    const double *p_x, 
+    void *p_fdata, 
+    unsigned fdim, 
+    double *p_fval
+) noexcept -> int
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
@@ -951,11 +978,14 @@ int pqcd::spatial_sigma_jet_integrand_mf(unsigned ndim,
     return 0; // success
 }
 
-int pqcd::spatial_sigma_jet_integrand_full(unsigned ndim, 
-                                           const double *p_x, 
-                                           void *p_fdata, 
-                                           unsigned fdim, 
-                                           double *p_fval) noexcept
+auto pqcd::spatial_sigma_jet_integrand_full
+(
+    unsigned ndim, 
+    const double *p_x, 
+    void *p_fdata, 
+    unsigned fdim, 
+    double *p_fval
+) noexcept -> int
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
@@ -1011,11 +1041,14 @@ int pqcd::spatial_sigma_jet_integrand_full(unsigned ndim,
 }
 
 
-int pqcd::spatial_sigma_jet_integrand_factored(unsigned ndim, 
-                                           const double *p_x, 
-                                           void *p_fdata, 
-                                           unsigned fdim, 
-                                           double *p_fval) noexcept
+auto pqcd::spatial_sigma_jet_integrand_factored
+(
+    unsigned ndim, 
+    const double *p_x, 
+    void *p_fdata, 
+    unsigned fdim, 
+    double *p_fval
+) noexcept -> int
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
@@ -1067,9 +1100,12 @@ int pqcd::spatial_sigma_jet_integrand_factored(unsigned ndim,
     return 0; // success
 }
 
-xsectval pqcd::f_ses(const double &x, 
-                     const double &q2, 
-                     std::shared_ptr<LHAPDF::GridPDF> p_pdf) noexcept
+auto pqcd::f_ses
+(
+    const double &x, 
+    const double &q2, 
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf
+) noexcept -> xsectval
 {
     xsectval sum = 0;
     for (int flavour = -5; flavour <= 5; ++flavour)
@@ -1080,15 +1116,18 @@ xsectval pqcd::f_ses(const double &x,
     return sum;
 }
 
-void pqcd::scale_limits_from_0_1(const rapidity &z1, 
-                                 const rapidity &z2, 
-                                 const rapidity &z3, //variables between 0 and 1
-                                 const momentum &kt2_lower_cutoff, 
-                                 const momentum &mand_s, //parameters
-                                 momentum &kt2, 
-                                 rapidity &y1, 
-                                 rapidity &y2, 
-                                 xsectval &jacobian) noexcept //output
+auto pqcd::scale_limits_from_0_1
+(
+    const rapidity &z1, 
+    const rapidity &z2, 
+    const rapidity &z3, //variables between 0 and 1
+    const momentum &kt2_lower_cutoff, 
+    const momentum &mand_s, //parameters
+    momentum &kt2, 
+    rapidity &y1, 
+    rapidity &y2, 
+    xsectval &jacobian
+) noexcept -> void
 {
     kt2 = kt2_lower_cutoff + z1 * ((mand_s / 4) - kt2_lower_cutoff);
     const auto sqrt_s_per_kt = sqrt(mand_s / kt2);
@@ -1104,23 +1143,32 @@ void pqcd::scale_limits_from_0_1(const rapidity &z1,
     jacobian = ((mand_s / 4) - kt2_lower_cutoff) * (2 * y1_upper) * (y2_upper - y2_lower);
 }
 
-momentum pqcd::s_hat_from_ys(const rapidity &y1, 
-                             const rapidity &y2, 
-                             const momentum &kt2) noexcept
+auto pqcd::s_hat_from_ys
+(
+    const rapidity &y1, 
+    const rapidity &y2, 
+    const momentum &kt2
+) noexcept -> momentum
 {
     return 2 * kt2 * (1 + cosh(y1 - y2));
 }
 
-momentum pqcd::t_hat_from_ys(const rapidity &y1, 
-                             const rapidity &y2, 
-                             const momentum &kt2) noexcept
+auto pqcd::t_hat_from_ys
+(
+    const rapidity &y1, 
+    const rapidity &y2, 
+    const momentum &kt2
+) noexcept -> momentum
 {
     return -kt2 * (1 + exp(-y1 + y2));
 }
 
-momentum pqcd::u_hat_from_ys(const rapidity &y1, 
-                             const rapidity &y2, 
-                             const momentum &kt2) noexcept
+auto pqcd::u_hat_from_ys
+(
+    const rapidity &y1, 
+    const rapidity &y2, 
+    const momentum &kt2
+) noexcept -> momentum
 {
     return -kt2 * (1 + exp(y1 - y2));
 }
