@@ -120,7 +120,8 @@ public:
           const momentum &s_hat, 
           const momentum &t_hat, 
           const momentum &u_hat, 
-          const params *const p_params
+          const params *const p_params,
+          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf
         ) noexcept -> xsectval;
 
         static auto spatial_sigma_jet_mf
@@ -241,6 +242,15 @@ public:
       ) noexcept -> int;
 
     static auto spatial_sigma_jet_integrand_full
+      (
+        unsigned ndim, 
+        const double *p_x, 
+        void *p_fdata, 
+        unsigned fdim, 
+        double *p_fval
+      ) noexcept -> int;
+
+    static auto spatial_sigma_jet_integrand_factored
       (
         unsigned ndim, 
         const double *p_x, 
