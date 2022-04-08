@@ -182,7 +182,7 @@ public:
           ) noexcept
           : scale_c(scale_c_), 
             scalar(scalar_), 
-            p_d_params(&diff_sigma::params
+            p_d_params(new diff_sigma::params
                         (
                           projectile_with_npdfs_, 
                           target_with_npdfs_, 
