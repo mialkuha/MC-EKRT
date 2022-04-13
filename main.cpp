@@ -791,7 +791,8 @@ void collide_nuclei_with_spatial_pdfs_factored
 
     spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, Tpp);
     spatial tBB_0 = 30.5;//calculate_tAB({0,0,0}, tar, tar, Tpp);
-
+    
+    spatial sum_tppa=0, sum_tppb=0;
     
     if (verbose)
     {
@@ -800,9 +801,11 @@ void collide_nuclei_with_spatial_pdfs_factored
 
     for (auto &A : pro)
     {
+        sum_tppa = (A_size/tAA_0)*calculate_sum_tpp(A, pro, Tpp);
+
         for (auto &B : tar)
         {
-            if (A.calculate_bsquared(B) > 25.)
+            /*if (A.calculate_bsquared(B) > 35.)
             {
                 skipped++;
                 continue;
@@ -813,7 +816,9 @@ void collide_nuclei_with_spatial_pdfs_factored
             {
                 mombroke++;
                 continue;
-            }
+            }*/
+
+            sum_tppb = (B_size/tBB_0)*calculate_sum_tpp(B, tar, Tpp);
 
             dummy5 = A.co; //= s_i
             dummy6 = B.co; //= s_j
@@ -869,11 +874,16 @@ void collide_nuclei_with_spatial_pdfs_factored
                 sigma_jet = sigma_jets[0]*(1-T_sums[0]-T_sums[1]+T_sums[2]) + sigma_jets[1]*(T_sums[0]-T_sums[2]) + sigma_jets[2]*(T_sums[1]-T_sums[2]) + T_sums[2]*sigma_jets[3];
             }
             
+            log_file << sigma_jet << ' ' << T_sums[0] << ' ' << T_sums[1] << ' ' << T_sums[2] << ' ';
+            sigma_jet = sigma_jets[0]*(1 - sum_tppa - sum_tppb + sum_tppa*sum_tppb) + sigma_jets[1]*(sum_tppa - sum_tppa*sum_tppb) + sigma_jets[2]*(sum_tppb - sum_tppa*sum_tppb) + sum_tppa*sum_tppb*sigma_jets[3];
+            log_file << sigma_jet << ' ' << sum_tppa << ' ' << sum_tppb << ' ' << (1-T_sums[0]-T_sums[1]+T_sums[2]) << ' ' << (T_sums[0]-T_sums[2]) << ' ' << (T_sums[1]-T_sums[2])
+                     << ' ' << T_sums[2] << ' ' << (1 - sum_tppa - sum_tppb + sum_tppa*sum_tppb) << ' ' << (sum_tppa - sum_tppa*sum_tppb) << ' ' << (sum_tppb - sum_tppa*sum_tppb) << ' ' << sum_tppa*sum_tppb << std::endl;
+            /*
             if (sigma_jet < 0)
             {
                 continue;
             }
-
+            
             newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
 
             //log_file << sigma_jet << ' ' << T_sums[0] << ' ' << T_sums[1] << ' ' << T_sums[2] << ' ' << tAA_0 << ' ' << tBB_0
@@ -916,7 +926,7 @@ void collide_nuclei_with_spatial_pdfs_factored
             }
             newpair.wound();
             binary_collisions.push_back(newpair);
-
+*/
         }
     }
 
@@ -1608,7 +1618,7 @@ int main()
     
     //General parameters for the simulation
     const bool read_nuclei_from_file = false, end_state_filtering = false, average_spatial_taas=false;
-    uint desired_N_events = 500, AA_events = 0, nof_collisions = 0;
+    uint desired_N_events = 200, AA_events = 0, nof_collisions = 0;
     const spatial b_min=0, b_max=20;
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
@@ -1624,9 +1634,9 @@ int main()
     const spatial proton_width_2 = pow(0.573, 2);
     const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared) { return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); }}; // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     const xsectval sigma_inel_for_glauber = 41.5;//mb
-    const momentum sqrt_s = 5020;//GeV
+    const momentum sqrt_s = 10020;//GeV
     const momentum mand_s = pow(sqrt_s, 2);//GeV^2
-    momentum kt0 = 2.728321;//GeV
+    momentum kt0 = 6.728321;//GeV
     momentum kt02 = pow(kt0, 2);//GeV^2
     //rapidity ycut = 10.0;
     std::shared_ptr<LHAPDF::GridPDF> p_pdf(new LHAPDF::GridPDF("CT14lo", 0));
@@ -1700,7 +1710,7 @@ int main()
     if (verbose) std::cout<<"Done!"<<std::endl;
     
     std::ofstream log_file;
-    log_file.open("log.dat", std::ios::out);
+    log_file.open("log2.dat", std::ios::out);
 
     do // while (AA_events < desired_N_events);
     {
@@ -1716,10 +1726,10 @@ int main()
         }
         else
         {
-            //log_file << impact_parameter << std::endl;
+            log_file << impact_parameter << std::endl;
             collide_nuclei_with_spatial_pdfs_factored(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
             //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
-            //log_file << std::endl;
+            log_file << std::endl;
         }
 
         nof_collisions++;
