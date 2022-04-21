@@ -8,8 +8,6 @@
 #include <mutex>
 #include <tuple>
 
-#include <gsl/gsl>
-
 #include "cubature.h"
 #include "LHAPDF/GridPDF.h"
 #include "nn_coll.hpp"
