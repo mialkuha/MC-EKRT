@@ -17,7 +17,7 @@ class nn_coll;//Declaration to get away from the circular references
 class pqcd
 {
 public:
-    constexpr static double g_error_tolerance = 1e-4;
+    constexpr static double g_error_tolerance = 1e-5;
     class diff_sigma
     {
     public:
@@ -180,7 +180,7 @@ public:
           ) noexcept
           : scale_c(scale_c_), 
             scalar(scalar_), 
-            p_d_params(&diff_sigma::params
+            p_d_params(new diff_sigma::params
                         (
                           projectile_with_npdfs_, 
                           target_with_npdfs_, 

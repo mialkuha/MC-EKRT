@@ -163,15 +163,6 @@ auto pqcd::calculate_spatial_sigma_jet_factored
     params.p_d_params->projectile_with_npdfs = true;
     params.p_d_params->target_with_npdfs = false;
 
-    std::tuple
-    <
-      std::shared_ptr<LHAPDF::GridPDF>, 
-      const momentum *const, const momentum *const, 
-      const pqcd::sigma_jet_params *const, 
-      std::shared_ptr<LHAPDF::GridPDF> 
-    > fdata =
-    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, &params, p_n_pdf};
-
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
                             &fdata,                             //Pointer to additional arguments
@@ -196,15 +187,6 @@ auto pqcd::calculate_spatial_sigma_jet_factored
     params.p_d_params->projectile_with_npdfs = false;
     params.p_d_params->target_with_npdfs = true;
 
-    std::tuple
-    <
-      std::shared_ptr<LHAPDF::GridPDF>, 
-      const momentum *const, const momentum *const, 
-      const pqcd::sigma_jet_params *const, 
-      std::shared_ptr<LHAPDF::GridPDF> 
-    > fdata =
-    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, &params, p_n_pdf};
-
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
                             &fdata,                             //Pointer to additional arguments
@@ -225,19 +207,9 @@ auto pqcd::calculate_spatial_sigma_jet_factored
     }
 
 
-    //First piece: AA
-    pqcd::sigma_jet_params params = *p_params;
+    //Fourth piece: AA
     params.p_d_params->projectile_with_npdfs = true;
     params.p_d_params->target_with_npdfs = true;
-
-    std::tuple
-    <
-      std::shared_ptr<LHAPDF::GridPDF>, 
-      const momentum *const, const momentum *const, 
-      const pqcd::sigma_jet_params *const, 
-      std::shared_ptr<LHAPDF::GridPDF> 
-    > fdata =
-    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, &params, p_n_pdf};
 
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
