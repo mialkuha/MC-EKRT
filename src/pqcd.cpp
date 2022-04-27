@@ -7,9 +7,36 @@
 #endif
 #include "eps09.cxx"
 
-void pqcd::generate_bin_NN_coll(nn_coll * coll) noexcept
+auto pqcd::generate_bin_NN_coll
+(
+  nn_coll &coll,
+  const xsectval &sigma_jet,
+  const spatial &Tpp_b, 
+  std::uniform_real_distribution<double> unirand, 
+  std::shared_ptr<std::mt19937> eng
+) noexcept -> void
 {
-    //TODO
+    //First generate the number of produced dijets from zero-truncated Poissonian distribution
+    int16_t nof_dijets = 1;
+    double lambda = sigma_jet*Tpp_b;
+    long double t;
+    if (lambda < 1E-6)
+    {
+        t = 1.0 - lambda/2.0;
+    }
+    else
+    {
+        t = exp(-lambda) / (1-exp(-lambda)) * lambda;
+    }
+    long double s = t;
+    long double u = unirand(*eng);
+    while (s < u) 
+    {
+        t *= lambda/++nof_dijets;
+        s += t;
+    }
+    coll.dijets.reserve(nof_dijets);
+
 }
 
 auto pqcd::calculate_sigma_jet

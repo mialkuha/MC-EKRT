@@ -395,9 +395,17 @@ void mc_glauber_style_report(std::vector<Coll> &collisions, const xsectval &sigm
     }
 } 
 
-void collide_nuclei(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::vector<nn_coll> &binary_collisions, 
-                    std::variant<linear_interpolator, xsectval> sigma_jets, std::uniform_real_distribution<double> unirand, 
-                    std::shared_ptr<std::mt19937> eng, const AA_collision_params &params, const bool &verbose) noexcept
+void collide_nuclei
+    (
+        std::vector<nucleon> &pro, 
+        std::vector<nucleon> &tar, 
+        std::vector<nn_coll> &binary_collisions, 
+        std::variant<linear_interpolator, xsectval> sigma_jets, 
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng, 
+        const AA_collision_params &params, 
+        const bool &verbose
+    ) noexcept
 {
 
     uint n_pairs = 0, mombroke = 0, nof_softs = 0;
@@ -454,7 +462,7 @@ void collide_nuclei(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::v
                 }
                 if (params.calculate_end_state)
                 {
-                    pqcd::generate_bin_NN_coll(&newpair);
+                    pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
                     newpair.push_end_states_to_collider_frame();
                     newpair.reduce_energy();
                 }
