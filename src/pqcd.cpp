@@ -7,9 +7,36 @@
 #endif
 #include "eps09.cxx"
 
-void pqcd::generate_bin_NN_coll(nn_coll * coll) noexcept
+auto pqcd::generate_bin_NN_coll
+(
+  nn_coll &coll,
+  const xsectval &sigma_jet,
+  const spatial &Tpp_b, 
+  std::uniform_real_distribution<double> unirand, 
+  std::shared_ptr<std::mt19937> eng
+) noexcept -> void
 {
-    //TODO
+    //First generate the number of produced dijets from zero-truncated Poissonian distribution
+    int16_t nof_dijets = 1;
+    double lambda = sigma_jet*Tpp_b;
+    long double t;
+    if (lambda < 1E-6)
+    {
+        t = 1.0 - lambda/2.0;
+    }
+    else
+    {
+        t = exp(-lambda) / (1-exp(-lambda)) * lambda;
+    }
+    long double s = t;
+    long double u = unirand(*eng);
+    while (s < u) 
+    {
+        t *= lambda/++nof_dijets;
+        s += t;
+    }
+    coll.dijets.reserve(nof_dijets);
+
 }
 
 auto pqcd::calculate_sigma_jet
@@ -646,17 +673,17 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
     ///* GQ->XX
     for (int flavour = 1; flavour <= numFlavours; ++flavour)
     {
-        sum += f_i_x1[0] * gsl::at(f_i_x2,flavour) * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_i_x1[0] * gsl::at(f_ai_x2,flavour) * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += gsl::at(f_i_x1,flavour) * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += gsl::at(f_ai_x1,flavour) * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += f_i_x1[0] * f_i_x2[flavour] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += f_i_x1[0] * f_ai_x2[flavour] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += f_i_x1[flavour] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += f_ai_x1[flavour] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
     }
     //*/
     ///* QQ->XX
     for (int flavour = 1; flavour <= numFlavours; ++flavour)
     {
-        sum += 0.5 * gsl::at(f_i_x1,flavour) * gsl::at(f_i_x2,flavour) * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
-        sum += 0.5 * gsl::at(f_ai_x1,flavour) * gsl::at(f_ai_x2,flavour) * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
+        sum += 0.5 * f_i_x1[flavour] * f_i_x2[flavour] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
+        sum += 0.5 * f_ai_x1[flavour] * f_ai_x2[flavour] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
     }
 
     for (int flavour1 = 1; flavour1 <= numFlavours; ++flavour1)
@@ -665,18 +692,18 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
         {
             if (flavour1 != flavour2)
             {
-                sum += gsl::at(f_i_x1,flavour1) * gsl::at(f_i_x2,flavour2) * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += gsl::at(f_ai_x1,flavour1) * gsl::at(f_ai_x2,flavour2) * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += gsl::at(f_i_x1,flavour1) * gsl::at(f_ai_x2,flavour2) * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += gsl::at(f_ai_x1,flavour1) * gsl::at(f_i_x2,flavour2) * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += f_i_x1[flavour1] * f_i_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += f_ai_x1[flavour1] * f_ai_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += f_i_x1[flavour1] * f_ai_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += f_ai_x1[flavour1] * f_i_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
             }
         }
     }
 
     for (int flavour = 1; flavour <= numFlavours; ++flavour)
     {
-        sum += gsl::at(f_i_x1,flavour) * gsl::at(f_ai_x2,flavour) * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
-        sum += gsl::at(f_ai_x1,flavour) * gsl::at(f_i_x2,flavour) * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
+        sum += f_i_x1[flavour] * f_ai_x2[flavour] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
+        sum += f_ai_x1[flavour] * f_i_x2[flavour] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
     }
     //*/
     return sum;

@@ -4,11 +4,11 @@
 #define PQCD_HPP
 
 #include <cmath>
+#include <functional>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <tuple>
-
-#include <gsl/gsl>
 
 #include "cubature.h"
 #include "LHAPDF/GridPDF.h"
@@ -208,7 +208,14 @@ public:
 
     };
 
-    static void generate_bin_NN_coll(nn_coll * coll) noexcept;
+    static auto generate_bin_NN_coll
+      (
+        nn_coll &coll,
+        const xsectval &sigma_jet,
+        const spatial &Tpp_b, 
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng
+      ) noexcept -> void;
 
     static auto sigma_jet_integrand
       (
@@ -219,7 +226,7 @@ public:
         double *p_fval
       ) noexcept -> int;
 
-    static void scale_limits_from_0_1
+    static auto scale_limits_from_0_1
       (
         const rapidity &z1, //variables between 0 and 1
         const rapidity &z2, //variables between 0 and 1
@@ -230,7 +237,7 @@ public:
         rapidity &y1, //output
         rapidity &y2, //output
         xsectval &jacobian //output
-      ) noexcept;
+      ) noexcept -> void;
 
     static auto spatial_sigma_jet_integrand_mf
       (
