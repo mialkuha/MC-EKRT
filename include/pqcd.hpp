@@ -19,7 +19,7 @@ class nn_coll;//Declaration to get away from the circular references
 class pqcd
 {
 public:
-    constexpr static double g_error_tolerance = 1e-5;
+    constexpr static double g_error_tolerance = 1e-4;
     class diff_sigma
     {
     public:
