@@ -30,20 +30,41 @@ public:
             bool isoscalar_projectile;
             bool isoscalar_target;
             int npdf_setnumber;
+            int A;
+            int B;
+            int ZA;
+            int ZB;
+            std::shared_ptr<LHAPDF::GridPDF> p_n_pdf;
+            std::function<double(double const&)> rA_spatial;
+            std::function<double(double const&)> rB_spatial;
 
             explicit params
             (
-              bool projectile_with_npdfs_ = false, 
-              bool target_with_npdfs_     = false, 
-              bool isoscalar_projectile_  = false, 
-              bool isoscalar_target_      = false, 
-              int npdf_setnumber_         = 1
+              auto projectile_with_npdfs_ = false, 
+              auto target_with_npdfs_     = false, 
+              auto isoscalar_projectile_  = false, 
+              auto isoscalar_target_      = false, 
+              auto npdf_setnumber_        = 1,
+              auto A_                     = 1,
+              auto B_                     = 1,
+              auto ZA_                    = 1,
+              auto ZB_                    = 1,
+              auto p_n_pdf_               = nullptr,
+              auto rA_spatial_            = nullptr,
+              auto rB_spatial_            = nullptr
             ) noexcept
             : projectile_with_npdfs(projectile_with_npdfs_), 
               target_with_npdfs(target_with_npdfs_), 
               isoscalar_projectile(isoscalar_projectile_), 
               isoscalar_target(isoscalar_target_), 
-              npdf_setnumber(npdf_setnumber_) 
+              npdf_setnumber(npdf_setnumber_),
+              A(A_),
+              B(B_),
+              ZA(ZA_),
+              ZB(ZB_),
+              p_n_pdf(p_n_pdf_),
+              rA_spatial(rA_spatial_),
+              rB_spatial(rB_spatial_)
             {}
         };
         
@@ -51,64 +72,56 @@ public:
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_qiqi_qiqi
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_qiaqi_qjaqj
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_qiaqi_qiaqi
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_qiaqi_gg
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_gg_qaq
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_gq_gq
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_gg_gg
         (
           const momentum &s, 
           const momentum &t, 
-          const momentum &u, 
-          const momentum &alpha_s
+          const momentum &u
         ) noexcept -> xsectval;
 
         static auto sigma_jet
@@ -133,10 +146,7 @@ public:
           const momentum &s_hat, 
           const momentum &t_hat, 
           const momentum &u_hat, 
-          const pqcd::diff_sigma::params *const p_params, 
-          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
-          std::function<double(double const&)> rA_spatial,
-          std::function<double(double const&)> rB_spatial
+          const pqcd::diff_sigma::params *const p_params
         ) noexcept -> xsectval;
 
         static auto spatial_sigma_jet_full
@@ -154,6 +164,16 @@ public:
           std::function<double(double const&)> rB_spatial,
           const std::array<const double, 3> &T_sums
         ) noexcept -> xsectval;
+    
+        static auto diff_cross_section_2jet
+        (
+          const momentum &sqrt_s,
+          const momentum &kt, 
+          const rapidity &y1, 
+          const rapidity &y2,
+          std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+          const pqcd::diff_sigma::params *const p_params
+        ) noexcept -> std::vector<xsection_id>;
     };
 
     enum scale_choice
@@ -171,30 +191,6 @@ public:
 
         explicit sigma_jet_params
           (
-            scale_choice scale_c_       = scaled_from_kt, 
-            momentum scalar_            = 1.0, 
-            bool projectile_with_npdfs_ = false, 
-            bool target_with_npdfs_     = false, 
-            bool isoscalar_projectile_  = false, 
-            bool isoscalar_target_      = false, 
-            int npdf_setnumber_         = 1, 
-            bool use_ses_               = false
-          ) noexcept
-          : scale_c(scale_c_), 
-            scalar(scalar_), 
-            p_d_params(new diff_sigma::params
-                        (
-                          projectile_with_npdfs_, 
-                          target_with_npdfs_, 
-                          isoscalar_projectile_, 
-                          isoscalar_target_, 
-                          npdf_setnumber_
-                        )), 
-            use_ses(use_ses_)
-          {}
-
-        explicit sigma_jet_params
-          (
             diff_sigma::params *p_d_params_, 
             scale_choice scale_c_             = scaled_from_kt, 
             momentum scalar_                  = 1.0, 
@@ -205,16 +201,42 @@ public:
             p_d_params(p_d_params_), 
             use_ses(use_ses_)
           {}
-
     };
+
+    static auto throw_0_truncated_poissonian
+      (
+        const double &lambda, 
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng
+      ) noexcept -> int16_t;
+
+    static auto generate_2_to_2_scatt
+      (
+        const momentum &sqrt_s,
+        const momentum &kt_min,
+        const momentum &kt_max,
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        const pqcd::diff_sigma::params *const p_params,
+        const double &power_law,
+        const double &envelope_maximum
+      ) noexcept -> dijet_specs;
 
     static auto generate_bin_NN_coll
       (
         nn_coll &coll,
         const xsectval &sigma_jet,
         const spatial &Tpp_b, 
+        const momentum &sqrt_s,
+        const momentum &kt_min,
+        const momentum &kt_max,
         std::uniform_real_distribution<double> unirand, 
-        std::shared_ptr<std::mt19937> eng
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        const pqcd::diff_sigma::params *const p_params,
+        const double &power_law,
+        const double &envelope_maximum
       ) noexcept -> void;
 
     static auto sigma_jet_integrand

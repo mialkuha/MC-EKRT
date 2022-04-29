@@ -7,18 +7,14 @@
 #endif
 #include "eps09.cxx"
 
-auto pqcd::generate_bin_NN_coll
+auto pqcd::throw_0_truncated_poissonian
 (
-  nn_coll &coll,
-  const xsectval &sigma_jet,
-  const spatial &Tpp_b, 
-  std::uniform_real_distribution<double> unirand, 
-  std::shared_ptr<std::mt19937> eng
-) noexcept -> void
+    const double &lambda, 
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng
+) noexcept -> int16_t
 {
-    //First generate the number of produced dijets from zero-truncated Poissonian distribution
-    int16_t nof_dijets = 1;
-    double lambda = sigma_jet*Tpp_b;
+    int16_t k = 1;
     long double t;
     if (lambda < 1E-6)
     {
@@ -32,11 +28,136 @@ auto pqcd::generate_bin_NN_coll
     long double u = unirand(*eng);
     while (s < u) 
     {
-        t *= lambda/++nof_dijets;
+        t *= lambda/++k;
         s += t;
     }
+    return k;
+}
+
+auto pqcd::generate_2_to_2_scatt
+(
+    const momentum &sqrt_s,
+    const momentum &kt_min,
+    const momentum &kt_max,
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    const pqcd::diff_sigma::params *const p_params,
+    const double &power_law, //TODO
+    const double &envelope_maximum //TODO
+
+) noexcept -> dijet_specs
+{
+    dijet_specs event;
+
+    rapidity y1_min, y1_max, y2_min, y2_max, y1, y2;
+    momentum kt;
+    double rand[4];
+    xsectval ratio;
+    bool is_below = false;
+    
+    y1_min = static_cast<rapidity>(-log(sqrt_s / kt_min));
+    y1_max = static_cast<rapidity>( log(sqrt_s / kt_min));
+    y2_min = static_cast<rapidity>(-log(sqrt_s / kt_min));
+    y2_max = static_cast<rapidity>( log(sqrt_s / kt_min));
+
+    while (!is_below)
+    {
+        for (auto & r : rand)
+        {
+            r = unirand(*eng);
+        }
+
+        //kT from a power law:
+        kt = pow(pow(kt_min, 1-power_law) + rand[0]*( pow(kt_max, 1-power_law) - pow(kt_min, 1-power_law) ),
+                 1.0/(1.0-power_law));
+        
+        //ys from uniform distribution
+        y1 = y1_min + rand[1]*(y1_max - y1_min);
+        y2 = y2_min + rand[2]*(y2_max - y2_min);
+
+        auto xsection = pqcd::diff_sigma::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, p_params);
+
+        xsectval total_xsection = 0;
+
+        for (auto xsect : xsection)
+        {
+            total_xsection += xsect.sigma;
+        }
+
+        ratio = total_xsection / (envelope_maximum * pow(kt, -power_law));
+
+        if (ratio > 1)
+        {
+            std::cout<<"Limiting function smaller than cross section!!"<<std::endl;
+            std::cout<<"kT = "<<kt<<std::endl;
+            std::cout<<"y1 = "<<y1<<std::endl;
+            std::cout<<"y2 = "<<y2<<std::endl;
+            std::cout<<"Check the power-law behaviour"<<std::endl;       }
+
+        if (ratio > rand[3])
+        {
+            is_below = true;
+            xsectval rand_xsect = total_xsection * unirand(*eng);
+            xsectval sum = 0;
+            
+            for (auto xsect : xsection)
+            {
+                sum += xsect.sigma;
+                if (sum > rand_xsect)
+                {
+                    event.init1 = xsect.init1;
+                    event.init2 = xsect.init2;
+                    event.final1 = xsect.final1;
+                    event.final2 = xsect.final2;
+                    break;
+                }
+            }
+        }
+    }
+
+    event.kt = kt;
+    event.y1 = y1;
+    event.y2 = y2;
+
+    return event;
+}
+
+auto pqcd::generate_bin_NN_coll
+(
+    nn_coll &coll,
+    const xsectval &sigma_jet,
+    const spatial &Tpp_b, 
+    const momentum &sqrt_s,
+    const momentum &kt_min,
+    const momentum &kt_max,
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    const pqcd::diff_sigma::params *const p_params,
+    const double &power_law,
+    const double &envelope_maximum
+) noexcept -> void
+{
+    //First generate the number of produced dijets from zero-truncated Poissonian distribution
+    int16_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
     coll.dijets.reserve(nof_dijets);
 
+    for (uint8_t i=0; i < nof_dijets; i++)
+    {
+        coll.dijets.push_back(pqcd::generate_2_to_2_scatt
+        (
+            sqrt_s,
+            kt_min,
+            kt_max,
+            unirand,
+            eng,
+            p_p_pdf,
+            p_params,
+            power_law,
+            envelope_maximum
+        ));
+    }
 }
 
 auto pqcd::calculate_sigma_jet
@@ -322,88 +443,472 @@ auto pqcd::diff_sigma::sigma_qiqj_qiqj
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((s * s + u * u) / (t * t)) / 9;
+    return  4 * ((s * s + u * u) / (t * t)) / 9;
 }
 
 auto pqcd::diff_sigma::sigma_qiqi_qiqi
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((s * s + u * u) / (t * t) + (s * s + t * t) / (u * u) - (2 * s * s) / (3 * t * u)) / 9;
+    return 4 * ((s * s + u * u) / (t * t) + (s * s + t * t) / (u * u) - (2 * s * s) / (3 * t * u)) / 9;
 }
 
 auto pqcd::diff_sigma::sigma_qiaqi_qjaqj
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((t * t + u * u) / (s * s)) / 9;
+    return 4 * ((t * t + u * u) / (s * s)) / 9;
 }
 
 auto pqcd::diff_sigma::sigma_qiaqi_qiaqi
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 4 * ((s * s + u * u) / (t * t) + (t * t + u * u) / (s * s) - (2 * u * u) / (3 * s * t)) / 9;
+    return 4 * ((s * s + u * u) / (t * t) + (t * t + u * u) / (s * s) - (2 * u * u) / (3 * s * t)) / 9;
 }
 
 auto pqcd::diff_sigma::sigma_qiaqi_gg
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 8 * (t * t + u * u) * (4 / (9 * t * u) - 1 / (s * s)) / 3;
+    return 8 * (t * t + u * u) * (4 / (9 * t * u) - 1 / (s * s)) / 3;
 }
 
 auto pqcd::diff_sigma::sigma_gg_qaq
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 3 * (t * t + u * u) * (4 / (9 * t * u) - 1 / (s * s)) / 8;
+    return 3 * (t * t + u * u) * (4 / (9 * t * u) - 1 / (s * s)) / 8;
 }
 
 auto pqcd::diff_sigma::sigma_gq_gq
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * (s * s + u * u) * (1 / (t * t) - 4 / (9 * s * u));
+    return (s * s + u * u) * (1 / (t * t) - 4 / (9 * s * u));
 }
 
 auto pqcd::diff_sigma::sigma_gg_gg
 (
     const momentum &s, 
     const momentum &t, 
-    const momentum &u, 
-    const momentum &alpha_s
+    const momentum &u
 ) noexcept -> xsectval
 {
-    return (M_PI * alpha_s * alpha_s / (s * s)) * 4.5 * (3.0 - (u * t) / (s * s) - (u * s) / (t * t) - (s * t) / (u * u));
+    return 4.5 * (3.0 - (u * t) / (s * s) - (u * s) / (t * t) - (s * t) / (u * u));
+}
+
+auto pqcd::diff_sigma::diff_cross_section_2jet
+(
+    const momentum &sqrt_s,
+    const momentum &kt, 
+    const rapidity &y1, 
+    const rapidity &y2,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    const pqcd::diff_sigma::params *const p_params
+) noexcept -> std::vector<xsection_id>
+{
+    std::vector<xsection_id> xsection;
+
+    const momentum kt2 = kt * kt;
+    const particle_id num_flavors = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
+    xsectval xsect;
+    xsection_id process;
+    bool debug = false; //true prints the calculated processes
+
+    //Mandelstam variables for the subprocesses
+    const auto s_hat = pqcd::s_hat_from_ys(y1, y2, kt2);
+    const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
+    const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
+
+    //x_1 and x_2 values
+    const rapidity x1 = (kt / sqrt_s) * (exp(y1) + exp(y2));
+    const rapidity x2 = (kt / sqrt_s) * (exp(-y1) + exp(-y2));
+
+    //Units for dsigma/dptdy1dy2 as [mb/GeV]
+    const momentum alpha_s = p_p_pdf->alphasQ2(kt2);
+    const xsectval units = 2.0 * kt * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * 10 / pow(FMGEV, 2);
+
+    //Returns zero when outside the physical boundaries
+    if ((x1 < 0) || (x1 > 1) || (x2 > 1) || (x2 < 0))
+    {
+        process.sigma = 0;
+        process.init1 = 0;
+        process.init2 = 0;
+        process.final1 = 0;
+        process.final2 = 0;
+        xsection.push_back(process);
+        return xsection;
+    }
+
+    //Nuclear modifications and PDF manipulations 
+    double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
+    double ru = 1.0, rd = 1.0;
+
+    if (p_params->projectile_with_npdfs)
+    {
+        eps09(1, p_params->npdf_setnumber, p_params->A, x1, sqrt(kt2), ruv, rdv, rus, rds, rs, rc, rb, rg);
+        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x1, kt2) / p_p_pdf->xfxQ2(1, x1, kt2);
+        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x1, kt2) / p_p_pdf->xfxQ2(2, x1, kt2);
+
+        ru = p_params->rA_spatial(ru); rd = p_params->rA_spatial(rd); rus = p_params->rA_spatial(rus);
+        rds = p_params->rA_spatial(rds); rs = p_params->rA_spatial(rs); rc = p_params->rA_spatial(rc); 
+        rb = p_params->rA_spatial(rb); rt = p_params->rA_spatial(rt); rg = p_params->rA_spatial(rg);
+
+    }
+    double f_i_x1[] = {rg * p_p_pdf->xfxQ2(0, x1, kt2),
+                       ru * p_p_pdf->xfxQ2(1, x1, kt2),
+                       rd * p_p_pdf->xfxQ2(2, x1, kt2),
+                       rs * p_p_pdf->xfxQ2(3, x1, kt2),
+                       rc * p_p_pdf->xfxQ2(4, x1, kt2),
+                       rb * p_p_pdf->xfxQ2(5, x1, kt2),
+                       rt * p_p_pdf->xfxQ2(6, x1, kt2)};
+    double f_ai_x1[] = {rg * p_p_pdf->xfxQ2(0, x1, kt2),
+                        rus * p_p_pdf->xfxQ2(-1, x1, kt2),
+                        rds * p_p_pdf->xfxQ2(-2, x1, kt2),
+                        rs * p_p_pdf->xfxQ2(-3, x1, kt2),
+                        rc * p_p_pdf->xfxQ2(-4, x1, kt2),
+                        rb * p_p_pdf->xfxQ2(-5, x1, kt2),
+                        rt * p_p_pdf->xfxQ2(-6, x1, kt2)};
+
+    if (p_params->target_with_npdfs)
+    {
+        eps09(1, p_params->npdf_setnumber, p_params->B, x2, sqrt(kt2), ruv, rdv, rus, rds, rs, rc, rb, rg);
+        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x2, kt2) / p_p_pdf->xfxQ2(1, x2, kt2);
+        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x2, kt2) / p_p_pdf->xfxQ2(2, x2, kt2);
+
+        ru = p_params->rB_spatial(ru); rd = p_params->rB_spatial(rd); rus = p_params->rB_spatial(rus);
+        rds = p_params->rB_spatial(rds); rs = p_params->rB_spatial(rs); rc = p_params->rB_spatial(rc); 
+        rb = p_params->rB_spatial(rb); rt = p_params->rB_spatial(rt); rg = p_params->rB_spatial(rg);
+    }
+    else
+    {
+        ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; 
+        rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
+    }
+    double f_i_x2[] = {rg * p_p_pdf->xfxQ2(0, x2, kt2),
+                       ru * p_p_pdf->xfxQ2(1, x2, kt2),
+                       rd * p_p_pdf->xfxQ2(2, x2, kt2),
+                       rs * p_p_pdf->xfxQ2(3, x2, kt2),
+                       rc * p_p_pdf->xfxQ2(4, x2, kt2),
+                       rb * p_p_pdf->xfxQ2(5, x2, kt2),
+                       rb * p_p_pdf->xfxQ2(6, x2, kt2)};
+    double f_ai_x2[] = {rg * p_p_pdf->xfxQ2(0, x2, kt2),
+                        rus * p_p_pdf->xfxQ2(-1, x2, kt2),
+                        rds * p_p_pdf->xfxQ2(-2, x2, kt2),
+                        rs * p_p_pdf->xfxQ2(-3, x2, kt2),
+                        rc * p_p_pdf->xfxQ2(-4, x2, kt2),
+                        rb * p_p_pdf->xfxQ2(-5, x2, kt2),
+                        rb * p_p_pdf->xfxQ2(-6, x2, kt2)};
+
+    double ZoA = /*82/208.0*/ p_params->ZA / static_cast<double>(p_params->A);
+    double NoA = /*126/208.0*/ (p_params->A - p_params->ZA) / static_cast<double>(p_params->A);
+    double u, ub, d, db;
+    ////ISOSCALAR NUCLEONS TODO
+    if (p_params->isoscalar_projectile)
+    {
+        u = f_i_x1[1];
+        ub = f_ai_x1[1];
+        d = f_i_x1[2];
+        db = f_ai_x1[2];
+        f_i_x1[1] = ZoA * u + NoA * d;
+        f_i_x1[2] = ZoA * d + NoA * u;
+        f_ai_x1[1] = ZoA * ub + NoA * db;
+        f_ai_x1[2] = ZoA * db + NoA * ub;
+    }
+    ZoA = /*82/208.0*/ p_params->ZB / static_cast<double>(p_params->B);
+    NoA = /*126/208.0*/ (p_params->B - p_params->ZB) / static_cast<double>(p_params->B);
+    if (p_params->isoscalar_target)
+    {
+        u = f_i_x2[1];
+        ub = f_ai_x2[1];
+        d = f_i_x2[2];
+        db = f_ai_x2[2];
+        f_i_x2[1] = ZoA * u + NoA * d;
+        f_i_x2[2] = ZoA * d + NoA * u;
+        f_ai_x2[1] = ZoA * ub + NoA * db;
+        f_ai_x2[2] = ZoA * db + NoA * ub;
+    }
+
+    xsection.reserve(176); //176 different processes if n:o quark flavors = 5
+
+    // gg -> gg
+    {
+        xsect = units * 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = 0;
+        process.init2 = 0;
+        process.final1 = 0;
+        process.final2 = 0;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "gg -> gg: 0+0 -> 0+0" << std::endl;
+        }
+    }
+
+    // gg -> qaq
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        xsect = units * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = 0;
+        process.init2 = 0;
+        process.final1 = flavor;
+        process.final2 = -flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "gg -> qaq: 0+0 -> " << flavor << '+' << -flavor << std::endl;
+        }
+    }
+
+    // gq -> gq
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        xsect = units * f_i_x1[0] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = 0;
+        process.init2 = flavor;
+        process.final1 = 0;
+        process.final2 = flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "gq -> gq: 0+" << flavor << " -> 0+" << flavor << std::endl;
+        }
+
+        xsect = units * f_i_x1[0] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = 0;
+        process.init2 = -flavor;
+        process.final1 = 0;
+        process.final2 = -flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "gq -> gq: 0+" << -flavor << " -> 0+" << -flavor << std::endl;
+        }
+
+        xsect = units * f_i_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = flavor;
+        process.init2 = 0;
+        process.final1 = flavor;
+        process.final2 = 0;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "gq -> gq: " << flavor << "+0 -> " << flavor << "+0" << std::endl;
+        }
+
+        xsect = units * f_ai_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = -flavor;
+        process.init2 = 0;
+        process.final1 = -flavor;
+        process.final2 = 0;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "gq -> gq: " << -flavor << "+0 -> " << -flavor << "+0" << std::endl;
+        }
+    }
+
+    // qiqi -> qiqi
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        xsect = units * 0.5 * f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = flavor;
+        process.init2 = flavor;
+        process.final1 = flavor;
+        process.final2 = flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "qiqi -> qiqi: " << flavor << '+' << flavor << " -> " << flavor << '+' << flavor << std::endl;
+        }
+
+        xsect = units * 0.5 * f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = -flavor;
+        process.init2 = -flavor;
+        process.final1 = -flavor;
+        process.final2 = -flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "qiqi -> qiqi: " << -flavor << '+' << -flavor << " -> " << -flavor << '+' << -flavor << std::endl;
+        }
+    }
+
+    // qiqj -> qiqj
+    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
+    {
+        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
+        {
+            if (flavor1 != flavor2)
+            {
+                xsect = units * f_i_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.init1 = flavor1;
+                process.init2 = flavor2;
+                process.final1 = flavor1;
+                process.final2 = flavor2;
+                xsection.push_back(process);
+                if (debug)
+                {
+                    std::cout << "qiqj -> qiqj: " << flavor1 << '+' << flavor2 << " -> " << flavor1 << '+' << flavor2 << std::endl;
+                }
+
+                xsect = units * f_ai_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.init1 = -flavor1;
+                process.init2 = -flavor2;
+                process.final1 = -flavor1;
+                process.final2 = -flavor2;
+                xsection.push_back(process);
+                if (debug)
+                {
+                    std::cout << "qiqj -> qiqj: " << -flavor1 << '+' << -flavor2 << " -> " << -flavor1 << '+' << -flavor2 << std::endl;
+                }
+
+                xsect = units * f_i_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.init1 = flavor1;
+                process.init2 = -flavor2;
+                process.final1 = flavor1;
+                process.final2 = -flavor2;
+                xsection.push_back(process);
+                if (debug)
+                {
+                    std::cout << "qiqj -> qiqj: " << flavor1 << '+' << -flavor2 << " -> " << flavor1 << '+' << -flavor2 << std::endl;
+                }
+
+                xsect = units * f_ai_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.init1 = -flavor1;
+                process.init2 = flavor2;
+                process.final1 = -flavor1;
+                process.final2 = flavor2;
+                xsection.push_back(process);
+                if (debug)
+                {
+                    std::cout << "qiqj -> qiqj: " << -flavor1 << '+' << flavor2 << " -> " << -flavor1 << '+' << flavor2 << std::endl;
+                }
+            }
+        }
+    }
+
+    // qiaqi -> qiaqi
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        xsect = units * f_i_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = flavor;
+        process.init2 = -flavor;
+        process.final1 = flavor;
+        process.final2 = -flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "qiaqi -> qiaqi: " << flavor << '+' << -flavor << " -> " << flavor << '+' << -flavor << std::endl;
+        }
+
+        xsect = units * f_ai_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = -flavor;
+        process.init2 = flavor;
+        process.final1 = -flavor;
+        process.final2 = flavor;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "qiaqi -> qiaqi: " << -flavor << '+' << flavor << " -> " << -flavor << '+' << flavor << std::endl;
+        }
+    }
+
+    // qiaqi -> gg
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        xsect = units * 0.5 * f_i_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = flavor;
+        process.init2 = -flavor;
+        process.final1 = 0;
+        process.final2 = 0;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "qiaqi -> gg: " << flavor << '+' << -flavor << " -> " << 0 << '+' << 0 << std::endl;
+        }
+
+        xsect = units * 0.5 * f_ai_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat);
+        process.sigma = xsect;
+        process.init1 = -flavor;
+        process.init2 = flavor;
+        process.final1 = 0;
+        process.final2 = 0;
+        xsection.push_back(process);
+        if (debug)
+        {
+            std::cout << "qiaqi -> gg: " << -flavor << '+' << flavor << " -> " << 0 << '+' << 0 << std::endl;
+        }
+    }
+
+    // qiaqi -> qjaqj
+    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
+    {
+        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
+        {
+            if (flavor1 != flavor2)
+            {
+                xsect = units * f_i_x1[flavor1] * f_ai_x2[flavor1] * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat);
+                process.sigma = xsect;
+                process.init1 = flavor1;
+                process.init2 = -flavor1;
+                process.final1 = flavor2;
+                process.final2 = -flavor2;
+                xsection.push_back(process);
+                if (debug)
+                {
+                    std::cout << "qiaqi -> qjaqj: " << flavor1 << '+' << -flavor1 << " -> " << flavor2 << '+' << -flavor2 << std::endl;
+                }
+
+                xsect = units * f_ai_x1[flavor1] * f_i_x2[flavor1] * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat);
+                process.sigma = xsect;
+                process.init1 = -flavor1;
+                process.init2 = flavor1;
+                process.final1 = -flavor2;
+                process.final2 = flavor2;
+                xsection.push_back(process);
+                if (debug)
+                {
+                    std::cout << "qiaqi -> qjaqj: " << -flavor1 << '+' << flavor1 << " -> " << -flavor2 << '+' << flavor2 << std::endl;
+                }
+            }
+        }
+    }
+
+    return xsection;
 }
 
 auto pqcd::diff_sigma::sigma_jet
@@ -421,7 +926,7 @@ auto pqcd::diff_sigma::sigma_jet
 {
     const int A=208, B=208;
     xsectval sum = 0;
-    const double alphas = p_p_pdf->alphasQ2(q2);
+    const double alpha_s = p_p_pdf->alphasQ2(q2);
     const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
 
     std::array<double, 13> cAs, cBs, xfxQ2_1s, xfxQ2_2s;
@@ -522,46 +1027,46 @@ auto pqcd::diff_sigma::sigma_jet
     }
 
     ///* GG->XX
-    sum += 0.5 * xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat, alphas);
-    sum += numFlavours * xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat, alphas);
+    sum += 0.5 * xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+    sum += numFlavours * xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
     //*/
     ///* GQ->XX
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (int flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += xfxQ2_1s[0]*xfxQ2_2s[flavour] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += xfxQ2_1s[0]*xfxQ2_2s[flavour+6] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += xfxQ2_1s[flavour]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += xfxQ2_1s[flavour+6]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += xfxQ2_1s[0]*xfxQ2_2s[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += xfxQ2_1s[0]*xfxQ2_2s[flavor+6] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += xfxQ2_1s[flavor]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
     }
     //*/
     ///* QQ->XX
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (int flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += 0.5 * xfxQ2_1s[flavour]*xfxQ2_2s[flavour] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
-        sum += 0.5 * xfxQ2_1s[flavour+6]*xfxQ2_2s[flavour+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
+        sum += 0.5 * xfxQ2_1s[flavor]*xfxQ2_2s[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        sum += 0.5 * xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
     }
 
-    for (int flavour1 = 1; flavour1 <= numFlavours; ++flavour1)
+    for (int flavor1 = 1; flavor1 <= numFlavours; ++flavor1)
     {
-        for (int flavour2 = 1; flavour2 <= numFlavours; ++flavour2)
+        for (int flavor2 = 1; flavor2 <= numFlavours; ++flavor2)
         {
-            if (flavour1 != flavour2)
+            if (flavor1 != flavor2)
             {
-                sum += xfxQ2_1s[flavour1]*xfxQ2_2s[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += xfxQ2_1s[flavour1+6]*xfxQ2_2s[flavour2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += xfxQ2_1s[flavour1]*xfxQ2_2s[flavour2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += xfxQ2_1s[flavour1+6]*xfxQ2_2s[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += xfxQ2_1s[flavor1]*xfxQ2_2s[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += xfxQ2_1s[flavor1+6]*xfxQ2_2s[flavor2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += xfxQ2_1s[flavor1]*xfxQ2_2s[flavor2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += xfxQ2_1s[flavor1+6]*xfxQ2_2s[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
             }
         }
     }
 
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (int flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += xfxQ2_1s[flavour]*xfxQ2_2s[flavour+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
-        sum += xfxQ2_1s[flavour+6]*xfxQ2_2s[flavour] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
+        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
     }
     //*/
-    return sum;
+    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
 }
 
 auto pqcd::diff_sigma::spatial_sigma_jet_mf
@@ -573,28 +1078,25 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
     const momentum &s_hat, 
     const momentum &t_hat, 
     const momentum &u_hat, 
-    const pqcd::diff_sigma::params *const p_params, 
-    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
-    std::function<double(double const&)> rA_spatial,
-    std::function<double(double const&)> rB_spatial
+    const pqcd::diff_sigma::params *const p_params
 ) noexcept -> xsectval
 {
-    const int A=208, B=208;
     xsectval sum = 0;
-    const double alphas = p_p_pdf->alphasQ2(q2);
-    const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
+    const double alpha_s = p_p_pdf->alphasQ2(q2);
+    const int num_flavors = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
 
     double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
     double ru = 1.0, rd = 1.0;
 
     if (p_params->projectile_with_npdfs)
     {
-        eps09(1, p_params->npdf_setnumber, A, x1, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
+        eps09(1, p_params->npdf_setnumber, p_params->A, x1, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
         ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x1, q2) / p_p_pdf->xfxQ2(1, x1, q2);
         rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x1, q2) / p_p_pdf->xfxQ2(2, x1, q2);
 
-        ru = rA_spatial(ru); rd = rA_spatial(rd); rus = rA_spatial(rus); rds = rA_spatial(rds); 
-        rs = rA_spatial(rs); rc = rA_spatial(rc); rb = rA_spatial(rb); rt = rA_spatial(rt); rg = rA_spatial(rg);
+        ru = p_params->rA_spatial(ru); rd = p_params->rA_spatial(rd); rus = p_params->rA_spatial(rus);
+        rds = p_params->rA_spatial(rds); rs = p_params->rA_spatial(rs); rc = p_params->rA_spatial(rc); 
+        rb = p_params->rA_spatial(rb); rt = p_params->rA_spatial(rt); rg = p_params->rA_spatial(rg);
 
     }
     double f_i_x1[] = {rg * p_p_pdf->xfxQ2(0, x1, q2),
@@ -614,16 +1116,18 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
 
     if (p_params->target_with_npdfs)
     {
-        eps09(1, p_params->npdf_setnumber, B, x2, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
+        eps09(1, p_params->npdf_setnumber, p_params->B, x2, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
         ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x2, q2) / p_p_pdf->xfxQ2(1, x2, q2);
         rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x2, q2) / p_p_pdf->xfxQ2(2, x2, q2);
 
-        ru = rB_spatial(ru); rd = rB_spatial(rd); rus = rB_spatial(rus); rds = rB_spatial(rds); 
-        rs = rB_spatial(rs); rc = rB_spatial(rc); rb = rB_spatial(rb); rt = rB_spatial(rt); rg = rB_spatial(rg);
+        ru = p_params->rB_spatial(ru); rd = p_params->rB_spatial(rd); rus = p_params->rB_spatial(rus);
+        rds = p_params->rB_spatial(rds); rs = p_params->rB_spatial(rs); rc = p_params->rB_spatial(rc); 
+        rb = p_params->rB_spatial(rb); rt = p_params->rB_spatial(rt); rg = p_params->rB_spatial(rg);
     }
     else
     {
-        ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
+        ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; 
+        rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
     }
     double f_i_x2[] = {rg * p_p_pdf->xfxQ2(0, x2, q2),
                        ru * p_p_pdf->xfxQ2(1, x2, q2),
@@ -640,7 +1144,8 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
                         rb * p_p_pdf->xfxQ2(-5, x2, q2),
                         rb * p_p_pdf->xfxQ2(-6, x2, q2)};
 
-    double ZoA = 82.0 / 208.0, NoA = 126.0 / 208.0;
+    double ZoA = /*82/208.0*/ p_params->ZA / static_cast<double>(p_params->A);
+    double NoA = /*126/208.0*/ (p_params->A - p_params->ZA) / static_cast<double>(p_params->A);
     double u, ub, d, db;
     ////ISOSCALAR NUCLEONS TODO
     if (p_params->isoscalar_projectile)
@@ -654,6 +1159,8 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
         f_ai_x1[1] = ZoA * ub + NoA * db;
         f_ai_x1[2] = ZoA * db + NoA * ub;
     }
+    ZoA = /*82/208.0*/ p_params->ZB / static_cast<double>(p_params->B);
+    NoA = /*126/208.0*/ (p_params->B - p_params->ZB) / static_cast<double>(p_params->B);
     if (p_params->isoscalar_target)
     {
         u = f_i_x2[1];
@@ -667,46 +1174,50 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
     }
 
     ///* GG->XX
-    sum += 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat, alphas);
-    sum += numFlavours * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat, alphas);
+    sum += 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+    sum += num_flavors * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
     //*/
     ///* GQ->XX
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
-        sum += f_i_x1[0] * f_i_x2[flavour] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_i_x1[0] * f_ai_x2[flavour] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_i_x1[flavour] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_ai_x1[flavour] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += f_i_x1[0] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x1[0] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_ai_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
     }
     //*/
     ///* QQ->XX
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
-        sum += 0.5 * f_i_x1[flavour] * f_i_x2[flavour] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
-        sum += 0.5 * f_ai_x1[flavour] * f_ai_x2[flavour] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
+        sum += 0.5 * f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        sum += 0.5 * f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
     }
 
-    for (int flavour1 = 1; flavour1 <= numFlavours; ++flavour1)
+    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
     {
-        for (int flavour2 = 1; flavour2 <= numFlavours; ++flavour2)
+        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
         {
-            if (flavour1 != flavour2)
+            if (flavor1 != flavor2)
             {
-                sum += f_i_x1[flavour1] * f_i_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += f_ai_x1[flavour1] * f_ai_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += f_i_x1[flavour1] * f_ai_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += f_ai_x1[flavour1] * f_i_x2[flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += f_i_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_ai_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_i_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_ai_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
             }
         }
     }
 
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
-        sum += f_i_x1[flavour] * f_ai_x2[flavour] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
-        sum += f_ai_x1[flavour] * f_i_x2[flavour] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
+        sum += f_i_x1[flavor] * f_ai_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                  + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                  + (num_flavors - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += f_ai_x1[flavor] * f_i_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                  + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                  + (num_flavors - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
     }
     //*/
-    return sum;
+    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
 }
 
 
@@ -728,7 +1239,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
 {
     const int A=208, B=208;
     xsectval sum = 0;
-    const double alphas = p_p_pdf->alphasQ2(q2);
+    const double alpha_s = p_p_pdf->alphasQ2(q2);
     const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
 
     std::array<std::array<double, 13>, 13> f_i_x_matrix;
@@ -816,46 +1327,46 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     }
 
     ///* GG->XX
-    sum += 0.5 * f_i_x_matrix[0][0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat, alphas);
-    sum += numFlavours * f_i_x_matrix[0][0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat, alphas);
+    sum += 0.5 * f_i_x_matrix[0][0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+    sum += numFlavours * f_i_x_matrix[0][0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
     //*/
     ///* GQ->XX
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (int flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += f_i_x_matrix[0][flavour] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_i_x_matrix[0][flavour+6] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_i_x_matrix[flavour][0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
-        sum += f_i_x_matrix[flavour+6][0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat, alphas);
+        sum += f_i_x_matrix[0][flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x_matrix[0][flavor+6] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x_matrix[flavor][0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x_matrix[flavor+6][0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
     }
     //*/
     ///* QQ->XX
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (int flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += 0.5 * f_i_x_matrix[flavour][flavour] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
-        sum += 0.5 * f_i_x_matrix[flavour+6][flavour+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat, alphas);
+        sum += 0.5 * f_i_x_matrix[flavor][flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        sum += 0.5 * f_i_x_matrix[flavor+6][flavor+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
     }
 
-    for (int flavour1 = 1; flavour1 <= numFlavours; ++flavour1)
+    for (int flavor1 = 1; flavor1 <= numFlavours; ++flavor1)
     {
-        for (int flavour2 = 1; flavour2 <= numFlavours; ++flavour2)
+        for (int flavor2 = 1; flavor2 <= numFlavours; ++flavor2)
         {
-            if (flavour1 != flavour2)
+            if (flavor1 != flavor2)
             {
-                sum += f_i_x_matrix[flavour1][flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += f_i_x_matrix[flavour1+6][flavour2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += f_i_x_matrix[flavour1][flavour2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
-                sum += f_i_x_matrix[flavour1+6][flavour2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat, alphas);
+                sum += f_i_x_matrix[flavor1][flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_i_x_matrix[flavor1+6][flavor2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_i_x_matrix[flavor1][flavor2+6] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_i_x_matrix[flavor1+6][flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
             }
         }
     }
 
-    for (int flavour = 1; flavour <= numFlavours; ++flavour)
+    for (int flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += f_i_x_matrix[flavour][flavour+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
-        sum += f_i_x_matrix[flavour+6][flavour] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat, alphas) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat, alphas) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat, alphas));
+        sum += f_i_x_matrix[flavor][flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += f_i_x_matrix[flavor+6][flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
     }
     //*/
-    return sum;
+    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
 }
 
 
@@ -905,7 +1416,8 @@ int pqcd::sigma_jet_integrand(unsigned ndim,
     //SES
     if (p_params->use_ses)
     {
-        const auto subprocess_cs = pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat, p_pdf->alphasQ2(fac_scale));
+        const auto alpha_s = p_pdf->alphasQ2(fac_scale);
+        const auto subprocess_cs = (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
         p_fval[0] = 0.5 * pqcd::f_ses(x1, fac_scale, p_pdf) * pqcd::f_ses(x2, fac_scale, p_pdf) * subprocess_cs * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
     else //FULL SUMMATION
@@ -970,8 +1482,8 @@ auto pqcd::spatial_sigma_jet_integrand_mf
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = 0.5 * (pqcd::diff_sigma::spatial_sigma_jet_mf(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params, p_n_pdf, rA_spatial, rB_spatial) 
-        + pqcd::diff_sigma::spatial_sigma_jet_mf(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params, p_n_pdf, rA_spatial, rB_spatial)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+        p_fval[0] = 0.5 * (pqcd::diff_sigma::spatial_sigma_jet_mf(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) 
+        + pqcd::diff_sigma::spatial_sigma_jet_mf(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success
@@ -1107,9 +1619,9 @@ auto pqcd::f_ses
 ) noexcept -> xsectval
 {
     xsectval sum = 0;
-    for (int flavour = -5; flavour <= 5; ++flavour)
+    for (int flavor = -5; flavor <= 5; ++flavor)
     {
-        sum += (flavour == 0) ? p_pdf->xfxQ2(flavour, x, q2) : 4 * p_pdf->xfxQ2(flavour, x, q2) / 9;
+        sum += (flavor == 0) ? p_pdf->xfxQ2(flavor, x, q2) : 4 * p_pdf->xfxQ2(flavor, x, q2) / 9;
     }
     //cout<<"x="<<*p_x<<", q2="<<*p_q2<<" SES="<<sum<<endl;
     return sum;

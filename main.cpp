@@ -577,7 +577,7 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
             }
             if (params.calculate_end_state)
             {
-                pqcd::generate_bin_NN_coll(&newpair);
+                pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
                 newpair.push_end_states_to_collider_frame();
                 newpair.reduce_energy();
             }
@@ -755,7 +755,7 @@ void collide_nuclei_with_spatial_pdfs_full
             }
             if (params.calculate_end_state)
             {
-                pqcd::generate_bin_NN_coll(&newpair);
+                pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
                 newpair.push_end_states_to_collider_frame();
                 newpair.reduce_energy();
             }
@@ -928,7 +928,7 @@ void collide_nuclei_with_spatial_pdfs_factored
             }
             if (params.calculate_end_state)
             {
-                pqcd::generate_bin_NN_coll(&newpair);
+                pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
                 newpair.push_end_states_to_collider_frame();
                 newpair.reduce_energy();
             }
