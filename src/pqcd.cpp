@@ -43,8 +43,8 @@ auto pqcd::generate_2_to_2_scatt
     std::shared_ptr<std::mt19937> eng,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     const pqcd::diff_sigma::params *const p_params,
-    const double &power_law, //TODO
-    const double &envelope_maximum //TODO
+    const double &power_law,
+    const momentum &envelope_maximum
 
 ) noexcept -> dijet_specs
 {
@@ -93,7 +93,8 @@ auto pqcd::generate_2_to_2_scatt
             std::cout<<"kT = "<<kt<<std::endl;
             std::cout<<"y1 = "<<y1<<std::endl;
             std::cout<<"y2 = "<<y2<<std::endl;
-            std::cout<<"Check the power-law behaviour"<<std::endl;       }
+            std::cout<<"Check the power-law behaviour"<<std::endl;
+        }
 
         if (ratio > rand[3])
         {
@@ -127,29 +128,29 @@ auto pqcd::generate_bin_NN_coll
 (
     nn_coll &coll,
     const xsectval &sigma_jet,
-    const spatial &Tpp_b, 
-    const momentum &sqrt_s,
-    const momentum &kt_min,
-    const momentum &kt_max,
+    const spatial &Tpp_b,
+    const momentum &kt0,
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     const pqcd::diff_sigma::params *const p_params,
     const double &power_law,
-    const double &envelope_maximum
+    const momentum &envelope_maximum
 ) noexcept -> void
 {
     //First generate the number of produced dijets from zero-truncated Poissonian distribution
     int16_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
     coll.dijets.reserve(nof_dijets);
 
+    const momentum sqrt_s = coll.getcr_sqrt_s();
+
     for (uint8_t i=0; i < nof_dijets; i++)
     {
         coll.dijets.push_back(pqcd::generate_2_to_2_scatt
         (
             sqrt_s,
-            kt_min,
-            kt_max,
+            kt0,
+            sqrt_s / 2.0,
             unirand,
             eng,
             p_p_pdf,

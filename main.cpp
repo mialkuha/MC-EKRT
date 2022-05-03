@@ -400,10 +400,10 @@ void collide_nuclei
         std::vector<nucleon> &pro, 
         std::vector<nucleon> &tar, 
         std::vector<nn_coll> &binary_collisions, 
-        std::variant<linear_interpolator, xsectval> sigma_jets, 
+        xsectval sigma_jet, 
         std::uniform_real_distribution<double> unirand, 
         std::shared_ptr<std::mt19937> eng, 
-        const AA_collision_params &params, 
+        const AA_collision_params &AA_params,
         const bool &verbose
     ) noexcept
 {
@@ -415,17 +415,17 @@ void collide_nuclei
         for (auto &B : tar)
         {
             n_pairs++;
-            if ((A.mom < params.energy_threshold) || (B.mom < params.energy_threshold))
+            if ((A.mom < AA_params.energy_threshold) || (B.mom < AA_params.energy_threshold))
             {
                 mombroke++;
                 continue;
             }
 
             nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
-            if (params.mc_glauber_mode)
+            if (AA_params.mc_glauber_mode)
             {
                 // "ball" diameter = distance at which two nucleons interact
-                const spatial d2 = params.sigma_inel_for_glauber/(M_PI*10); // in fm^2
+                const spatial d2 = AA_params.sigma_inel_for_glauber/(M_PI*10); // in fm^2
                 const spatial dij2 = newpair.getcr_bsquared();
                 
                 if (dij2 > d2) //no collision
@@ -437,18 +437,8 @@ void collide_nuclei
                 binary_collisions.push_back(newpair);
             }
             else
-            {
-                xsectval sigma_jet;
-                if (params.reduce_nucleon_energies)
-                {
-                    sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
-                }
-                else //Single sigma_jet
-                {
-                    sigma_jet = std::get<xsectval>(sigma_jets);
-                }
-                
-                newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
+            {                
+                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
                 auto ran = unirand(*eng)*M_PI;
                 
                 if (ran > newpair.getcr_effective_inel_xsect())
@@ -460,9 +450,153 @@ void collide_nuclei
                     nof_softs++;
                     continue;
                 }
-                if (params.calculate_end_state)
+                newpair.wound();
+                binary_collisions.push_back(newpair);
+            }
+        }
+    }
+
+    if (verbose)
+    {
+        std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , momentum threshold broke " << mombroke << " times" << std::endl;
+    }
+
+}
+
+void collide_nuclei
+(
+    std::vector<nucleon> &pro, 
+    std::vector<nucleon> &tar, 
+    std::vector<nn_coll> &binary_collisions, 
+    std::variant<linear_interpolator, xsectval> &sigma_jets, 
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng, 
+    const AA_collision_params &AA_params, 
+    const pqcd::sigma_jet_params &sigma_params,
+    const momentum &kt0,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    const pqcd::diff_sigma::params *const p_params,
+    const double &power_law,
+    std::variant<linear_interpolator, xsectval> &envelope_maximums,
+    const bool &verbose
+) noexcept
+{
+
+    uint n_pairs = 0, mombroke = 0, nof_softs = 0;
+
+    for (auto &A : pro)
+    {
+        for (auto &B : tar)
+        {
+            n_pairs++;
+            if ((A.mom < AA_params.energy_threshold) || (B.mom < AA_params.energy_threshold))
+            {
+                mombroke++;
+                continue;
+            }
+
+            nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
+            if (AA_params.mc_glauber_mode)
+            {
+                // "ball" diameter = distance at which two nucleons interact
+                const spatial d2 = AA_params.sigma_inel_for_glauber/(M_PI*10); // in fm^2
+                const spatial dij2 = newpair.getcr_bsquared();
+                
+                if (dij2 > d2) //no collision
                 {
-                    pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
+                    continue;
+                }
+                //collision
+                if (AA_params.calculate_end_state)
+                {
+                    xsectval sigma_jet;
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                    }
+                    else //Single sigma_jet
+                    {
+                        sigma_jet = std::get<xsectval>(sigma_jets);
+                    }
+                    xsectval envelope_maximum;
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                    }
+                    else
+                    {
+                        envelope_maximum = std::get<xsectval>(envelope_maximums);
+                    }
+
+                    pqcd::generate_bin_NN_coll
+                    (
+                        newpair, 
+                        sigma_jet, 
+                        AA_params.Tpp(newpair.getcr_bsquared()), 
+                        kt0,
+                        unirand, 
+                        eng,
+                        p_p_pdf,
+                        p_params,
+                        power_law,
+                        envelope_maximum
+                    );
+                    newpair.push_end_states_to_collider_frame();
+                    newpair.reduce_energy();
+                }                    
+                newpair.wound();
+                binary_collisions.push_back(newpair);
+            }
+            else
+            {
+                xsectval sigma_jet;
+                if (AA_params.reduce_nucleon_energies)
+                {
+                    sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                }
+                else //Single sigma_jet
+                {
+                    sigma_jet = std::get<xsectval>(sigma_jets);
+                }
+                
+                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
+                auto ran = unirand(*eng)*M_PI;
+                
+                if (ran > newpair.getcr_effective_inel_xsect())
+                {
+                    if (ran > newpair.getcr_effective_tot_xsect())
+                    {
+                        continue;
+                    }
+                    nof_softs++;
+                    continue;
+                }
+                if (AA_params.calculate_end_state)
+                {
+                    xsectval envelope_maximum;
+
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                    }
+                    else
+                    {
+                        envelope_maximum = std::get<xsectval>(envelope_maximums);
+                    }
+
+                    pqcd::generate_bin_NN_coll
+                    (
+                        newpair, 
+                        sigma_jet, 
+                        AA_params.Tpp(newpair.getcr_bsquared()), 
+                        kt0,
+                        unirand, 
+                        eng,
+                        p_p_pdf,
+                        p_params,
+                        power_law,
+                        envelope_maximum
+                    );
                     newpair.push_end_states_to_collider_frame();
                     newpair.reduce_energy();
                 }
@@ -479,7 +613,13 @@ void collide_nuclei
 
 }
 
-spatial calculate_tAB(const coords &b, const std::vector<nucleon> &pro, const std::vector<nucleon> &tar, const std::function<spatial(const spatial&)> Tpp) noexcept
+auto calculate_tAB
+(
+    const coords &b, 
+    const std::vector<nucleon> &pro, 
+    const std::vector<nucleon> &tar, 
+    const std::function<spatial(const spatial&)> Tpp
+) noexcept -> spatial
 {
     spatial tAB=0.0; //sum(T_pp(b_ij + b))
     size_t A=pro.size(), B=tar.size();
@@ -495,7 +635,12 @@ spatial calculate_tAB(const coords &b, const std::vector<nucleon> &pro, const st
     return tAB;
 }
 
-spatial calculate_sum_tpp(const nucleon &nuc, const std::vector<nucleon> &nucleus, const std::function<spatial(const spatial&)> Tpp) noexcept
+auto calculate_sum_tpp
+(
+    const nucleon &nuc, 
+    const std::vector<nucleon> &nucleus, 
+    const std::function<spatial(const spatial&)> Tpp
+) noexcept -> spatial
 {
     spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
     size_t A=nucleus.size();
@@ -507,16 +652,24 @@ spatial calculate_sum_tpp(const nucleon &nuc, const std::vector<nucleon> &nucleu
     return sum_tpp;
 }
 
-void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::vector<nucleon> &tar, std::vector<nn_coll> &binary_collisions, const InterpMultilinear<4, xsectval> &sigma_jets,
-                                      std::uniform_real_distribution<double> unirand, std::shared_ptr<std::mt19937> eng, 
-                                      const AA_collision_params &params, const bool &verbose, const std::function<spatial(const spatial&)> Tpp) noexcept
+auto collide_nuclei_with_spatial_pdfs_averaging
+(
+    std::vector<nucleon> &pro, 
+    std::vector<nucleon> &tar, 
+    std::vector<nn_coll> &binary_collisions, 
+    const InterpMultilinear<4, xsectval> &sigma_jets,
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng, 
+    const AA_collision_params &AA_params,
+    const bool &verbose
+) noexcept -> void
 {
 
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
     spatial sum_tppa=0, sum_tppb=0;
 
-    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, Tpp);
-    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, Tpp);
+    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
     
     if (verbose)
     {
@@ -525,7 +678,7 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
 
     for (auto &A : pro)
     {
-        sum_tppa = calculate_sum_tpp(A, pro, Tpp);
+        sum_tppa = calculate_sum_tpp(A, pro, AA_params.Tpp);
         
         for (auto &B : tar)
         {
@@ -534,10 +687,10 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
                 skipped++;
                 continue;
             }
-            sum_tppb = calculate_sum_tpp(B, tar, Tpp);
+            sum_tppb = calculate_sum_tpp(B, tar, AA_params.Tpp);
 
             n_pairs++;
-            if ((A.mom < params.energy_threshold) || (B.mom < params.energy_threshold))
+            if ((A.mom < AA_params.energy_threshold) || (B.mom < AA_params.energy_threshold))
             {
                 mombroke++;
                 continue;
@@ -545,7 +698,7 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
 
             nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
             xsectval sigma_jet;
-            if (params.reduce_nucleon_energies) 
+            if (AA_params.reduce_nucleon_energies) 
             {
                 //TODO
             }
@@ -555,7 +708,7 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
                 sigma_jet = sigma_jets.interp(args.begin());//pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
             }
             
-            newpair.calculate_xsects(sigma_jet, params.Tpp, newpair.getcr_bsquared(), params.normalize_to);
+            newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
 
             if (verbose)
             {
@@ -575,9 +728,114 @@ void collide_nuclei_with_spatial_pdfs_averaging(std::vector<nucleon> &pro, std::
                 nof_softs++;
                 continue;
             }
-            if (params.calculate_end_state)
+            newpair.wound();
+            binary_collisions.push_back(newpair);
+        }
+    }
+
+    if (verbose)
+    {
+        std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , momentum threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
+    }
+}
+
+auto collide_nuclei_with_spatial_pdfs_averaging
+(
+    std::vector<nucleon> &pro, 
+    std::vector<nucleon> &tar, 
+    std::vector<nn_coll> &binary_collisions, 
+    const InterpMultilinear<4, xsectval> &sigma_jets,
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng, 
+    const AA_collision_params &AA_params, 
+    const pqcd::sigma_jet_params &sigma_params,
+    const momentum &kt0,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    const pqcd::diff_sigma::params *const p_params,
+    const double &power_law,
+    xsectval &envelope_maximum,
+    const bool &verbose
+) noexcept -> void
+{
+
+    uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
+    spatial sum_tppa=0, sum_tppb=0;
+
+    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+    
+    if (verbose)
+    {
+        std::cout << "T_AA(0)= " << tAA_0 << ", T_BB(0)= " << tBB_0 << std::endl;
+    }
+
+    for (auto &A : pro)
+    {
+        sum_tppa = calculate_sum_tpp(A, pro, AA_params.Tpp);
+        
+        for (auto &B : tar)
+        {
+            if (A.calculate_bsquared(B) > 35.)
             {
-                pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
+                skipped++;
+                continue;
+            }
+            sum_tppb = calculate_sum_tpp(B, tar, AA_params.Tpp);
+
+            n_pairs++;
+            if ((A.mom < AA_params.energy_threshold) || (B.mom < AA_params.energy_threshold))
+            {
+                mombroke++;
+                continue;
+            }
+
+            nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
+            xsectval sigma_jet;
+            if (AA_params.reduce_nucleon_energies) 
+            {
+                //TODO
+            }
+            else
+            {
+                array<spatial,4> args{sum_tppa, sum_tppb, tAA_0, tBB_0};
+                sigma_jet = sigma_jets.interp(args.begin());//pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
+            }
+            
+            newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
+
+            if (verbose)
+            {
+                std::cout << "<T_pp>_i= " << sum_tppa << ", <T_pp>_j= " << sum_tppb << ", sigma_jet= " 
+                          << sigma_jet <<  ", sigma_inel_eff= " << newpair.getcr_effective_inel_xsect() 
+                          << ", sigma_tot_eff= " << newpair.getcr_effective_tot_xsect() << std::endl;
+            }
+
+            auto ran = unirand(*eng)*M_PI;
+            
+            if (ran > newpair.getcr_effective_inel_xsect())
+            {
+                if (ran > newpair.getcr_effective_tot_xsect())
+                {
+                    continue;
+                }
+                nof_softs++;
+                continue;
+            }
+            if (AA_params.calculate_end_state)
+            {
+                pqcd::generate_bin_NN_coll
+                (
+                    newpair, 
+                    sigma_jet, 
+                    AA_params.Tpp(newpair.getcr_bsquared()), 
+                    kt0,
+                    unirand, 
+                    eng,
+                    p_p_pdf,
+                    p_params,
+                    power_law,
+                    envelope_maximum
+                );
                 newpair.push_end_states_to_collider_frame();
                 newpair.reduce_energy();
             }
@@ -755,7 +1013,8 @@ void collide_nuclei_with_spatial_pdfs_full
             }
             if (params.calculate_end_state)
             {
-                pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
+                //TODO
+                //pqcd::generate_bin_NN_coll(newpair, sigma_jet, params.Tpp(newpair.getcr_bsquared()), unirand, eng);
                 newpair.push_end_states_to_collider_frame();
                 newpair.reduce_energy();
             }
@@ -1666,14 +1925,23 @@ int main()
 
     //sigma_jet stuff
     const bool read_sigmajets_from_file = false;
-    const pqcd::sigma_jet_params jet_params = pqcd::sigma_jet_params(
-    /*scale_choice=             */pqcd::scaled_from_kt,
-    /*scalar=                   */1.0,
+    pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */true,
     /*target_with_npdfs=        */true,
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdf_setnumber=           */1,
+    /*A=                        */208, //Pb 
+    /*B=                        */208, //Pb
+    /*ZA=                       */82,  //Pb
+    /*ZB=                       */82   //Pb
+    /*p_n_pdf=                  */
+    /*rA_spatial=               */
+    /*rB_spatial=               */);
+    const pqcd::sigma_jet_params jet_params = pqcd::sigma_jet_params(
+    /*p_d_params=               */&diff_params,    
+    /*scale_choice=             */pqcd::scaled_from_kt,
+    /*scalar=                   */1.0,
     /*use_ses=                  */false);
     ////Pre-calculated sigma_jets
     //std::vector<double> xs({8, 124.235, 182.353, 211.412, 240.47, 269.529, 298.588, 327.647, 356.706, 385.764, 414.823, 443.882, 472.941, 502, 531.059, 560.117, 589.176, 618.235, 647.294, 676.353, 705.411, 734.47, 763.529, 792.588, 821.647, 850.705, 879.764, 908.823, 937.882, 966.941, 995.999, 1025.06, 1054.12, 1083.18, 1112.23, 1141.29, 1170.35, 1228.47, 1286.59, 1344.71, 1402.82, 1460.94, 1519.06, 1577.18, 1635.29, 1693.41, 1751.53, 1809.65, 1867.76, 1925.88, 1984, 2042.12, 2100.23, 2158.35, 2216.47, 2274.59, 2332.7, 2390.82, 2448.94, 2507.06, 2565.18, 2623.29, 2681.41, 2739.53, 2797.65, 2855.76, 2913.88, 2972, 3030.12, 3088.23, 3146.35, 3204.47, 3262.59, 3320.7, 3378.82, 3436.94, 3495.06, 3553.17, 3611.29, 3669.41, 3727.53, 3785.64, 3843.76, 3901.88, 3960, 4018.12, 4076.23, 4134.35, 4192.47, 4250.59, 4308.7, 4366.82, 4424.94, 4483.06, 4541.17, 4599.29, 4657.41, 4715.53, 4773.64, 4831.76, 4889.88, 4948, 5006.11, 5064.23, 5122.35, 5180.47, 5238.59, 5296.7, 5354.82, 5412.94, 5471.06, 5529.17, 5587.29, 5645.41, 5703.53, 5761.64, 5819.76, 5877.88, 5936, 5994.11, 6052.23, 6110.35, 6168.47, 6226.58, 6284.7, 6342.82, 6400.94, 6459.06, 6517.17, 6575.29, 6633.41, 6691.53, 6749.64, 6807.76, 6865.88, 6924, 6982.11, 7040.23, 7098.35, 7156.47, 7214.58, 7272.7, 7330.82, 7388.94, 7447.05, 7505.17, 7563.29, 7621.41, 7679.53, 7737.64, 7795.76, 7853.88, 7912, 7970.11, 8028.23, 8086.35, 8144.47, 8202.58, 8260.7, 8318.82, 8376.94, 8435.05, 8493.17, 8551.29, 8609.41, 8725.64, 8841.88, 8958.11, 9074.35, 9190.58, 9306.82, 9423.05, 9539.29, 9655.52, 9771.76, 9887.99, 10004.2, 10120.5, 10236.7, 10352.9, 10469.2, 10585.4, 10701.6, 10817.9, 10934.1, 11050.3, 11166.6, 11282.8, 11399.1, 11515.3, 11631.5, 11747.8, 11864, 11980.2, 12096.5, 12212.7, 12328.9, 12445.2, 12561.4, 12677.6, 12793.9, 12910.1, 13026.3, 13142.6, 13258.8, 13375.1, 13491.3, 13607.5, 13723.8, 13840, 13956.2, 14072.5, 14188.7, 14304.9, 14421.2, 14537.4, 14653.6, 14769.9, 14886.1, 15002.3, 15118.6, 15234.8, 15351.1, 15467.3, 15583.5, 15699.8, 15816, 16048.5, 16280.9, 16513.4, 16745.9, 16978.3, 17210.8, 17443.3, 17675.8, 17908.2, 18140.7, 18373.2, 18605.6, 18838.1, 19070.6, 19303, 19535.5, 19768, 20000.5, 20232.9, 20465.4, 20697.9, 20930.3, 21162.8, 21395.3, 21627.8, 21860.2, 22092.7, 22325.2, 22557.6, 22790.1, 23022.6, 23255, 23487.5, 23720, 23952.5, 24184.9, 24417.4, 24649.9, 24882.3, 25114.8, 25347.3, 25579.8, 25812.2, 26044.7, 26277.2, 26509.6, 26742.1, 26974.6, 27207, 27439.5, 27672, 27904.5, 28136.9, 28369.4, 28601.9, 28834.3, 29066.8, 29299.3, 29764.2, 30229.2, 30694.1, 31159, 31624, 32088.9, 32553.9, 33018.8, 33483.7, 33948.7, 34413.6, 34878.6, 35343.5, 35808.5, 36273.4, 36738.3, 37203.3, 37668.2, 38133.2, 38598.1, 39063, 39528, 39992.9, 40457.9, 40922.8, 41387.7, 41852.7, 42317.6, 42782.6, 43247.5, 43712.4, 44177.4, 44642.3, 45107.3, 45572.2, 46037.2, 46502.1, 46967, 47432, 47896.9, 48361.9, 48826.8, 49291.7, 49756.7, 50221.6, 50686.6, 51151.5, 51616.4, 52081.4, 52546.3, 53011.3, 53476.2, 53941.1, 54406.1, 54871, 55800.9, 56730.8, 57660.7, 58590.6, 59520.4, 60450.3, 61380.2, 62310.1, 63240, 64169.8, 65099.7, 66029.6, 66959.5, 67889.4, 68819.3, 69749.1, 70679, 71608.9, 72538.8, 73468.7, 74398.5, 75328.4, 76258.3, 77188.2, 78118.1, 79048, 79977.8, 80907.7, 81837.6, 82767.5, 83697.4, 84627.2, 85557.1, 86487, 87416.9, 88346.8, 89276.7, 90206.5, 91136.4, 92066.3, 92996.2, 93926.1, 94855.9, 95785.8, 96715.7, 97645.6, 98575.5, 99505.4, 100435, 101365, 102295, 104155, 106015, 107874, 109734, 111594, 113454, 115313, 117173, 119033, 120893, 122752, 124612, 126472, 128332, 130191, 132051, 133911, 135771, 137631, 139490, 141350, 143210, 145070, 146929, 148789, 150649, 152509, 154368, 156228, 158088, 159948, 161807, 163667, 165527, 167387, 169246, 171106, 172966, 174826, 176686, 178545, 180405, 182265, 184125, 185984, 187844, 189704, 191564, 193423, 197143, 200862, 204582, 208302, 212021, 215741, 219460, 223180, 226899, 230619, 234338, 238058, 241777, 245497, 249216, 252936, 256655, 260375, 264094, 267814, 271533, 275253, 278973, 282692, 286412, 290131, 293851, 297570, 301290, 305009, 308729, 312448, 316168, 319887, 323607, 327326, 331046, 334765, 338485, 342205, 345924, 349644, 353363, 357083, 360802, 364522, 371961, 379400, 386839, 394278, 401717, 409156, 416595, 424034, 431473, 438912, 446351, 453790, 461229, 468668, 476108, 483547, 490986, 498425, 505864, 513303, 520742, 528181, 535620, 543059, 550498, 557937, 565376, 572815, 580254, 587693, 595132, 602571, 610010, 617450, 624889, 632328, 639767, 647206, 654645, 662084, 669523, 676962, 684401, 699279, 714157, 729035, 743913, 758792, 773670, 788548, 803426, 818304, 833182, 848060, 862938, 877816, 892695, 907573, 922451, 937329, 952207, 967085, 981963, 996841, 1.01172e+06, 1.0266e+06, 1.04148e+06, 1.05635e+06, 1.07123e+06, 1.08611e+06, 1.10099e+06, 1.11587e+06, 1.13074e+06, 1.14562e+06, 1.1605e+06, 1.17538e+06, 1.19026e+06, 1.20513e+06, 1.22001e+06, 1.23489e+06, 1.24977e+06, 1.26465e+06, 1.27953e+06, 1.2944e+06, 1.30928e+06, 1.33904e+06, 1.36879e+06, 1.39855e+06, 1.42831e+06, 1.45806e+06, 1.48782e+06, 1.51758e+06, 1.54733e+06, 1.57709e+06, 1.60684e+06, 1.6366e+06, 1.66636e+06, 1.69611e+06, 1.72587e+06, 1.75562e+06, 1.78538e+06, 1.81514e+06, 1.84489e+06, 1.87465e+06, 1.90441e+06, 1.93416e+06, 1.96392e+06, 1.99367e+06, 2.02343e+06, 2.05319e+06, 2.08294e+06, 2.1127e+06, 2.14246e+06, 2.17221e+06, 2.20197e+06, 2.23172e+06, 2.26148e+06, 2.29124e+06, 2.32099e+06, 2.35075e+06, 2.38051e+06, 2.41026e+06, 2.44002e+06, 2.46977e+06, 2.49953e+06, 2.55904e+06, 2.61856e+06, 2.67807e+06, 2.73758e+06, 2.79709e+06, 2.8566e+06, 2.91612e+06, 2.97563e+06, 3.03514e+06, 3.09465e+06, 3.15417e+06, 3.21368e+06, 3.27319e+06, 3.3327e+06, 3.39222e+06, 3.45173e+06, 3.51124e+06, 3.57075e+06, 3.63027e+06, 3.68978e+06, 3.74929e+06, 3.8088e+06, 3.86832e+06, 3.92783e+06, 3.98734e+06, 4.04685e+06, 4.10637e+06, 4.16588e+06, 4.22539e+06, 4.2849e+06, 4.34442e+06, 4.40393e+06, 4.46344e+06, 4.52295e+06, 4.58247e+06, 4.64198e+06, 4.70149e+06, 4.761e+06, 4.88003e+06, 4.99905e+06, 5.11808e+06, 5.2371e+06, 5.35613e+06, 5.47515e+06, 5.59418e+06, 5.7132e+06, 5.83223e+06, 5.95125e+06, 6.07028e+06, 6.1893e+06, 6.30833e+06, 6.42735e+06, 6.54638e+06, 6.6654e+06, 6.78443e+06, 6.90345e+06, 7.02248e+06, 7.1415e+06, 7.26053e+06, 7.37955e+06, 7.49858e+06, 7.6176e+06, 7.7534e+06, 7.8892e+06, 8.025e+06, 8.1608e+06, 8.2966e+06, 8.4324e+06, 8.5682e+06, 8.704e+06, 8.8398e+06, 8.9756e+06, 9.1114e+06, 9.2472e+06, 9.383e+06, 9.5188e+06, 9.6546e+06, 9.7904e+06, 9.9262e+06, 1.0062e+07, 1.01978e+07, 1.03336e+07, 1.06052e+07, 1.08768e+07, 1.11484e+07, 1.142e+07, 1.16916e+07, 1.19632e+07, 1.22348e+07, 1.25064e+07, 1.2778e+07, 1.30496e+07, 1.33212e+07, 1.35928e+07, 1.38644e+07, 1.4136e+07, 1.44076e+07, 1.46792e+07, 1.49508e+07, 1.52224e+07, 1.5494e+07, 1.57656e+07, 1.60372e+07, 1.63088e+07, 1.65804e+07, 1.6852e+07, 1.71236e+07, 1.73952e+07, 1.76668e+07, 1.79384e+07, 1.821e+07, 1.84816e+07, 1.87532e+07, 1.90248e+07, 1.92964e+07, 1.9568e+07, 1.98396e+07, 2.01112e+07, 2.06544e+07, 2.11976e+07, 2.17408e+07, 2.2284e+07, 2.28272e+07, 2.33704e+07, 2.39136e+07, 2.44568e+07, 2.5e+07});

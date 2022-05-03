@@ -25,47 +25,70 @@ public:
     public:
         struct params
         {
-            bool projectile_with_npdfs;
-            bool target_with_npdfs;
-            bool isoscalar_projectile;
-            bool isoscalar_target;
-            int npdf_setnumber;
-            int A;
-            int B;
-            int ZA;
-            int ZB;
-            std::shared_ptr<LHAPDF::GridPDF> p_n_pdf;
-            std::function<double(double const&)> rA_spatial;
-            std::function<double(double const&)> rB_spatial;
+            bool projectile_with_npdfs = false;
+            bool target_with_npdfs     = false;
+            bool isoscalar_projectile  = false;
+            bool isoscalar_target      = false;
+            int npdf_setnumber         = 1;
+            int A                      = 1;
+            int B                      = 1;
+            int ZA                     = 1;
+            int ZB                     = 1;
+            std::shared_ptr<LHAPDF::GridPDF> p_n_pdf = nullptr;
+            std::function<double(double const&)> rA_spatial = nullptr;
+            std::function<double(double const&)> rB_spatial = nullptr;
 
-            explicit params
-            (
-              auto projectile_with_npdfs_ = false, 
-              auto target_with_npdfs_     = false, 
-              auto isoscalar_projectile_  = false, 
-              auto isoscalar_target_      = false, 
-              auto npdf_setnumber_        = 1,
-              auto A_                     = 1,
-              auto B_                     = 1,
-              auto ZA_                    = 1,
-              auto ZB_                    = 1,
-              auto p_n_pdf_               = nullptr,
-              auto rA_spatial_            = nullptr,
-              auto rB_spatial_            = nullptr
-            ) noexcept
-            : projectile_with_npdfs(projectile_with_npdfs_), 
-              target_with_npdfs(target_with_npdfs_), 
-              isoscalar_projectile(isoscalar_projectile_), 
-              isoscalar_target(isoscalar_target_), 
-              npdf_setnumber(npdf_setnumber_),
-              A(A_),
-              B(B_),
-              ZA(ZA_),
-              ZB(ZB_),
-              p_n_pdf(p_n_pdf_),
-              rA_spatial(rA_spatial_),
-              rB_spatial(rB_spatial_)
-            {}
+            //explicit params
+            //(
+            //  auto projectile_with_npdfs_, 
+            //  auto target_with_npdfs_,     
+            //  auto isoscalar_projectile_,  
+            //  auto isoscalar_target_,      
+            //  auto npdf_setnumber_,        
+            //  auto A_,                     
+            //  auto B_,                     
+            //  auto ZA_,                    
+            //  auto ZB_,                    
+            //  auto p_n_pdf_,               
+            //  auto rA_spatial_,            
+            //  auto rB_spatial_            
+            //) noexcept
+            //: projectile_with_npdfs(projectile_with_npdfs_), 
+            //  target_with_npdfs(target_with_npdfs_), 
+            //  isoscalar_projectile(isoscalar_projectile_), 
+            //  isoscalar_target(isoscalar_target_), 
+            //  npdf_setnumber(npdf_setnumber_),
+            //  A(A_),
+            //  B(B_),
+            //  ZA(ZA_),
+            //  ZB(ZB_),
+            //  p_n_pdf(p_n_pdf_),
+            //  rA_spatial(rA_spatial_),
+            //  rB_spatial(rB_spatial_)
+            //{}
+
+            //explicit params
+            //(
+            //  auto projectile_with_npdfs_, 
+            //  auto target_with_npdfs_,     
+            //  auto isoscalar_projectile_,  
+            //  auto isoscalar_target_,      
+            //  auto npdf_setnumber_,        
+            //  auto A_,                     
+            //  auto B_,                     
+            //  auto ZA_,                    
+            //  auto ZB_
+            //) noexcept
+            //: projectile_with_npdfs(projectile_with_npdfs_), 
+            //  target_with_npdfs(target_with_npdfs_), 
+            //  isoscalar_projectile(isoscalar_projectile_), 
+            //  isoscalar_target(isoscalar_target_), 
+            //  npdf_setnumber(npdf_setnumber_),
+            //  A(A_),
+            //  B(B_),
+            //  ZA(ZA_),
+            //  ZB(ZB_)
+            //{}
         };
         
         static auto sigma_qiqj_qiqj
@@ -192,9 +215,9 @@ public:
         explicit sigma_jet_params
           (
             diff_sigma::params *p_d_params_, 
-            scale_choice scale_c_             = scaled_from_kt, 
-            momentum scalar_                  = 1.0, 
-            bool use_ses_                     = false
+            scale_choice scale_c_    = scaled_from_kt, 
+            momentum scalar_         = 1.0, 
+            bool use_ses_            = false
           ) noexcept
           : scale_c(scale_c_), 
             scalar(scalar_), 
@@ -220,7 +243,7 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const pqcd::diff_sigma::params *const p_params,
         const double &power_law,
-        const double &envelope_maximum
+        const momentum &envelope_maximum
       ) noexcept -> dijet_specs;
 
     static auto generate_bin_NN_coll
@@ -228,15 +251,13 @@ public:
         nn_coll &coll,
         const xsectval &sigma_jet,
         const spatial &Tpp_b, 
-        const momentum &sqrt_s,
-        const momentum &kt_min,
-        const momentum &kt_max,
+        const momentum &kt0,
         std::uniform_real_distribution<double> unirand, 
         std::shared_ptr<std::mt19937> eng,
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const pqcd::diff_sigma::params *const p_params,
         const double &power_law,
-        const double &envelope_maximum
+        const momentum &envelope_maximum
       ) noexcept -> void;
 
     static auto sigma_jet_integrand
