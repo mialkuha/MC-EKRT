@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2022 Mikko Kuha
 //TODO parallellize A+A colls
 //TODO sigma_jet with full spatial nPDF calculation
 //TODO sigma_inel calculation???
@@ -15,6 +15,7 @@
 #include <fstream>
 #include <functional>
 #include <future>
+#include <gsl/gsl_multimin.h>
 #include <iostream>
 #include <limits>
 #include <map>
@@ -122,7 +123,13 @@ double calc_ave(std::vector<Coll> &collisions, T (Coll::*func)()const ){
 
 //Finds a zero of the function f
 template<typename F, typename Ret_type, typename Arg_type>
-void secant_method(Arg_type *const x, F f, const Ret_type error_tolerance, Ret_type *const last_fx)
+auto secant_method
+(
+    Arg_type *const x, 
+    F f, 
+    const Ret_type error_tolerance, 
+    Ret_type *const last_fx
+) -> void
 {
     Arg_type x_n = *x, x_np1 = 2.0*x_n, x_np2 = 0.0;
     Ret_type fx_n = f(x_n);
@@ -160,7 +167,121 @@ void secant_method(Arg_type *const x, F f, const Ret_type error_tolerance, Ret_t
     return;
 }
 
-void find_sigma_jet_cutoff(momentum &kt02, const momentum &mand_s, const xsectval &target, std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, const pqcd::sigma_jet_params &jet_params, const bool &verbose=true) noexcept
+/*
+ * Struct needed by find_max_dsigma
+ */
+struct f_params
+{
+    momentum kt;
+    momentum sqrt_s;
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf;
+    pqcd::diff_sigma::params *p_sigma_params
+};
+
+/*
+ *Function of diff_cross_section_2jet for maximization with respect to y1 and y2
+ */
+double fdsigma
+(
+    const gsl_vector *v, 
+    void *params
+)
+{
+    auto *fparams = static_cast<struct f_params *>(params);
+    auto kt = fparams->kt;
+    auto sqrt_s = fparams->sqrt_s;
+    auto p_pdf = fparams->p_pdf;
+    auto p_params p_sigma_params = fparams->p_sigma_params;
+    rapidity y1, y2;
+    y1 = gsl_vector_get(v, 0);
+    y2 = gsl_vector_get(v, 1);
+
+    auto xsection = pqcd::diff_sigma::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, p_sigma_params);
+    xsectval total_xsection = 0;
+    for (auto xsect : xsection)
+    {
+        total_xsection += xsect.sigma;
+    }
+
+    return -total_xsection;
+}
+
+auto find_max_dsigma
+(
+    const momentum &kt, 
+    const momentum &sqrt_s,
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    const pqcd::diff_sigma::params *const p_params,
+    xsectval *const dsigma, 
+    double *const error_est
+) const noexcept -> void
+{
+    struct f_params fparams = {kt, sqrt_s, p_pdf, p_params};
+    //Use Simplex algorithm by Nelder and Mead to find the maximum of dsigma
+    const gsl_multimin_fminimizer_type *T = gsl_multimin_fminimizer_nmsimplex2;
+    gsl_multimin_fminimizer *minimizer = nullptr;
+    gsl_vector *ys, *init_step_size;
+    gsl_multimin_function minfunc;
+    ys = gsl_vector_alloc(2);
+    gsl_vector_set_all(ys, 0);
+    init_step_size = gsl_vector_alloc(2);
+    gsl_vector_set_all(init_step_size, 0.5);
+
+    size_t iter = 0;
+    int status;
+    double simplex_size = 0;
+
+    minfunc.n = 2;
+    minfunc.f = fdsigma;
+    minfunc.params = &fparams;
+
+    minimizer = gsl_multimin_fminimizer_alloc(T, 2);
+    gsl_multimin_fminimizer_set(minimizer, &minfunc, ys, init_step_size);
+    do
+    {
+        iter++;
+        status = gsl_multimin_fminimizer_iterate(minimizer);
+
+        if (status != 0)
+        {
+            break;
+        }
+
+        simplex_size = gsl_multimin_fminimizer_size(minimizer);
+        status = gsl_multimin_test_size(simplex_size, 1e-3);
+
+        if (status == GSL_SUCCESS)
+        {
+            //            printf ("converged to maximum at\n");
+            //            printf ("%5i %10.3e %10.3e f() = %10.3e size = %.3f\n",
+            //                    int(iter),
+            //                    gsl_vector_get (minimizer->ys, 0),
+            //                    gsl_vector_get (minimizer->ys, 1),
+            //                    -minimizer->fval, size);
+        }
+
+    } while (status == GSL_CONTINUE && iter < 100);
+
+    *dsigma = -minimizer->fval;
+    *error_est = simplex_size;
+
+    //  double y1 = gsl_vector_get(minimizer->ys, 0);
+    //  double y2 = gsl_vector_get(minimizer->ys, 1);
+
+    gsl_vector_free(ys);
+    gsl_vector_free(init_step_size);
+    gsl_multimin_fminimizer_free(minimizer);
+}
+
+auto find_sigma_jet_cutoff
+(
+    momentum &kt02, 
+    const momentum &mand_s, 
+    const xsectval &target, 
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    const pqcd::sigma_jet_params &jet_params, 
+    const bool &verbose=true
+) noexcept -> void
 {
     xsectval sigma_jet=0.0;
     kt02 = 2.0;
