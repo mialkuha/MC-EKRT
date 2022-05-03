@@ -175,7 +175,7 @@ struct f_params
     momentum kt;
     momentum sqrt_s;
     std::shared_ptr<LHAPDF::GridPDF> p_pdf;
-    pqcd::diff_sigma::params *p_sigma_params
+    pqcd::diff_sigma::params *p_sigma_params;
 };
 
 /*
@@ -191,7 +191,7 @@ double fdsigma
     auto kt = fparams->kt;
     auto sqrt_s = fparams->sqrt_s;
     auto p_pdf = fparams->p_pdf;
-    auto p_params p_sigma_params = fparams->p_sigma_params;
+    auto p_sigma_params = fparams->p_sigma_params;
     rapidity y1, y2;
     y1 = gsl_vector_get(v, 0);
     y2 = gsl_vector_get(v, 1);
@@ -211,10 +211,10 @@ auto find_max_dsigma
     const momentum &kt, 
     const momentum &sqrt_s,
     std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-    const pqcd::diff_sigma::params *const p_params,
+    pqcd::diff_sigma::params *const p_params,
     xsectval *const dsigma, 
     double *const error_est
-) const noexcept -> void
+) noexcept -> void
 {
     struct f_params fparams = {kt, sqrt_s, p_pdf, p_params};
     //Use Simplex algorithm by Nelder and Mead to find the maximum of dsigma
@@ -227,7 +227,7 @@ auto find_max_dsigma
     init_step_size = gsl_vector_alloc(2);
     gsl_vector_set_all(init_step_size, 0.5);
 
-    size_t iter = 0;
+    uint8_t iter = 0;
     int status;
     double simplex_size = 0;
 
@@ -242,7 +242,10 @@ auto find_max_dsigma
         iter++;
         status = gsl_multimin_fminimizer_iterate(minimizer);
 
-        if (status != 0)
+        // The error code GSL_ENOPROG signifies that the minimizer is unable 
+        // to improve on its current estimate, either due to numerical 
+        // difficulty or because a genuine local minimum has been reached.
+        if (status == GSL_ENOPROG)
         {
             break;
         }
@@ -250,15 +253,15 @@ auto find_max_dsigma
         simplex_size = gsl_multimin_fminimizer_size(minimizer);
         status = gsl_multimin_test_size(simplex_size, 1e-3);
 
-        if (status == GSL_SUCCESS)
-        {
-            //            printf ("converged to maximum at\n");
-            //            printf ("%5i %10.3e %10.3e f() = %10.3e size = %.3f\n",
-            //                    int(iter),
-            //                    gsl_vector_get (minimizer->ys, 0),
-            //                    gsl_vector_get (minimizer->ys, 1),
-            //                    -minimizer->fval, size);
-        }
+        //if (status == GSL_SUCCESS)
+        //{
+        //    printf ("converged to maximum at\n");
+        //    printf ("%5i %10.3e %10.3e f() = %10.3e size = %.3f\n",
+        //            int(iter),
+        //            gsl_vector_get (minimizer->ys, 0),
+        //            gsl_vector_get (minimizer->ys, 1),
+        //            -minimizer->fval, size);
+        //}
 
     } while (status == GSL_CONTINUE && iter < 100);
 
@@ -309,7 +312,7 @@ auto read_nucleon_configs_from_file() noexcept
     {
         std::string line;
 
-        for (size_t i = 0; i < 8; i++)
+        for (uint8_t i = 0; i < 8; i++)
         {
             std::getline(input, line); //Skip the 8 unimportant rows
         }
@@ -320,7 +323,7 @@ auto read_nucleon_configs_from_file() noexcept
 
             if (line.empty()) //The nuclei are separated by empty line, followed by 4 comment lines
             {
-                for (size_t i = 0; i < 4; i++)
+                for (uint8_t i = 0; i < 4; i++)
                 {
                     std::getline(input, line);
                 }
@@ -358,7 +361,16 @@ auto read_nucleon_configs_from_file() noexcept
     return std::make_tuple(std::move(pro), std::move(tar));
 }
 
-auto generate_nuclei(const nucleus_generator::nucleus_params &nuc_params, const momentum &sqrt_s, const spatial &impact_parameter, std::shared_ptr<std::mt19937> eng, std::shared_ptr<ars> radial_sampler, const bool &read_nuclei_from_file, const bool &verbose) noexcept
+auto generate_nuclei
+(
+    const nucleus_generator::nucleus_params &nuc_params,
+    const momentum &sqrt_s,
+    const spatial &impact_parameter,
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<ars> radial_sampler,
+    const bool &read_nuclei_from_file,
+    const bool &verbose
+) noexcept
 {
     std::vector<nucleon> pro, tar;
     if (read_nuclei_from_file)
@@ -378,8 +390,22 @@ auto generate_nuclei(const nucleus_generator::nucleus_params &nuc_params, const 
     else
     {
         if (verbose) std::cout<<"Generating nuclei..."<<std::flush;
-        pro = nucleus_generator::generate_nucleus(nuc_params, sqrt_s/2.0, -impact_parameter/2., eng, radial_sampler);
-        tar = nucleus_generator::generate_nucleus(nuc_params, sqrt_s/2.0, impact_parameter/2., eng, radial_sampler);
+        pro = nucleus_generator::generate_nucleus
+              (
+                  nuc_params, 
+                  sqrt_s/2.0, 
+                  -impact_parameter/2., 
+                  eng, 
+                  radial_sampler
+              );
+        tar = nucleus_generator::generate_nucleus
+              (
+                  nuc_params, 
+                  sqrt_s/2.0, 
+                  impact_parameter/2., 
+                  eng, 
+                  radial_sampler
+              );
         if (verbose) std::cout<<"Done!"<<std::endl;
     }
 
@@ -436,39 +462,43 @@ void mc_glauber_style_report(std::vector<Coll> &collisions, const xsectval &sigm
     double eps = 0.1/N_events;
 
     // int comp = 1;
-    for (int comp = 1; comp <= 4; ++comp) {
-
-        if (comp == 1) std::sort(collisions.begin(), collisions.end(), compNpart);
-        else if (comp == 2) std::sort(collisions.begin(), collisions.end(), compNcoll);
-        else if (comp == 3) std::sort(collisions.begin(), collisions.end(), compNtwo);
-        else if (comp == 4) std::sort(collisions.begin(), collisions.end(), compET);
-        std::reverse(collisions.begin(), collisions.end());
+    for (uint8_t comp = 1; comp <= 4; ++comp) {
 
         // Print out the header.
         std::cout  << std::endl;
         std::cout << "# sigma_inel = " << sigma_inel << " mb" << std::endl;
-        if (comp == 1) 
+
+        switch (comp)
         {
-            std::cout << "Using Npart for centrality determination" << std::endl << std::endl;;
-            std::cout << "# cent%\t nPmax\t nPmin\t <b>\t <nPart> <nColl> <T_AA>" << std::endl;
-        } 
-        else if (comp == 2) 
-        {
-            std::cout << "Using Ncoll for centrality determination" << std::endl << std::endl;;
-            std::cout << "# cent%\t nCmax\t nCmin\t <b>\t <nPart> <nColl> <T_AA>" << std::endl;
-        } 
-        else if (comp == 3) 
-        {
-            std::cout << "Using two-component (ancestors) model for centrality"
-                << " determination" << std::endl << std::endl;;
-            std::cout << "# cent%\t nAmax\t nAmin\t <b>\t <nPart> <nColl> <T_AA>" << std::endl;
-        } 
-        else if (comp == 4) 
-        {
-            std::cout << "Using sumET model for centrality determination" 
-                << std::endl << std::endl;;
-            std::cout << "# cent%\t ETmax\t ETmin\t <b>\t <nPart> <nColl> <T_AA>" << std::endl;
+            case 1:
+                std::sort(collisions.begin(), collisions.end(), compNpart);
+                std::cout << "Using Npart for centrality determination" 
+                          << std::endl << std::endl
+                          << "# cent%\t nPmax\t nPmin\t <b>\t <nPart> <nColl> <T_AA>"
+                          << std::endl;
+                break;
+            case 2:
+                std::sort(collisions.begin(), collisions.end(), compNcoll);
+                std::cout << "Using Ncoll for centrality determination" 
+                          << std::endl << std::endl
+                          << "# cent%\t nCmax\t nCmin\t <b>\t <nPart> <nColl> <T_AA>"
+                          << std::endl;
+                break;
+            case 3:
+                std::sort(collisions.begin(), collisions.end(), compNtwo);
+                std::cout << "Using two-component (ancestors) model for centrality determination"
+                          << std::endl << std::endl
+                          << "# cent%\t nAmax\t nAmin\t <b>\t <nPart> <nColl> <T_AA>"
+                          << std::endl;
+                break;
+            default: //case 4
+                std::sort(collisions.begin(), collisions.end(), compET);
+                std::cout << "Using sumET model for centrality determination" 
+                          << std::endl << std::endl
+                          << "# cent%\t ETmax\t ETmin\t <b>\t <nPart> <nColl> <T_AA>"
+                          << std::endl;
         }
+        std::reverse(collisions.begin(), collisions.end());
 
         std::vector<Coll> centrality;
         // Number of collisions within centrality class i.
@@ -477,41 +507,40 @@ void mc_glauber_style_report(std::vector<Coll> &collisions, const xsectval &sigm
             uint lower = static_cast<uint>(binsLow[i]*N_events+eps);
             uint upper = static_cast<uint>(binsHigh[i]*N_events+eps);
             centrality.clear();
-            for (;lower<upper;lower++)
+            while (lower<upper)
             {
-                centrality.push_back(collisions.at(lower));
+                centrality.push_back(collisions.at(lower++));
             }
-      
 
             // Print the centrality selection.
             std::cout << binsLow[i]*100 << " " << binsHigh[i]*100 << '\t';
-            if(comp == 1)
+
+            switch (comp)
             {
-                std::cout << centrality[0].getNpart() << '\t' 
-                    << centrality[centrality.size() - 1].getNpart() << '\t';
+                case 1:
+                    std::cout << centrality[0].getNpart() << '\t' 
+                              << centrality[centrality.size() - 1].getNpart() << '\t';
+                    break;
+                case 2:
+                    std::cout << centrality[0].getNcoll() << '\t' 
+                              << centrality[centrality.size() - 1].getNcoll() << '\t';
+                    break;
+                case 3:
+                    std::cout << centrality[0].getNtwo() << '\t' 
+                              << centrality[centrality.size() - 1].getNtwo() << '\t';
+                    break;
+                default : //case 4
+                    std::cout << centrality[0].getET() << '\t' 
+                              << centrality[centrality.size() - 1].getET() << '\t';
+                    break;
             }
-            else if(comp == 2)
-            {
-                std::cout << centrality[0].getNcoll() << '\t' 
-                    << centrality[centrality.size() - 1].getNcoll() << '\t';
-            } 
-            else if(comp == 3)
-            {
-                std::cout << centrality[0].getNtwo() << '\t' 
-                    << centrality[centrality.size() - 1].getNtwo() << '\t';
-            } 
-            else if(comp == 4)
-            {
-                std::cout << centrality[0].getET() << '\t' 
-                    << centrality[centrality.size() - 1].getET() << '\t';
-            } 
 
             std::cout << calc_ave<double>(centrality, &Coll::getB) << '\t' 
-                    << calc_ave<ulong>(centrality, &Coll::getNpart) << '\t' 
-                    << calc_ave<ulong>(centrality, &Coll::getNcoll) << '\t' 
-                    << calc_ave<ulong>(centrality, &Coll::getNcoll)/sigma_inel << '\t' 
-                    // << calc_ave<double>(centrality, &Coll::getET) << '\t' 
-                    << std::endl;      
+                      << calc_ave<ulong>(centrality, &Coll::getNpart) << '\t' 
+                      << calc_ave<ulong>(centrality, &Coll::getNcoll) << '\t' 
+                      << calc_ave<ulong>(centrality, &Coll::getNcoll)/sigma_inel << '\t' 
+                      // << calc_ave<double>(centrality, &Coll::getET) << '\t' 
+                      << std::endl;      
         }
     }
 } 
@@ -617,6 +646,7 @@ void collide_nuclei
             }
 
             nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
+
             if (AA_params.mc_glauber_mode)
             {
                 // "ball" diameter = distance at which two nucleons interact
@@ -743,11 +773,11 @@ auto calculate_tAB
 ) noexcept -> spatial
 {
     spatial tAB=0.0; //sum(T_pp(b_ij + b))
-    size_t A=pro.size(), B=tar.size();
+    uint16_t A=pro.size(), B=tar.size();
 
-    for (size_t i=0; i<A; i++)
+    for (uint16_t i=0; i<A; i++)
     {
-        for (size_t j=0; j<B; j++)
+        for (uint16_t j=0; j<B; j++)
         {
             tAB += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
         }   
@@ -764,9 +794,9 @@ auto calculate_sum_tpp
 ) noexcept -> spatial
 {
     spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
-    size_t A=nucleus.size();
+    uint16_t A=nucleus.size();
 
-    for (size_t i=0; i<A; i++)
+    for (uint16_t i=0; i<A; i++)
     {
         sum_tpp += Tpp((nuc.co - nucleus.at(i).co).magt2());
     }
@@ -996,7 +1026,7 @@ void collide_nuclei_with_spatial_pdfs_full
     const spatial inv3pisigma2 = 1/(3*M_PI*sigma2),  inv12sigma2 = 1/(12*sigma2);
     const spatial inv8pi2sigma4 = 1/(8*M_PI*M_PI*sigma2*sigma2),  inv8sigma2 = 1/(8*sigma2);
     std::array<double, 3> T_sums {-0.5, -0.5, 1.0};
-    size_t A_size=pro.size(), B_size=tar.size();
+    uint16_t A_size=pro.size(), B_size=tar.size();
     coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0}, dummy5{0,0,0}, dummy6{0,0,0};//For speeding up the calculations of the sums
 
     spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, Tpp);
@@ -1174,7 +1204,7 @@ void collide_nuclei_with_spatial_pdfs_factored
     const spatial inv3pisigma2 = 1/(3*M_PI*sigma2),  inv12sigma2 = 1/(12*sigma2);
     const spatial inv8pi2sigma4 = 1/(8*M_PI*M_PI*sigma2*sigma2),  inv8sigma2 = 1/(8*sigma2);
     std::array<double, 3> T_sums {-0.5, -0.5, 1.0};
-    size_t A_size=pro.size(), B_size=tar.size();
+    uint16_t A_size=pro.size(), B_size=tar.size();
     coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0}, dummy5{0,0,0}, dummy6{0,0,0};//For speeding up the calculations of the sums
 
     spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, Tpp);
@@ -1420,7 +1450,7 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets_mf(const double &tol
     grid_iter_list.push_back(grid4.begin());
   
     // total number of elements
-    size_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3]; 
+    uint64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3]; 
 
     std::ofstream sigma_jet_grid_file;
     sigma_jet_grid_file.open("sigma_jet_grid.dat", std::ios::out);
@@ -1447,24 +1477,45 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets_mf(const double &tol
 
     // fill in the values of f(x) at the gridpoints. 
     // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-    std::vector<size_t> c_style_indexes(num_elements);
+    std::vector<uint64_t> c_style_indexes(num_elements);
     std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3], rad2 = dim_Ns[2]*dim_Ns[3], rad3 = dim_Ns[3]; //These will help untangle the C-style index into coordinates
+    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3], 
+                   rad2 = dim_Ns[2]*dim_Ns[3], 
+                   rad3 = dim_Ns[3]; //These will help untangle the C-style index into coordinates
     // c_index = ii*rad1 + jj*rad2 + kk*rad3 + ll
     std::vector<xsectval> f_values(num_elements);
-    std::atomic<size_t> running_count{num_elements};
+    std::atomic<uint64_t> running_count{num_elements};
     
-    std::for_each(std::execution::par, c_style_indexes.begin(), c_style_indexes.end(), [=, &f_values, &running_count](const size_t index) {
-        uint16_t ll = index % rad1 % rad2 % rad3;
-        size_t i_dummy = (index - ll); 
-        uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
-        i_dummy = (i_dummy - kk*rad3); 
-        uint16_t jj = (i_dummy % rad1) / rad2;
-        uint16_t ii = (i_dummy - jj*rad2) / rad1;
-        xsectval dummy = pqcd::calculate_spatial_sigma_jet_mf(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, grid1[ii], grid2[jj], grid3[kk], grid4[ll]);
-        f_values[index] = dummy;
-        PrintThread{} <<'\r'<<--running_count<<" left of "<<num_elements<<" grid points to be calculated";
-    });
+    std::for_each
+    (
+        std::execution::par, 
+        c_style_indexes.begin(), 
+        c_style_indexes.end(), 
+        [=, &f_values, &running_count](const uint64_t index) 
+        {
+            uint16_t ll = index % rad1 % rad2 % rad3;
+            uint64_t i_dummy = (index - ll); 
+            uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
+            i_dummy = (i_dummy - kk*rad3); 
+            uint16_t jj = (i_dummy % rad1) / rad2;
+            uint16_t ii = (i_dummy - jj*rad2) / rad1;
+            xsectval dummy = pqcd::calculate_spatial_sigma_jet_mf
+                             (
+                                 p_p_pdf, 
+                                 p_n_pdf, 
+                                 &mand_s, 
+                                 &kt02, 
+                                 &jet_params, 
+                                 grid1[ii], 
+                                 grid2[jj], 
+                                 grid3[kk], 
+                                 grid4[ll]
+                             );
+            f_values[index] = dummy;
+            PrintThread{} <<'\r'<<--running_count<<" left of "
+                          <<num_elements<<" grid points to be calculated";
+        }
+    );
 
 
     /*if (max_threads<dim_Ns[2]*dim_Ns[3])
@@ -1477,17 +1528,17 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets_mf(const double &tol
     std::vector<std::thread> grid_threads(num_elements);
 
     std::vector<xsectval> f_values(num_elements);
-    size_t running_count=0;
+    uint64_t running_count=0;
     xsectval dummy;
     std::mutex dummy_lock;
 
 
-            for (uint16_t ii=0; ii<num_elements; ii++)
+            for (uint64_t ii=0; ii<num_elements; ii++)
             {
                 grid_promises[ii] = std::promise<xsectval>();
                 grid_futures[ii] = grid_promises[ii].get_future();
             }
-    size_t gi=0;
+    uint64_t gi=0;
 
     for (uint16_t i=0; i<dim_Ns[0]; i++)
     {
@@ -1677,7 +1728,7 @@ uint8_t iiii=0;
     grid_iter_list.push_back(grid5.begin());
   
     // total number of elements
-    size_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3] * dim_Ns[4]; 
+    uint64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3] * dim_Ns[4]; 
 
     std::ofstream sigma_jet_grid_file;
     sigma_jet_grid_file.open("sigma_jet_full_grid.dat", std::ios::out);
@@ -1708,27 +1759,37 @@ uint8_t iiii=0;
 
     // fill in the values of f(x) at the gridpoints. 
     // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-    std::vector<size_t> c_style_indexes(num_elements);
+    std::vector<uint64_t> c_style_indexes(num_elements);
     std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3]*dim_Ns[4], rad2 = dim_Ns[2]*dim_Ns[3]*dim_Ns[4], rad3 = dim_Ns[3]*dim_Ns[4], rad4 = dim_Ns[4]; //These will help untangle the C-style index into coordinates
+    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
+                   rad2 = dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
+                   rad3 = dim_Ns[3]*dim_Ns[4], 
+                   rad4 = dim_Ns[4]; //These will help untangle the C-style index into coordinates
     // c_index = ii*rad1 + jj*rad2 + kk*rad3 + ll*rad4 + mm
     std::vector<xsectval> f_values(num_elements);
-    std::atomic<size_t> running_count{num_elements};
+    std::atomic<uint64_t> running_count{num_elements};
     
-    std::for_each(std::execution::par, c_style_indexes.begin(), c_style_indexes.end(), [=, &f_values, &running_count](const size_t index) {
-        uint16_t mm = index % rad1 % rad2 % rad3 % rad4;
-        size_t i_dummy = (index - mm); 
-        uint16_t ll = (i_dummy % rad1 % rad2 % rad3) / rad4;
-        i_dummy = (i_dummy - ll*rad4); 
-        uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
-        i_dummy = (i_dummy - kk*rad3); 
-        uint16_t jj = (i_dummy % rad1) / rad2;
-        uint16_t ii = (i_dummy - jj*rad2) / rad1;
-        xsectval dummy = sigma_jet_function(grid1[ii], grid2[jj], grid3[kk], grid4[ll], grid5[mm]);
-        //xsectval dummy = pqcd::calculate_spatial_sigma_jet_full(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[ii], &grid2[jj], &grid3[kk], &grid4[ll], &grid5[mm]);
-        f_values[index] = dummy;
-        PrintThread{} <<'\r'<<--running_count<<" left of "<<num_elements<<" grid points to be calculated";
-    });
+    std::for_each
+    (
+        std::execution::par, 
+        c_style_indexes.begin(), 
+        c_style_indexes.end(), 
+        [=, &f_values, &running_count](const uint16_t index) 
+        {
+            uint16_t mm = index % rad1 % rad2 % rad3 % rad4;
+            uint64_t i_dummy = (index - mm); 
+            uint16_t ll = (i_dummy % rad1 % rad2 % rad3) / rad4;
+            i_dummy = (i_dummy - ll*rad4); 
+            uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
+            i_dummy = (i_dummy - kk*rad3); 
+            uint16_t jj = (i_dummy % rad1) / rad2;
+            uint16_t ii = (i_dummy - jj*rad2) / rad1;
+            xsectval dummy = sigma_jet_function(grid1[ii], grid2[jj], grid3[kk], grid4[ll], grid5[mm]);
+            //xsectval dummy = pqcd::calculate_spatial_sigma_jet_full(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[ii], &grid2[jj], &grid3[kk], &grid4[ll], &grid5[mm]);
+            f_values[index] = dummy;
+            PrintThread{} <<'\r'<<--running_count<<" left of "<<num_elements<<" grid points to be calculated";
+        }
+    );
 
 
     for (uint16_t i=0; i<dim_Ns[0]; i++)
@@ -1762,7 +1823,7 @@ InterpMultilinear<4, xsectval> read_sigma_jets_mf(const std::string &filename) n
 
     std::ifstream input(filename);
 
-    std::array<size_t,4> dim_Ns;
+    std::array<uint16_t,4> dim_Ns;
     std::vector<spatial> grid1, grid2, grid3, grid4;
     std::vector< std::vector<spatial>::iterator > grid_iter_list;
     std::vector<xsectval> f_values;
@@ -1774,7 +1835,7 @@ InterpMultilinear<4, xsectval> read_sigma_jets_mf(const std::string &filename) n
 
         std::getline(input, line); //#2
         std::istringstream line_stream(line);
-        size_t num_elements;
+        uint64_t num_elements;
         line_stream.ignore(256,'=');
         line_stream >> num_elements;
 
@@ -1872,7 +1933,7 @@ InterpMultilinear<5, xsectval> read_sigma_jets_full(const std::string &filename)
 
     std::ifstream input(filename);
 
-    std::array<size_t,5> dim_Ns;
+    std::array<uint16_t,5> dim_Ns;
     std::vector<spatial> grid1, grid2, grid3, grid4, grid5;
     std::vector< std::vector<spatial>::iterator > grid_iter_list;
     std::vector<xsectval> f_values;
@@ -1884,7 +1945,7 @@ InterpMultilinear<5, xsectval> read_sigma_jets_full(const std::string &filename)
 
         std::getline(input, line); //#2
         std::istringstream line_stream(line);
-        size_t num_elements;
+        uint64_t num_elements;
         line_stream.ignore(256,'=');
         line_stream >> num_elements;
 
@@ -2130,7 +2191,7 @@ int main()
         }
 
         nof_collisions++;
-        ulong NColl=binary_collisions.size();
+        uint32_t NColl=binary_collisions.size();
 
         if (NColl<1) 
         {
@@ -2160,7 +2221,7 @@ int main()
         std::cout<<"\rA+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events<<std::flush;
 
 
-        uint Npart=0;
+        uint32_t Npart=0;
         for (auto &A : pro)
         {
             if (A.wounded)
