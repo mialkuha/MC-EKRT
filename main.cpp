@@ -418,7 +418,11 @@ auto generate_nuclei
 }
 
 //Checks whether the saturation criterium allows the candidate to be added TODO
-bool fits_into_ps(const std::vector<dijet_specs> &olds, const dijet_specs &candidate) noexcept
+auto fits_into_ps
+(
+    const std::vector<dijet_specs> &olds, 
+    const dijet_specs &candidate
+) noexcept -> bool
 {
     if (olds.size() + static_cast<uint>(candidate.kt) < 0)
     {
@@ -427,7 +431,11 @@ bool fits_into_ps(const std::vector<dijet_specs> &olds, const dijet_specs &candi
     return true;
 }
 
-void filter_end_state(std::vector<nn_coll> &binary_collisions, std::vector<dijet_specs> &filtered_scatterings)
+auto filter_end_state
+(
+    std::vector<nn_coll> &binary_collisions, 
+    std::vector<dijet_specs> &filtered_scatterings
+) noexcept -> void
 {
     std::vector<dijet_specs> candidates;
 
@@ -456,7 +464,15 @@ void filter_end_state(std::vector<nn_coll> &binary_collisions, std::vector<dijet
     std::cout << "filtered_scatterings.size() =  " << filtered_scatterings.size() << std::endl;
 }
 
-void mc_glauber_style_report(std::vector<Coll> &collisions, const xsectval &sigma_inel, const uint &N_events, const uint &nBins, const double *const binsLow, const double *const binsHigh) noexcept
+auto mc_glauber_style_report
+(
+    std::vector<Coll> &collisions, 
+    const xsectval &sigma_inel, 
+    const uint &N_events, 
+    const uint &nBins, 
+    const double *const binsLow, 
+    const double *const binsHigh
+) noexcept -> void
 {
     // Make sure that no rounding downwards.
     double eps = 0.1/N_events;
@@ -1004,7 +1020,7 @@ auto collide_nuclei_with_spatial_pdfs_averaging
 /*    double lowest1 = 100, lowest2 = 100, lowest3 = 100;
     double biggest1 = 0, biggest2 = 0, biggest3 = 0;*/
 
-void collide_nuclei_with_spatial_pdfs_full
+auto collide_nuclei_with_spatial_pdfs_full
 (
     std::vector<nucleon> &pro, 
     std::vector<nucleon> &tar, 
@@ -1018,7 +1034,7 @@ void collide_nuclei_with_spatial_pdfs_full
     const spatial &sigma2, 
     const coords &b_vector,
     std::ofstream &log_file
-) noexcept
+) noexcept -> void
 {
 
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
@@ -1180,9 +1196,7 @@ void collide_nuclei_with_spatial_pdfs_full
     }
 }
 
-double farthest =0;
-
-void collide_nuclei_with_spatial_pdfs_factored
+auto collide_nuclei_with_spatial_pdfs_factored
 (
     std::vector<nucleon> &pro, 
     std::vector<nucleon> &tar, 
@@ -1196,7 +1210,7 @@ void collide_nuclei_with_spatial_pdfs_factored
     const spatial &sigma2, 
     const coords &b_vector,
     std::ofstream &log_file
-) noexcept
+) noexcept -> void
 {
 
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
@@ -1354,7 +1368,12 @@ void collide_nuclei_with_spatial_pdfs_factored
 }
 
 // return an evenly spaced 1-d grid of doubles.
-std::vector<double> linspace(const double &first, const double &last, const uint16_t &len) noexcept
+auto linspace
+(
+    const double &first, 
+    const double &last, 
+    const uint16_t &len
+) noexcept -> std::vector<double>
 {
     std::vector<double> result(len);
     double step = (last-first) / (len - 1);
@@ -1362,9 +1381,19 @@ std::vector<double> linspace(const double &first, const double &last, const uint
     return result;
 }
 
-InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets_mf(const double &tolerance, std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-        std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, const momentum &mand_s, const momentum &kt02, const pqcd::sigma_jet_params &jet_params, 
-        const double &upper_tAA_0_limit, const double &lower_tAA_0_limit, const double &upper_sumTpp_limit, const double &lower_sumTpp_limit) noexcept
+auto calculate_spatial_sigma_jets_mf
+(
+    const double &tolerance, 
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
+    const momentum &mand_s, 
+    const momentum &kt02, 
+    const pqcd::sigma_jet_params &jet_params, 
+    const double &upper_tAA_0_limit, 
+    const double &lower_tAA_0_limit, 
+    const double &upper_sumTpp_limit, 
+    const double &lower_sumTpp_limit
+) noexcept -> InterpMultilinear<4, xsectval>
 {
     const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
     std::array<uint16_t,4> dim_Ns{0}; //How many points to calculate in each dimension
@@ -1575,9 +1604,17 @@ InterpMultilinear<4, xsectval> calculate_spatial_sigma_jets_mf(const double &tol
     return InterpMultilinear<4, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
 }
 
-InterpMultilinear<5, xsectval> calculate_spatial_sigma_jets_full(const double &tolerance, std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-        std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, const momentum &mand_s, const momentum &kt02, const pqcd::sigma_jet_params &jet_params, 
-        const std::array<const double, 4> &lower_limits, const std::array<const double, 4> &upper_limits) noexcept
+auto calculate_spatial_sigma_jets_full
+(
+    const double &tolerance, 
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
+    const momentum &mand_s, 
+    const momentum &kt02, 
+    const pqcd::sigma_jet_params &jet_params, 
+    const std::array<const double, 4> &lower_limits, 
+    const std::array<const double, 4> &upper_limits
+) noexcept -> InterpMultilinear<5, xsectval>
 {
     const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
     std::array<uint16_t,5> dim_Ns{0}; //How many points to calculate in each dimension
@@ -1817,7 +1854,10 @@ uint8_t iiii=0;
     return InterpMultilinear<5, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
 }
 
-InterpMultilinear<4, xsectval> read_sigma_jets_mf(const std::string &filename) noexcept
+auto read_sigma_jets_mf
+(
+    const std::string &filename
+) noexcept -> InterpMultilinear<4, xsectval>
 {
 
     std::ifstream input(filename);
@@ -1927,7 +1967,10 @@ InterpMultilinear<4, xsectval> read_sigma_jets_mf(const std::string &filename) n
     return InterpMultilinear<4, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data());
 }
 
-InterpMultilinear<5, xsectval> read_sigma_jets_full(const std::string &filename) noexcept
+auto read_sigma_jets_full
+(
+    const std::string &filename
+) noexcept -> InterpMultilinear<5, xsectval>
 {
 
     std::ifstream input(filename);
@@ -2065,27 +2108,46 @@ int main()
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
     //General parameters for the simulation
-    const bool read_nuclei_from_file = false, end_state_filtering = false, average_spatial_taas=false;
-    uint desired_N_events = 200, AA_events = 0, nof_collisions = 0;
-    const spatial b_min=0, b_max=20;
+    const bool    read_nuclei_from_file = false, 
+                  end_state_filtering   = false, 
+                  average_spatial_taas  = false;
+    uint16_t      desired_N_events      = 200,
+                  AA_events             = 0, 
+                  nof_collisions        = 0;
+    const spatial b_min                 = 0, 
+                  b_max                 = 20;
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1000));
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
-    std::uniform_real_distribution<double> unirand(0.0, 1.0);
+    std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
     //Parameters for the nuclei
-    const spatial rad_min=0, rad_max=20;
-    const std::function<double(const double&)> rad_pdf{[](const double & x){return x*x/(1+exp((x-6.62)/0.546));}};
+    const spatial rad_min=0, 
+                  rad_max=20;
+    const std::function<double(const double&)> rad_pdf{[](const double & x)
+    {
+        return x*x/(1+exp((x-6.62)/0.546));
+    }};
     auto radial_sampler = std::make_shared<ars>(rad_pdf, rad_min, rad_max);
-    nucleus_generator::nucleus_params nuc_params = {/*.N=*/208, /*.Z=*/82, /*.min_distance=*/0.4, /*.shift_cms=*/true, /*.correct_overlap_bias=*/false};
+    nucleus_generator::nucleus_params nuc_params = 
+    {
+        /* .N=                    */208, 
+        /* .Z=                    */82, 
+        /* .min_distance=         */0.4, 
+        /* .shift_cms=            */true, 
+        /* .correct_overlap_bias= */false
+    };
     
     //Parameters for the hard collisions
     const spatial proton_width_2 = pow(0.573, 2);
-    const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared) { return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); }}; // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
+    const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared)
+    {
+        return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
+    }}; 
     const xsectval sigma_inel_for_glauber = 41.5;//mb
-    const momentum sqrt_s = 5020;//GeV
-    const momentum mand_s = pow(sqrt_s, 2);//GeV^2
-    momentum kt0 = 2.728321;//GeV
-    momentum kt02 = pow(kt0, 2);//GeV^2
+    const momentum sqrt_s                 = 5020;//GeV
+    const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
+    momentum kt0                          = 2.728321;//GeV
+    momentum kt02                         = pow(kt0, 2);//GeV^2
     //rapidity ycut = 10.0;
     std::shared_ptr<LHAPDF::GridPDF> p_pdf(new LHAPDF::GridPDF("CT14lo", 0));
     const AA_collision_params coll_params
@@ -2168,8 +2230,8 @@ int main()
 
     if (verbose) std::cout<<"Done!"<<std::endl;
     
-    std::ofstream log_file;
-    log_file.open("log2.dat", std::ios::out);
+    //std::ofstream log_file;
+    //log_file.open("log2.dat", std::ios::out);
 
     do // while (AA_events < desired_N_events);
     {
@@ -2179,7 +2241,7 @@ int main()
         auto [pro, tar] = generate_nuclei(nuc_params, sqrt_s, impact_parameter, eng, radial_sampler, read_nuclei_from_file, verbose);        
         collide_nuclei(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose);
 
-        if (average_spatial_taas)
+        /*if (average_spatial_taas)
         {
             //collide_nuclei_with_spatial_pdfs_averaging(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp);
         }
@@ -2189,7 +2251,7 @@ int main()
             //collide_nuclei_with_spatial_pdfs_factored(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
             //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
             //log_file << std::endl;
-        }
+        }*/
 
         nof_collisions++;
         uint32_t NColl=binary_collisions.size();
@@ -2247,7 +2309,7 @@ int main()
 
     std::cout << collisions_for_reporting.size() << " collisions generated" << std::endl;
 
-    log_file.close();
+    //log_file.close();
 
     uint nBins = 16;
     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0};
