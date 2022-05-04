@@ -545,17 +545,17 @@ void mc_glauber_style_report(std::vector<Coll> &collisions, const xsectval &sigm
     }
 } 
 
-void collide_nuclei
-    (
-        std::vector<nucleon> &pro, 
-        std::vector<nucleon> &tar, 
-        std::vector<nn_coll> &binary_collisions, 
-        xsectval sigma_jet, 
-        std::uniform_real_distribution<double> unirand, 
-        std::shared_ptr<std::mt19937> eng, 
-        const AA_collision_params &AA_params,
-        const bool &verbose
-    ) noexcept
+auto collide_nuclei
+(
+    std::vector<nucleon> &pro, 
+    std::vector<nucleon> &tar, 
+    std::vector<nn_coll> &binary_collisions, 
+    xsectval sigma_jet, 
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng, 
+    const AA_collision_params &AA_params,
+    const bool &verbose
+) noexcept -> void
 {
 
     uint n_pairs = 0, mombroke = 0, nof_softs = 0;
@@ -621,11 +621,10 @@ void collide_nuclei
     std::variant<linear_interpolator, xsectval> &sigma_jets, 
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng, 
-    const AA_collision_params &AA_params, 
-    const pqcd::sigma_jet_params &sigma_params,
+    const AA_collision_params &AA_params,
+    const pqcd::diff_sigma::params &dsigma_params,
     const momentum &kt0,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::diff_sigma::params *const p_params,
     const double &power_law,
     std::variant<linear_interpolator, xsectval> &envelope_maximums,
     const bool &verbose
@@ -688,7 +687,7 @@ void collide_nuclei
                         unirand, 
                         eng,
                         p_p_pdf,
-                        p_params,
+                        dsigma_params,
                         power_law,
                         envelope_maximum
                     );
@@ -2089,17 +2088,19 @@ int main()
     momentum kt02 = pow(kt0, 2);//GeV^2
     //rapidity ycut = 10.0;
     std::shared_ptr<LHAPDF::GridPDF> p_pdf(new LHAPDF::GridPDF("CT14lo", 0));
-    const AA_collision_params coll_params{
+    const AA_collision_params coll_params
+    {
     /*mc_glauber_mode=          */false,
-    /*spatial_pdfs=             */true,
-    /*spatial_averaging=        */true,
-    /*calculate_end_state=      */false,
+    /*spatial_pdfs=             */false,
+    /*spatial_averaging=        */false,
+    /*calculate_end_state=      */true,
     /*reduce_nucleon_energies=  */false,
     /*sigma_inel_for_glauber=   */sigma_inel_for_glauber,
     /*Tpp=                      */Tpp,
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */sqrt_s,
-    /*energy_threshold=         */2.0/*GeV*/};
+    /*energy_threshold=         */kt0
+    };
     
     std::vector<nn_coll> binary_collisions;
     std::vector<dijet_specs> filtered_scatterings;
@@ -2108,8 +2109,8 @@ int main()
     //sigma_jet stuff
     const bool read_sigmajets_from_file = false;
     pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
-    /*projectile_with_npdfs=    */true,
-    /*target_with_npdfs=        */true,
+    /*projectile_with_npdfs=    */false,
+    /*target_with_npdfs=        */false,
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdf_setnumber=           */1,
@@ -2130,15 +2131,15 @@ int main()
     //std::vector<double> ys({0, 0.0935744, 0.188578, 0.239477, 0.291646, 0.344675, 0.398283, 0.452277, 0.506536, 0.560964, 0.615471, 0.670006, 0.724548, 0.778992, 0.833378, 0.887649, 0.941796, 0.995794, 1.04965, 1.10332, 1.15682, 1.21014, 1.26326, 1.31619, 1.36894, 1.42145, 1.47379, 1.52593, 1.57785, 1.62955, 1.68108, 1.73237, 1.78347, 1.83436, 1.88503, 1.93555, 1.98579, 2.08574, 2.18488, 2.28324, 2.38082, 2.47764, 2.57371, 2.66905, 2.76367, 2.85758, 2.95079, 3.04331, 3.13519, 3.22638, 3.31701, 3.40697, 3.49631, 3.58507, 3.67318, 3.76075, 3.84775, 3.93419, 4.02008, 4.10543, 4.19026, 4.27459, 4.35839, 4.44168, 4.5245, 4.60684, 4.68873, 4.77011, 4.85103, 4.93156, 5.01159, 5.09122, 5.17041, 5.24917, 5.32755, 5.40549, 5.48306, 5.56022, 5.63701, 5.71337, 5.78938, 5.86503, 5.94031, 6.01522, 6.08979, 6.16402, 6.23788, 6.3114, 6.38459, 6.45747, 6.53004, 6.60226, 6.67419, 6.74577, 6.8171, 6.88808, 6.95879, 7.02916, 7.09927, 7.16904, 7.23856, 7.30779, 7.37676, 7.4454, 7.5138, 7.58196, 7.64985, 7.71746, 7.78485, 7.85195, 7.91882, 7.98543, 8.05181, 8.11793, 8.18377, 8.2494, 8.3148, 8.37998, 8.44489, 8.50958, 8.57407, 8.63833, 8.70236, 8.76619, 8.82976, 8.89314, 8.95633, 9.01921, 9.08198, 9.14453, 9.20687, 9.26901, 9.33096, 9.39269, 9.45423, 9.51552, 9.57669, 9.63761, 9.69837, 9.759, 9.8194, 9.8796, 9.93964, 9.99949, 10.0592, 10.1187, 10.178, 10.2372, 10.2962, 10.355, 10.4136, 10.472, 10.5303, 10.5885, 10.6465, 10.7043, 10.7619, 10.8195, 10.8768, 10.934, 10.991, 11.0479, 11.1046, 11.1612, 11.2176, 11.3299, 11.4417, 11.5528, 11.6634, 11.7735, 11.883, 11.992, 12.1004, 12.2083, 12.3157, 12.4225, 12.5289, 12.6348, 12.7401, 12.8451, 12.9494, 13.0533, 13.1567, 13.2597, 13.3623, 13.4644, 13.566, 13.6672, 13.7679, 13.8683, 13.9682, 14.0677, 14.1668, 14.2655, 14.3637, 14.4616, 14.5591, 14.6562, 14.7529, 14.8492, 14.9452, 15.0408, 15.136, 15.2309, 15.3254, 15.4196, 15.5134, 15.6064, 15.7, 15.7928, 15.8853, 15.9774, 16.0692, 16.1606, 16.2517, 16.3426, 16.4331, 16.5233, 16.6131, 16.7026, 16.7919, 16.8809, 16.9695, 17.0579, 17.146, 17.2338, 17.3213, 17.4955, 17.6685, 17.8405, 18.0115, 18.1814, 18.3503, 18.5181, 18.6849, 18.8505, 19.0154, 19.1793, 19.3423, 19.5043, 19.6635, 19.8258, 19.9853, 20.1437, 20.3014, 20.4582, 20.6144, 20.7696, 20.924, 21.0776, 21.2303, 21.3817, 21.5337, 21.6841, 21.834, 21.9831, 22.1315, 22.2792, 22.4262, 22.5725, 22.7182, 22.863, 23.0073, 23.151, 23.294, 23.4364, 23.5781, 23.719, 23.8595, 23.9994, 24.1386, 24.2776, 24.4156, 24.5531, 24.6901, 24.8266, 24.9625, 25.0978, 25.233, 25.3673, 25.501, 25.6342, 25.7668, 25.8953, 26.0306, 26.2923, 26.5522, 26.81, 27.0662, 27.3207, 27.5731, 27.8237, 28.0725, 28.3195, 28.5649, 28.8088, 29.0509, 29.2916, 29.5306, 29.7682, 30.0043, 30.2389, 30.472, 30.7036, 30.9339, 31.1627, 31.3902, 31.6163, 31.8412, 32.0648, 32.2871, 32.5082, 32.728, 32.9465, 33.164, 33.3803, 33.5953, 33.8093, 34.0219, 34.2336, 34.4442, 34.6539, 34.8623, 35.0697, 35.2761, 35.4814, 35.6857, 35.8889, 36.0913, 36.2927, 36.4931, 36.6927, 36.8912, 37.0896, 37.2855, 37.4813, 37.6763, 37.8703, 38.0635, 38.256, 38.6383, 39.0172, 39.3929, 39.7655, 40.135, 40.5015, 40.865, 41.2257, 41.5835, 41.9386, 42.2908, 42.6407, 42.9878, 43.3325, 43.6746, 44.0136, 44.3508, 44.6858, 45.0184, 45.3494, 45.6776, 46.0035, 46.3273, 46.6491, 46.9687, 47.2862, 47.6017, 47.9152, 48.2269, 48.5367, 48.845, 49.151, 49.4553, 49.7577, 50.0586, 50.3576, 50.6544, 50.9501, 51.244, 51.5364, 51.8271, 52.1151, 52.404, 52.69, 52.9746, 53.2584, 53.5392, 53.8193, 54.098, 54.3751, 54.651, 55.1987, 55.7411, 56.2781, 56.8102, 57.3372, 57.8595, 58.3771, 58.89, 59.3983, 59.9023, 60.402, 60.8974, 61.3887, 61.8761, 62.3595, 62.8392, 63.315, 63.7871, 64.2556, 64.7202, 65.1818, 65.6392, 66.094, 66.5454, 66.9944, 67.4393, 67.8811, 68.3199, 68.7558, 69.1888, 69.6188, 70.0461, 70.4706, 70.8923, 71.3115, 71.7278, 72.1415, 72.5528, 72.9614, 73.3675, 73.7679, 74.0824, 74.5719, 74.9685, 75.3629, 75.755, 76.1448, 76.5324, 76.918, 77.682, 78.439, 79.1876, 79.9279, 80.661, 81.3864, 82.1047, 82.8156, 83.5201, 84.2178, 84.9089, 85.5936, 86.2722, 86.9445, 87.6111, 88.2717, 88.9267, 89.576, 90.22, 90.8587, 91.4924, 92.1207, 92.7441, 93.3627, 93.9764, 94.5857, 95.19, 95.79, 96.3855, 96.9767, 97.5627, 98.1454, 98.7241, 99.2995, 99.8702, 100.437, 101, 101.559, 102.114, 102.666, 103.215, 103.759, 104.3, 104.838, 105.373, 105.904, 106.957, 107.997, 109.025, 110.041, 111.046, 112.04, 113.023, 113.996, 114.958, 115.909, 116.851, 117.784, 118.707, 119.622, 120.528, 121.425, 122.313, 123.194, 124.067, 124.932, 125.79, 126.639, 127.482, 128.318, 129.146, 129.968, 130.783, 131.591, 132.393, 133.189, 133.978, 134.762, 135.539, 136.311, 137.077, 137.837, 138.592, 139.342, 140.087, 140.824, 141.558, 142.287, 143.011, 144.445, 145.86, 147.256, 148.635, 149.997, 151.343, 152.673, 153.987, 155.286, 156.569, 157.839, 159.095, 160.337, 161.566, 162.783, 163.989, 165.179, 166.359, 167.528, 168.685, 169.832, 170.968, 172.093, 173.21, 174.316, 175.408, 176.494, 177.571, 178.639, 179.698, 180.747, 181.788, 182.821, 183.845, 184.861, 185.869, 186.87, 187.863, 188.849, 189.827, 190.798, 191.761, 193.668, 195.548, 197.402, 199.231, 201.037, 202.818, 204.577, 206.315, 208.03, 209.726, 211.406, 213.057, 214.695, 216.313, 217.913, 219.496, 221.064, 222.613, 224.147, 225.666, 227.169, 228.658, 230.133, 231.592, 233.038, 234.471, 235.893, 237.3, 238.691, 240.072, 241.442, 242.8, 244.147, 245.485, 246.809, 248.112, 249.421, 250.713, 251.995, 253.267, 255.782, 258.259, 260.711, 263.11, 265.474, 267.813, 270.12, 272.396, 274.643, 276.861, 279.051, 281.215, 283.354, 285.466, 287.553, 289.617, 291.657, 293.675, 295.67, 297.643, 299.597, 301.531, 303.444, 305.338, 307.215, 309.072, 310.911, 312.733, 314.537, 316.325, 318.096, 319.851, 321.591, 323.315, 325.024, 326.719, 328.399, 330.065, 333.363, 336.596, 339.784, 342.932, 346.016, 349.064, 352.067, 355.028, 357.948, 360.828, 363.67, 366.488, 369.246, 371.982, 374.684, 377.353, 379.99, 382.596, 385.173, 387.721, 390.24, 392.732, 395.199, 397.638, 400.39, 403.11, 405.798, 408.457, 411.086, 413.685, 416.257, 418.802, 421.32, 423.812, 426.279, 428.72, 431.139, 433.533, 435.905, 438.255, 440.583, 442.888, 445.173, 447.447, 451.907, 456.301, 460.622, 464.871, 469.052, 473.168, 477.222, 481.216, 485.149, 489.027, 492.87, 496.648, 500.343, 504.014, 507.636, 511.213, 514.746, 518.234, 521.683, 525.089, 528.456, 531.783, 535.074, 538.327, 541.545, 544.725, 547.875, 550.992, 554.076, 557.13, 560.153, 563.15, 566.114, 569.05, 571.957, 574.838, 580.521, 586.104, 591.588, 596.98, 602.282, 607.499, 612.632, 617.687, 622.665});
     //std::variant<linear_interpolator, xsectval> sigma_jets = linear_interpolator(xs, ys);
     //Only one sigma_jet
-    //std::variant<linear_interpolator, xsectval> sigma_jets = xsectval(143.481);
-    //std::cout<<pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params)<<std::endl;
+    std::variant<linear_interpolator, xsectval> sigma_jets = xsectval(143.481);
+    std::cout<<pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params)<<std::endl;
     //std::variant<linear_interpolator, xsectval> sigma_jets = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params);
 
     //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
     //std::cout<<kt02<<std::endl;
 
-    std::array<xsectval,4> sigma_jets = pqcd::calculate_spatial_sigma_jet_factored(p_pdf, p_pdf, &mand_s, &kt02, &jet_params);
-    std::cout<<sigma_jets[0]<<' '<<sigma_jets[1]<<' '<<sigma_jets[2]<<' '<<sigma_jets[3]<<std::endl;
+    //std::array<xsectval,4> sigma_jets = pqcd::calculate_spatial_sigma_jet_factored(p_pdf, p_pdf, &mand_s, &kt02, &jet_params);
+    //std::cout<<sigma_jets[0]<<' '<<sigma_jets[1]<<' '<<sigma_jets[2]<<' '<<sigma_jets[3]<<std::endl;
 
     //InterpMultilinear<4, xsectval> sigma_jets = read_sigma_jets_mf("sigma_jet_mf_grid.dat");
     //InterpMultilinear<5, xsectval> sigma_jets = read_sigma_jets_full("sigma_jet_full_grid.dat");
@@ -2152,7 +2153,7 @@ int main()
         ////std::cout<<sigma_jets.interp(args.begin())<<std::endl;
         ////std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
 
-        double tolerance=0.25;//, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
+        //double tolerance=0.25;//, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
         //                                            1.35134e-186, 1.4788e-177, 1.02829e-215       4.24149, 3.609, 10.7237
         //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.0}, upper_limits = {4.5, 4.5, 11.0, 46.0};
         //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 28.4}, upper_limits = {3.6, 3.6, 8.8, 41.2};
@@ -2176,7 +2177,7 @@ int main()
         if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
         auto [pro, tar] = generate_nuclei(nuc_params, sqrt_s, impact_parameter, eng, radial_sampler, read_nuclei_from_file, verbose);        
-        //collide_nuclei(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose);
+        collide_nuclei(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose);
 
         if (average_spatial_taas)
         {
@@ -2184,10 +2185,10 @@ int main()
         }
         else
         {
-            log_file << impact_parameter << std::endl;
-            collide_nuclei_with_spatial_pdfs_factored(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
+            //log_file << impact_parameter << std::endl;
+            //collide_nuclei_with_spatial_pdfs_factored(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
             //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
-            log_file << std::endl;
+            //log_file << std::endl;
         }
 
         nof_collisions++;

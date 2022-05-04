@@ -156,8 +156,8 @@ public:
           const momentum &s_hat, 
           const momentum &t_hat, 
           const momentum &u_hat, 
-          const params *const p_params,
-          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf
+          const params *const p_params/*,
+          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
         ) noexcept -> xsectval;
 
         static auto spatial_sigma_jet_mf
@@ -182,7 +182,7 @@ public:
           const momentum &t_hat, 
           const momentum &u_hat, 
           const pqcd::diff_sigma::params *const p_params, 
-          std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
+          /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, */
           std::function<double(double const&)> rA_spatial,
           std::function<double(double const&)> rB_spatial,
           const std::array<const double, 3> &T_sums
@@ -231,7 +231,7 @@ public:
         const double &lambda, 
         std::uniform_real_distribution<double> unirand, 
         std::shared_ptr<std::mt19937> eng
-      ) noexcept -> int16_t;
+      ) noexcept -> uint8_t;
 
     static auto generate_2_to_2_scatt
       (
