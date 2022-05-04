@@ -12,15 +12,15 @@ namespace histogram
     public:
         histo_1d
         (
-            std::vector<double> &xs_
+            const std::vector<double> &xs_
         ) noexcept : 
             xs(xs_),
             counts(xs_.size(), 0.0)
         {}
         histo_1d
         (
-            std::vector<double> &xs_,
-            std::vector<double> &ys_
+            const std::vector<double> &xs_,
+            const std::vector<double> &ys_
         ) noexcept : 
             xs(xs_),
             counts(xs_.size()-1, 0.0)
