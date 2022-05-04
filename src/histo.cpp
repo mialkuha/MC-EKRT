@@ -1,11 +1,11 @@
 //Copyright (c) 2022 Mikko Kuha
 
-#include "histogram.hpp"
+#include "histo.hpp"
 
-auto histogram::histo_1d::add
+void histo_1d::add
 (
     const double &y
-) noexcept -> void
+) noexcept
 {
     if (y <= this->xs.front())
     {
@@ -13,23 +13,23 @@ auto histogram::histo_1d::add
         this->total_counts++;
         return;
     }
-
-    uint16_t xs_size = this->xs.size();
+    
+    uint16_t y_index = 0;
 
     for 
     (
-        auto x_it = ++this->xs.begin(),
-             y_it = this->counts.begin();
+        auto x_it = ++this->xs.begin();
         x_it!=this->xs.end(); 
-        x_it++, y_it++
+        x_it++
     )
     {
         if (y <= *x_it)
         {
-            (*y_it)++;
+            this->counts[y_index]++;
             this->total_counts++;
             return;
         }
+        y_index++;
     }
 
     this->overf++;

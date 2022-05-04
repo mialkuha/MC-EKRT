@@ -10,6 +10,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <execution>
 #include <fstream>
@@ -258,9 +259,9 @@ auto find_max_dsigma
             printf ("converged to maximum at\n");
             printf ("%5i %10.3e %10.3e f() = %10.3e size = %.3f\n",
                     int(iter),
-                    gsl_vector_get (minimizer->ys, 0),
-                    gsl_vector_get (minimizer->ys, 1),
-                    -minimizer->fval, size);
+                    gsl_vector_get (minimizer->x, 0),
+                    gsl_vector_get (minimizer->x, 1),
+                    -minimizer->fval, simplex_size);
         }
 
     } while (status == GSL_CONTINUE && iter < 100);
@@ -268,8 +269,8 @@ auto find_max_dsigma
     max_dsigma = static_cast<xsectval>(-minimizer->fval);
     error_est = static_cast<xsectval>(simplex_size);
 
-    //  double y1 = gsl_vector_get(minimizer->ys, 0);
-    //  double y2 = gsl_vector_get(minimizer->ys, 1);
+    //  double y1 = gsl_vector_get(minimizer->x, 0);
+    //  double y2 = gsl_vector_get(minimizer->x, 1);
 
     gsl_vector_free(ys);
     gsl_vector_free(init_step_size);
@@ -704,7 +705,7 @@ auto collide_nuclei
                         unirand, 
                         eng,
                         p_p_pdf,
-                        dsigma_params,
+                        &dsigma_params,
                         power_law,
                         envelope_maximum
                     );
@@ -760,7 +761,7 @@ auto collide_nuclei
                         unirand, 
                         eng,
                         p_p_pdf,
-                        dsigma_params,
+                        &dsigma_params,
                         power_law,
                         envelope_maximum
                     );
@@ -789,7 +790,8 @@ auto calculate_tAB
 ) noexcept -> spatial
 {
     spatial tAB=0.0; //sum(T_pp(b_ij + b))
-    uint16_t A=pro.size(), B=tar.size();
+    uint16_t A=static_cast<uint16_t>(pro.size()), 
+             B=static_cast<uint16_t>(tar.size());
 
     for (uint16_t i=0; i<A; i++)
     {
@@ -810,7 +812,7 @@ auto calculate_sum_tpp
 ) noexcept -> spatial
 {
     spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
-    uint16_t A=nucleus.size();
+    uint16_t A=static_cast<uint16_t>(nucleus.size());
 
     for (uint16_t i=0; i<A; i++)
     {
@@ -914,8 +916,7 @@ auto collide_nuclei_with_spatial_pdfs_averaging
     const InterpMultilinear<4, xsectval> &sigma_jets,
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng, 
-    const AA_collision_params &AA_params, 
-    const pqcd::sigma_jet_params &sigma_params,
+    const AA_collision_params &AA_params,
     const momentum &kt0,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     const pqcd::diff_sigma::params *const p_params,
@@ -1031,9 +1032,7 @@ auto collide_nuclei_with_spatial_pdfs_full
     std::shared_ptr<std::mt19937> eng, 
     const AA_collision_params &params, 
     const bool &verbose, 
-    const std::function<spatial(const spatial&)> Tpp, 
-    const spatial &sigma2, 
-    const coords &b_vector,
+    const spatial &sigma2,
     std::ofstream &log_file
 ) noexcept -> void
 {
@@ -1042,7 +1041,8 @@ auto collide_nuclei_with_spatial_pdfs_full
     const spatial inv3pisigma2 = 1/(3*M_PI*sigma2),  inv12sigma2 = 1/(12*sigma2);
     const spatial inv8pi2sigma4 = 1/(8*M_PI*M_PI*sigma2*sigma2),  inv8sigma2 = 1/(8*sigma2);
     std::array<double, 3> T_sums {-0.5, -0.5, 1.0};
-    uint16_t A_size=pro.size(), B_size=tar.size();
+    //uint16_t A_size=static_cast<uint16_t>(pro.size()), 
+    //         B_size=static_cast<uint16_t>(tar.size());
     coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0}, dummy5{0,0,0}, dummy6{0,0,0};//For speeding up the calculations of the sums
 
     spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, Tpp);
@@ -1144,7 +1144,7 @@ auto collide_nuclei_with_spatial_pdfs_full
             }*/
 
             nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
-            xsectval sigma_jet;
+            xsectval sigma_jet=0;
             if (params.reduce_nucleon_energies) 
             {
                 //TODO
@@ -1203,13 +1203,12 @@ auto collide_nuclei_with_spatial_pdfs_factored
     std::vector<nucleon> &tar, 
     std::vector<nn_coll> &binary_collisions, 
     const std::array<xsectval, 4> &sigma_jets,
-    std::uniform_real_distribution<double> unirand, 
-    std::shared_ptr<std::mt19937> eng, 
+    /*std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng, */
     const AA_collision_params &params, 
     const bool &verbose, 
     const std::function<spatial(const spatial&)> Tpp, 
     const spatial &sigma2, 
-    const coords &b_vector,
     std::ofstream &log_file
 ) noexcept -> void
 {
@@ -1218,7 +1217,8 @@ auto collide_nuclei_with_spatial_pdfs_factored
     const spatial inv3pisigma2 = 1/(3*M_PI*sigma2),  inv12sigma2 = 1/(12*sigma2);
     const spatial inv8pi2sigma4 = 1/(8*M_PI*M_PI*sigma2*sigma2),  inv8sigma2 = 1/(8*sigma2);
     std::array<double, 3> T_sums {-0.5, -0.5, 1.0};
-    uint16_t A_size=pro.size(), B_size=tar.size();
+    uint16_t A_size=static_cast<uint16_t>(pro.size()), 
+             B_size=static_cast<uint16_t>(tar.size());
     coords dummy{0,0,0}, dummy2{0,0,0}, dummy3{0,0,0}, dummy4{0,0,0}, dummy5{0,0,0}, dummy6{0,0,0};//For speeding up the calculations of the sums
 
     spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, Tpp);
@@ -1296,7 +1296,7 @@ auto collide_nuclei_with_spatial_pdfs_factored
             T_sums[2] = T_sums[2]*(A_size/tAA_0)*(B_size/tBB_0);
 
             nn_coll newpair(&A, &B, 2 * sqrt(A.mom * B.mom));
-            xsectval sigma_jet;
+            xsectval sigma_jet=0;
             if (params.reduce_nucleon_energies) 
             {
                 //TODO
@@ -1508,7 +1508,7 @@ auto calculate_spatial_sigma_jets_mf
     // we will pass in a contiguous sequence, values are assumed to be laid out C-style
     std::vector<uint64_t> c_style_indexes(num_elements);
     std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3], 
+    const uint64_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3], 
                    rad2 = dim_Ns[2]*dim_Ns[3], 
                    rad3 = dim_Ns[3]; //These will help untangle the C-style index into coordinates
     // c_index = ii*rad1 + jj*rad2 + kk*rad3 + ll
@@ -1522,12 +1522,12 @@ auto calculate_spatial_sigma_jets_mf
         c_style_indexes.end(), 
         [=, &f_values, &running_count](const uint64_t index) 
         {
-            uint16_t ll = index % rad1 % rad2 % rad3;
+            uint64_t ll = index % rad1 % rad2 % rad3;
             uint64_t i_dummy = (index - ll); 
-            uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
+            uint64_t kk = (i_dummy % rad1 % rad2) / rad3;
             i_dummy = (i_dummy - kk*rad3); 
-            uint16_t jj = (i_dummy % rad1) / rad2;
-            uint16_t ii = (i_dummy - jj*rad2) / rad1;
+            uint64_t jj = (i_dummy % rad1) / rad2;
+            uint64_t ii = (i_dummy - jj*rad2) / rad1;
             xsectval dummy = pqcd::calculate_spatial_sigma_jet_mf
                              (
                                  p_p_pdf, 
@@ -1583,13 +1583,13 @@ auto calculate_spatial_sigma_jets_mf
         }
     }
 */  
-    for (uint16_t i=0; i<dim_Ns[0]; i++)
+    for (uint64_t i=0; i<dim_Ns[0]; i++)
     {
-        for (uint16_t j=0; j<dim_Ns[1]; j++)
+        for (uint64_t j=0; j<dim_Ns[1]; j++)
         {
-    	    for (uint16_t k=0; k<dim_Ns[2]; k++)
+    	    for (uint64_t k=0; k<dim_Ns[2]; k++)
             {
-                for (uint16_t l=0; l<dim_Ns[3]; l++)
+                for (uint64_t l=0; l<dim_Ns[3]; l++)
                 {
                     sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k*rad3 + l] << ' ';
             	}
@@ -1687,6 +1687,7 @@ uint8_t iiii=0;
     dim_Ns[0] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
     //sum_2
+    {
     uint8_t j=0;
     for (uint8_t i=0; i<8; i++)
     {
@@ -1714,7 +1715,7 @@ uint8_t iiii=0;
     }
     max_diff = *std::max_element(differences.begin(), differences.end());
     dim_Ns[2] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
-
+    }
     //TAA(0)
     /*
     j=0;
@@ -1798,7 +1799,7 @@ uint8_t iiii=0;
     // we will pass in a contiguous sequence, values are assumed to be laid out C-style
     std::vector<uint64_t> c_style_indexes(num_elements);
     std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-    const uint16_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
+    const uint64_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
                    rad2 = dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
                    rad3 = dim_Ns[3]*dim_Ns[4], 
                    rad4 = dim_Ns[4]; //These will help untangle the C-style index into coordinates
@@ -1811,16 +1812,16 @@ uint8_t iiii=0;
         std::execution::par, 
         c_style_indexes.begin(), 
         c_style_indexes.end(), 
-        [=, &f_values, &running_count](const uint16_t index) 
+        [=, &f_values, &running_count](const uint64_t index) 
         {
-            uint16_t mm = index % rad1 % rad2 % rad3 % rad4;
+            uint64_t mm = index % rad1 % rad2 % rad3 % rad4;
             uint64_t i_dummy = (index - mm); 
-            uint16_t ll = (i_dummy % rad1 % rad2 % rad3) / rad4;
+            uint64_t ll = (i_dummy % rad1 % rad2 % rad3) / rad4;
             i_dummy = (i_dummy - ll*rad4); 
-            uint16_t kk = (i_dummy % rad1 % rad2) / rad3;
+            uint64_t kk = (i_dummy % rad1 % rad2) / rad3;
             i_dummy = (i_dummy - kk*rad3); 
-            uint16_t jj = (i_dummy % rad1) / rad2;
-            uint16_t ii = (i_dummy - jj*rad2) / rad1;
+            uint64_t jj = (i_dummy % rad1) / rad2;
+            uint64_t ii = (i_dummy - jj*rad2) / rad1;
             xsectval dummy = sigma_jet_function(grid1[ii], grid2[jj], grid3[kk], grid4[ll], grid5[mm]);
             //xsectval dummy = pqcd::calculate_spatial_sigma_jet_full(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[ii], &grid2[jj], &grid3[kk], &grid4[ll], &grid5[mm]);
             f_values[index] = dummy;
@@ -1829,15 +1830,15 @@ uint8_t iiii=0;
     );
 
 
-    for (uint16_t i=0; i<dim_Ns[0]; i++)
+    for (uint64_t i=0; i<dim_Ns[0]; i++)
     {
-        for (uint16_t j=0; j<dim_Ns[1]; j++)
+        for (uint64_t j=0; j<dim_Ns[1]; j++)
         {
-    	    for (uint16_t k=0; k<dim_Ns[2]; k++)
+    	    for (uint64_t k=0; k<dim_Ns[2]; k++)
             {
-                for (uint16_t l=0; l<dim_Ns[3]; l++)
+                for (uint64_t l=0; l<dim_Ns[3]; l++)
                 {
-                    for (uint16_t m=0; m<dim_Ns[4]; m++)
+                    for (uint64_t m=0; m<dim_Ns[4]; m++)
                     {
                         sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k*rad3 + l*rad4 + m] << ' ';
             	    }      
@@ -2110,8 +2111,8 @@ int main()
     
     //General parameters for the simulation
     const bool    read_nuclei_from_file = false, 
-                  end_state_filtering   = false, 
-                  average_spatial_taas  = false;
+                  end_state_filtering   = false/*, 
+                  average_spatial_taas  = false*/;
     uint16_t      desired_N_events      = 200,
                   AA_events             = 0, 
                   nof_collisions        = 0;
@@ -2170,7 +2171,7 @@ int main()
     std::vector<Coll> collisions_for_reporting;
 
     //sigma_jet parameters
-    const bool read_sigmajets_from_file = false;
+    /*const bool read_sigmajets_from_file = false;*/
     pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */false,
     /*target_with_npdfs=        */false,
@@ -2286,7 +2287,7 @@ int main()
         }*/
 
         nof_collisions++;
-        uint32_t NColl=binary_collisions.size();
+        uint32_t NColl = static_cast<uint32_t>(binary_collisions.size());
 
         if (NColl<1) 
         {

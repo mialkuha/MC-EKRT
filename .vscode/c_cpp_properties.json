@@ -5,8 +5,6 @@
             "${workspaceFolder}/include",
             "/usr/local/include",
             "/usr/local/include/boost",
-            "/usr/local/include",
-            "/usr/local/include/boost",
             "include/",
             "${default}"
         ]
@@ -20,14 +18,18 @@
                 "/usr/local/include/boost/boost",
                 "include/",
                 "/home/mikko/vcpkg/installed/x64-linux/include",
-                "${default}"
+                "${default}",
+                "${workspaceFolder}/include"
             ],
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": "${default}",
                 "path": [
                     "/usr/local/include",
+                    "/usr/local/include/boost",
+                    "/usr/local/include/boost/boost",
                     "include/",
+                    "/home/mikko/vcpkg/installed/x64-linux/include",
                     "${default}"
                 ]
             },
