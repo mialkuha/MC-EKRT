@@ -3,7 +3,10 @@
 #ifndef HISTO_H
 #define HISTO_H
 
+#include <algorithm>
 #include <cstdint>
+#include <iostream>
+#include <tuple>
 #include <vector>
 
 class histo_1d
@@ -14,7 +17,10 @@ public:
         const std::vector<double> &xs_
     ) noexcept : 
         xs(xs_),
-        counts(xs_.size(), 0.0)
+        counts(xs_.size(), 0.0),
+        total_counts(0),
+        underf(0),
+        overf(0)
     {}
     histo_1d
     (
@@ -22,13 +28,16 @@ public:
         const std::vector<double> &ys_
     ) noexcept : 
         xs(xs_),
-        counts(xs_.size()-1, 0.0)
+        counts(xs_.size()-1, 0.0),
+        total_counts(0),
+        underf(0),
+        overf(0)
     { this->add(ys_); }
 
-    void add
+    auto add
     (
         const double &y
-    ) noexcept;
+    ) noexcept -> void;
 
     auto add
     (
@@ -42,11 +51,17 @@ public:
 
     auto get_histo() const noexcept;
 
+    friend bool operator==
+    (
+        const histo_1d& c1, 
+        const histo_1d& c2
+    ) noexcept;
+
 protected:
 private:
     const std::vector<double> xs;
     std::vector<double> counts;
-    uint64_t total_counts;
+    uint64_t total_counts{0};
     double underf{0.0};
     double overf{0.0};
 };
