@@ -10,7 +10,7 @@ auto histogram::histo_1d::add
     if (y <= this->xs.front())
     {
         this->underf++;
-        total_counts++;
+        this->total_counts++;
         return;
     }
 
@@ -27,11 +27,11 @@ auto histogram::histo_1d::add
         if (y <= *x_it)
         {
             (*y_it)++;
-            total_counts++;
+            this->total_counts++;
             return;
         }
     }
 
     this->overf++;
-    total_counts++;
+    this->total_counts++;
 }
