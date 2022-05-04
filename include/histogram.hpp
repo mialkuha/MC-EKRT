@@ -41,7 +41,7 @@ namespace histogram
             const histogram::histo_1d &other
         ) noexcept -> void;
 
-        auto get_histo() noexcept;
+        auto get_histo() const noexcept;
 
     protected:
     private:
