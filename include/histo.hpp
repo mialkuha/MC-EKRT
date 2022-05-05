@@ -76,7 +76,7 @@ public:
     ) noexcept : 
         xs(xs_),
         ys(ys_),
-        counts(xs_.size(), std::vector<double>(ys_.size(), 0.0)),
+        counts(xs_.size()-1, std::vector<double>(ys_.size()-1, 0.0)),
         total_counts(0),
         underf({0.0, 0.0}),
         overf({0.0, 0.0})
