@@ -17,7 +17,7 @@ public:
         const std::vector<double> &xs_
     ) noexcept : 
         xs(xs_),
-        counts(xs_.size(), 0.0),
+        counts(xs_.size()-1, 0.0),
         total_counts(0),
         underf(0),
         overf(0)
