@@ -77,7 +77,15 @@ public:
     ) noexcept : 
         xs(xs_),
         ys(ys_),
-        counts(xs_.size()-1, std::vector<double>(ys_.size()-1, 0.0)),
+        counts
+        (
+            xs_.size()-1, 
+            std::vector<double>
+            (
+                ys_.size()-1, 
+                0.0
+            )
+        ),
         total_counts(0),
         underf({0.0, 0.0}),
         overf({0.0, 0.0})
@@ -90,7 +98,7 @@ public:
 
     auto add
     (
-        const std::vector<std::tuple<double, double> > &xs
+        std::vector<std::tuple<double, double> > news
     ) noexcept -> void;
 
     auto add
@@ -116,6 +124,74 @@ private:
     uint64_t total_counts{0};
     std::tuple<double, double> underf{0.0, 0.0};
     std::tuple<double, double> overf{0.0, 0.0};
+};
+
+class histo_3d
+{
+public:
+    histo_3d
+    (
+        const std::vector<double> &xs_,
+        const std::vector<double> &ys_,
+        const std::vector<double> &zs_
+    ) noexcept : 
+        xs(xs_),
+        ys(ys_),
+        zs(zs_),
+        counts
+        (
+            xs_.size()-1, 
+            std::vector<std::vector<double> >
+            (
+                ys_.size()-1, 
+                std::vector<double>
+                (
+                    zs_.size()-1, 
+                    0.0
+                )
+            )
+        ),
+        total_counts(0),
+        underf({0.0, 0.0, 0.0}),
+        overf({0.0, 0.0, 0.0})
+    {}
+
+    auto add
+    (
+        const std::tuple<double, double, double> &x
+    ) noexcept -> void;
+
+    auto add
+    (
+        std::vector<std::tuple<double, double, double> > news
+    ) noexcept -> void;
+
+    auto add
+    (
+        const histo_3d &other
+    ) noexcept -> void;
+
+    auto get_histo() const noexcept;
+
+    auto project_1d(const uint8_t dim_left) const noexcept; //TODO
+
+    auto project_2d(const uint8_t dim_projected) const noexcept; //TODO
+
+    friend bool operator==
+    (
+        const histo_3d& c1, 
+        const histo_3d& c2
+    ) noexcept;
+
+protected:
+private:
+    const std::vector<double> xs;
+    const std::vector<double> ys;
+    const std::vector<double> zs;
+    std::vector<std::vector<std::vector<double> > > counts;
+    uint64_t total_counts{0};
+    std::tuple<double, double, double> underf{0.0, 0.0, 0.0};
+    std::tuple<double, double, double> overf{0.0, 0.0, 0.0};
 };
 
 #endif // HISTO_H

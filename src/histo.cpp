@@ -122,17 +122,32 @@ auto histo_2d::add
 ) noexcept -> void
 {
     auto [ new_x, new_y ] = x;
-    if (new_x <= this->xs[0])
+
+    {//Overflow or underflow ?
+        if (new_x <= this->xs[0])
         {
             std::get<0>(this->underf)++;
             this->total_counts++;
             return;
         }
-    else if (new_y <= this->ys[0])
-    {
-        std::get<1>(this->underf)++;
-        this->total_counts++;
-        return;
+        else if (new_y <= this->ys[0])
+        {
+            std::get<1>(this->underf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_x > this->xs.back())
+        {
+            std::get<0>(this->overf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_y > this->ys.back())
+        {
+            std::get<1>(this->overf)++;
+            this->total_counts++;
+            return;
+        }
     }
     
     uint16_t x_index = 0, y_index = 0;
@@ -160,22 +175,51 @@ auto histo_2d::add
                 }
                 y_index++;
             }
-            std::get<1>(this->overf)++;
-            this->total_counts++;
-            return;
+            std::cout<<"ERROR, y-bin not found"<<std::endl;
         }
         x_index++;
     }
-    std::get<0>(this->overf)++;
-    this->total_counts++;
-    return;
+    std::cout<<"ERROR, x-bin not found"<<std::endl;
 }
 
 auto histo_2d::add
 (
-    const std::vector<std::tuple<double, double> > &news
+    std::vector<std::tuple<double, double> > news
 ) noexcept -> void
 {
+    //Remove all overflow and underflow
+    for (auto it = news.begin(); it != news.end(); ) 
+    {
+        if (std::get<0>(*it) <= this->xs[0])
+        {
+            std::get<0>(this->underf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<1>(*it) <= this->ys[0])
+        {
+            std::get<1>(this->underf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<0>(*it) > this->xs.back())
+        {
+            std::get<0>(this->overf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<1>(*it) > this->ys.back())
+        {
+            std::get<1>(this->overf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else 
+        {
+            ++it;
+        }
+    }
+
     uint64_t news_tot = news.size();
 
     if (news_tot <= 0)
@@ -193,6 +237,7 @@ auto histo_2d::add
     std::vector<double> to_add_1bin{};
     to_add_1bin.reserve(to_add.size());
 
+    //Sort news by x coordinate
     std::sort
     (
         to_add.begin(), 
@@ -201,24 +246,14 @@ auto histo_2d::add
             {
                 auto [ a0, ph1 ] = a;
                 auto [ b0, ph2 ] = b;
-                
                 return a0 < b0;
             }
     );
-
-    while (std::get<0>(to_add[news_index]) <= this->xs[0])
-    {
-        std::get<0>(this->underf)++;
-        this->total_counts++;
-        news_index++;
-        if (news_index == news_tot)
-        {
-            return;
-        }
-    }
     
     uint16_t x_index = 0, y_index = 0;
     uint64_t x_bin_tot = 0, to_add_index = 0;
+    
+    //Go through all the x-bins
     for 
     (
         auto x_it = ++this->xs.begin();
@@ -226,8 +261,10 @@ auto histo_2d::add
         x_it++
     )
     {
+        //Add all the coords that belong in one x-bin at the same time
         while (std::get<0>(to_add[news_index]) <= *x_it)
         {
+            //Stage all coordinates that are in this x-bin
             to_add_1bin.push_back(std::get<1>(to_add[news_index]));
             news_index++;
             if (news_index == news_tot)
@@ -239,19 +276,12 @@ auto histo_2d::add
         {
             to_add_index = 0;
             x_bin_tot = to_add_1bin.size();
-            std::sort(to_add_1bin.begin(), to_add_1bin.end());
-            while (to_add_1bin[to_add_index] <= this->ys[0])
-            {
-                std::get<1>(this->underf)++;
-                this->total_counts++;
-                to_add_index++;
-                if (to_add_index == x_bin_tot)
-                {
-                    goto added_staged;
-                }
-            }
 
+            //Sort the coords by y coordinate
+            std::sort(to_add_1bin.begin(), to_add_1bin.end());
             y_index = 0;
+
+            //Go through all the y-bins
             for 
             (
                 auto y_it = ++this->ys.begin();
@@ -271,30 +301,20 @@ auto histo_2d::add
                 }
                 y_index++;
             }
-
-            while (to_add_index < x_bin_tot)
-            {
-                std::get<1>(this->overf)++;
-                this->total_counts++;
-                to_add_index++;
-            }
+            //All the y-bins checked
+            std::cout<<"ERROR, y-bin not found"<<std::endl;
         }
-    added_staged:
-        to_add_1bin.clear();
-        
+    added_staged:        
         if (news_index == news_tot)
         {
+            //All the new coords are added
             return;
         }
+        to_add_1bin.clear();
         x_index++;
     }
-
-    while (news_index < news_tot)
-    {
-        std::get<0>(this->overf)++;
-        this->total_counts++;
-        news_index++;
-    }
+    //All the x-bins checked
+    std::cout<<"ERROR, x-bin not found"<<std::endl;
 }
 
 auto histo_2d::add
@@ -325,9 +345,338 @@ auto histo_2d::add
     this->total_counts += other.total_counts;
 }
 
+auto histo_3d::add
+(
+    const std::tuple<double, double, double> &x
+) noexcept -> void
+{
+    auto [ new_x, new_y, new_z ] = x;
+
+    {//Overflow or underflow ?
+        if (new_x <= this->xs[0])
+        {
+            std::get<0>(this->underf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_y <= this->ys[0])
+        {
+            std::get<1>(this->underf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_z <= this->zs[0])
+        {
+            std::get<2>(this->underf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_x > this->xs.back())
+        {
+            std::get<0>(this->overf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_y > this->ys.back())
+        {
+            std::get<1>(this->overf)++;
+            this->total_counts++;
+            return;
+        }
+        else if (new_z > this->zs.back())
+        {
+            std::get<2>(this->overf)++;
+            this->total_counts++;
+            return;
+        }
+    }
+    
+    uint16_t x_index = 0, y_index = 0, z_index = 0;
+    for 
+    (
+        auto x_it = ++this->xs.begin();
+        x_it!=this->xs.end(); 
+        x_it++
+    )
+    {
+        if (new_x <= *x_it)
+        {
+            for 
+            (
+                auto y_it = ++this->ys.begin();
+                y_it!=this->ys.end(); 
+                y_it++
+            )
+            {
+                if (new_y <= *y_it)
+                {
+                    for 
+                    (
+                        auto z_it = ++this->zs.begin();
+                        z_it!=this->zs.end(); 
+                        z_it++
+                    )
+                    {
+                        if (new_z <= *z_it)
+                        {
+                            this->counts[x_index][y_index][z_index]++;
+                            this->total_counts++;
+                            return;
+                        }
+                        z_index++;
+                    }
+                    std::cout<<"ERROR, z-bin not found"<<std::endl;
+                }
+                y_index++;
+            }
+            std::cout<<"ERROR, y-bin not found"<<std::endl;
+        }
+        x_index++;
+    }
+    std::cout<<"ERROR, x-bin not found"<<std::endl;
+}
+
+auto histo_3d::add
+(
+    std::vector<std::tuple<double, double, double> > news
+) noexcept -> void
+{
+    //Remove all overflow and underflow
+    for (auto it = news.begin(); it != news.end(); ) 
+    {
+        if (std::get<0>(*it) <= this->xs[0])
+        {
+            std::get<0>(this->underf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<1>(*it) <= this->ys[0])
+        {
+            std::get<1>(this->underf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<2>(*it) <= this->zs[0])
+        {
+            std::get<2>(this->underf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<0>(*it) > this->xs.back())
+        {
+            std::get<0>(this->overf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<1>(*it) > this->ys.back())
+        {
+            std::get<1>(this->overf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else if (std::get<2>(*it) > this->zs.back())
+        {
+            std::get<2>(this->overf)++;
+            this->total_counts++;
+            it = news.erase(it);
+        }
+        else 
+        {
+            ++it;
+        }
+    }
+
+    uint64_t news_tot = news.size();
+
+    if (news_tot <= 0)
+    {
+        return;
+    }
+    else if (news_tot == 1)
+    {
+        this->add(news[0]);
+        return;
+    }
+
+    std::vector<std::tuple<double, double> > to_add_xbin{};
+    std::vector<double> to_add_xybin{};
+    to_add_xbin.reserve(news.size());
+    to_add_xybin.reserve(news.size());
+
+    //Sort news by x coordinate
+    std::sort
+    (
+        news.begin(), 
+        news.end(),
+        [](std::tuple<double, double, double> a, std::tuple<double, double, double> b)
+            {
+                auto [ a0, ph11, ph12 ] = a;
+                auto [ b0, ph21, ph22 ] = b;
+                return a0 < b0;
+            }
+    );
+    
+    uint16_t x_index = 0, y_index = 0, z_index = 0;
+    uint64_t news_index = 0, x_bin_tot = 0, xy_bin_tot = 0,
+             to_add_xindex = 0, to_add_xyindex = 0;
+    
+    //Go through all the x-bins
+    for 
+    (
+        auto x_it = ++this->xs.begin();
+        x_it!=this->xs.end(); 
+        x_it++
+    )
+    {
+        //Add all the coords that belong in one x-bin at the same time
+        while (std::get<0>(news[news_index]) <= *x_it)
+        {
+            //Stage all coordinates that are in this x-bin
+            to_add_xbin.push_back
+            (
+                std::make_tuple
+                (
+                    std::get<1>(news[news_index]),
+                    std::get<2>(news[news_index])
+                )
+            );
+            news_index++;
+            if (news_index == news_tot)
+            {
+                break;
+            }
+        }
+        if (to_add_xbin.size()>0)
+        {
+            to_add_xindex = 0;
+            x_bin_tot = to_add_xbin.size();
+
+            //Sort the coords by y coordinate
+            std::sort
+            (
+                to_add_xbin.begin(), 
+                to_add_xbin.end(),
+                [](std::tuple<double, double> a, std::tuple<double, double> b)
+                    {
+                        auto [ a0, ph1 ] = a;
+                        auto [ b0, ph2 ] = b;
+                        return a0 < b0;
+                    }
+            );
+            y_index = 0;
+
+            //Go through all the y-bins
+            for 
+            (
+                auto y_it = ++this->ys.begin();
+                y_it!=this->ys.end(); 
+                y_it++
+            )
+            {
+                //Add all the coords that belong in one y-bin at the same time
+                while (std::get<0>(to_add_xbin[to_add_xindex]) <= *y_it)
+                {
+                    //Stage all coordinates that are in this y-bin
+                    to_add_xybin.push_back(std::get<1>(to_add_xbin[to_add_xindex]));
+                    to_add_xindex++;
+                    if (to_add_xindex == x_bin_tot)
+                    {
+                        break;
+                    }
+                }
+                if (to_add_xybin.size()>0)
+                {
+                    to_add_xyindex = 0;
+                    xy_bin_tot = to_add_xybin.size();
+
+                    //Sort the coords by z coordinate
+                    std::sort(to_add_xybin.begin(), to_add_xybin.end());
+                    z_index = 0;
+
+                    //Go through all the z-bins
+                    for 
+                    (
+                        auto z_it = ++this->zs.begin();
+                        z_it!=this->zs.end(); 
+                        z_it++
+                    )
+                    {
+                        while (to_add_xybin[to_add_xyindex] <= *z_it)
+                        {
+                            this->counts[x_index][y_index][z_index]++;
+                            this->total_counts++;
+                            to_add_xyindex++;
+                            if (to_add_xyindex == xy_bin_tot)
+                            {
+                                goto added_staged_xy;
+                            }
+                        }
+                        z_index++;
+                    }
+                    //All the z-bins checked
+                    std::cout<<"ERROR, z-bin not found"<<std::endl;
+                }
+            added_staged_xy:
+                to_add_xybin.clear();
+                if (to_add_xindex == x_bin_tot)
+                {
+                    //All the coords in this x-bin are added
+                    goto added_staged;
+                }
+                y_index++;
+            }
+            //All the y-bins checked
+            std::cout<<"ERROR, y-bin not found"<<std::endl;
+        }
+    added_staged:
+        if (news_index == news_tot)
+        {
+            //All the new coords are added
+            return;
+        }
+        to_add_xbin.clear();
+        x_index++;
+    }
+    //All the x-bins checked
+    std::cout<<"ERROR, x-bin not found"<<std::endl;
+}
+
+auto histo_3d::add
+(
+    const histo_3d &other
+) noexcept -> void
+{
+    if (!(*this == other))
+    {
+        std::cout<<"Incompatible histograms!"<<std::endl;
+        return;
+    }
+
+    std::get<0>(this->underf) += std::get<0>(other.underf);
+    std::get<1>(this->underf) += std::get<1>(other.underf);
+    std::get<2>(this->underf) += std::get<2>(other.underf);
+
+    std::get<0>(this->overf) += std::get<0>(other.overf);
+    std::get<1>(this->overf) += std::get<1>(other.overf);
+    std::get<2>(this->overf) += std::get<2>(other.overf);
+
+    for (uint16_t i = 0; i<this->counts.size(); i++)
+    {
+        for (uint16_t j = 0; j<this->counts[0].size(); j++)
+        {
+            for (uint16_t k = 0; k<this->counts[0][0].size(); k++)
+            {
+                this->counts[i][j][k] += other.counts[i][j][k];
+            }
+        }
+    }
+
+    this->total_counts += other.total_counts;
+}
+
 auto histo_1d::get_histo() const noexcept
 {   
-    std::vector<double> ret_histo{this->counts};
+    auto ret_histo{this->counts};
     auto total = this->total_counts;
 
     auto prev_x = this->xs[0];
@@ -353,7 +702,7 @@ auto histo_1d::get_histo() const noexcept
 
 auto histo_2d::get_histo() const noexcept
 {   
-    std::vector<std::vector<double> > ret_histo{this->counts};
+    auto ret_histo{this->counts};
     auto total = this->total_counts;
 
     auto prev_x = this->xs[0];
@@ -387,6 +736,73 @@ auto histo_2d::get_histo() const noexcept
                             std::get<1>(this->overf) / total),
             std::make_tuple(this->xs, 
                             this->ys),
+            this->total_counts
+        );
+}
+
+auto histo_3d::get_histo() const noexcept
+{   
+    auto ret_histo{this->counts};
+    auto total = this->total_counts;
+
+    auto n_x_bins = this->counts.size();
+    auto n_y_bins = this->counts[0].size();
+    auto n_z_bins = this->counts[0][0].size();
+    
+    std::vector<double> x_bins(n_x_bins);
+    std::vector<double> y_bins(n_y_bins);
+    std::vector<double> z_bins(n_z_bins);
+
+    {
+        double prev, curr;
+        prev = this->xs[0];
+        for (uint16_t i = 0; i < n_x_bins; i++)
+        {
+            curr = this->xs[i+1];
+            x_bins[i] = curr - prev;
+            prev = curr;
+        }
+        prev = this->ys[0];
+        for (uint16_t i = 0; i < n_y_bins; i++)
+        {
+            curr = this->ys[i+1];
+            y_bins[i] = curr - prev;
+            prev = curr;
+        }
+        prev = this->zs[0];
+        for (uint16_t i = 0; i < n_z_bins; i++)
+        {
+            curr = this->zs[i+1];
+            z_bins[i] = curr - prev;
+            prev = curr;
+        }
+    }
+
+
+
+    for (uint16_t i = 0; i < n_x_bins; i++)
+    {
+        for (uint16_t j = 0; j < n_y_bins; j++)
+        {
+            for (uint16_t k = 0; k < n_z_bins; k++)
+            {
+                ret_histo[i][j][k] /= total*x_bins[i]*y_bins[j]*z_bins[k];
+            }
+        }
+    }
+
+    return std::make_tuple
+        (
+            std::move(ret_histo),
+            std::make_tuple(std::get<0>(this->underf) / total, 
+                            std::get<1>(this->underf) / total, 
+                            std::get<2>(this->underf) / total),
+            std::make_tuple(std::get<0>(this->overf) / total, 
+                            std::get<1>(this->overf) / total, 
+                            std::get<2>(this->overf) / total),
+            std::make_tuple(this->xs, 
+                            this->ys, 
+                            this->zs),
             this->total_counts
         );
 }
@@ -425,10 +841,19 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept
     }
     else
     {
-        ret_histo = std::vector<double>(full_histo[0].size(), 0.0);
-        for (uint16_t i = 0; i<ret_histo.size(); i++)
+        bins.reserve(n_x_bins);
+        prev = std::get<0>(xs)[0];
+        for (uint16_t i = 0; i < n_x_bins; i++)
         {
-            for (uint16_t j = 0; j<full_histo.size(); j++)
+            curr = std::get<0>(xs)[i+1];
+            bins[i] = curr - prev;
+            prev = curr;
+        }
+
+        ret_histo = std::vector<double>(n_y_bins, 0.0);
+        for (uint16_t i = 0; i<n_y_bins; i++)
+        {
+            for (uint16_t j = 0; j<n_x_bins; j++)
             {
                 ret_histo[i] += full_histo[j][i]*bins[j];
             }
@@ -477,6 +902,30 @@ auto operator==
     for (uint16_t i = 0; i<c1.ys.size(); i++)
     {
         ret *= (c1.ys[i] == c2.ys[i]);
+    }
+    return ret;
+}
+
+auto operator==
+(
+    const histo_3d& c1, 
+    const histo_3d& c2
+) noexcept -> bool
+{
+    bool ret = (c1.xs.size() == c2.xs.size());
+    ret *= (c1.ys.size() == c2.ys.size());
+    ret *= (c1.zs.size() == c2.zs.size());
+    for (uint16_t i = 0; i<c1.xs.size(); i++)
+    {
+        ret *= (c1.xs[i] == c2.xs[i]);
+    }
+    for (uint16_t i = 0; i<c1.ys.size(); i++)
+    {
+        ret *= (c1.ys[i] == c2.ys[i]);
+    }
+    for (uint16_t i = 0; i<c1.zs.size(); i++)
+    {
+        ret *= (c1.zs[i] == c2.zs[i]);
     }
     return ret;
 }
