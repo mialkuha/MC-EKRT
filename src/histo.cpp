@@ -872,6 +872,140 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept
         );
 }
 
+auto histo_3d::project_1d(const uint8_t dim_left) const noexcept
+{   
+    auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
+    std::vector<double> ret_histo;
+    std::vector<double> ret_grid;
+    std::vector<double> bins1;
+    std::vector<double> bins2;
+    double curr, prev;
+    uint16_t n_x_bins = full_histo.size();
+    uint16_t n_y_bins = full_histo[0].size();
+    uint16_t n_z_bins = full_histo[0][0].size();
+
+    if (dim_left == 0) //x
+    {
+        bins1.reserve(n_y_bins); //y
+        bins2.reserve(n_z_bins); //z
+
+        prev = std::get<1>(xs)[0];
+        for (uint16_t i = 0; i < n_y_bins; i++)
+        {
+            curr = std::get<1>(xs)[i+1];
+            bins1[i] = curr - prev;
+            prev = curr;
+        }
+
+        prev = std::get<2>(xs)[0];
+        for (uint16_t i = 0; i < n_z_bins; i++)
+        {
+            curr = std::get<2>(xs)[i+1];
+            bins2[i] = curr - prev;
+            prev = curr;
+        }
+
+        ret_histo = std::vector<double>(n_x_bins, 0.0);
+        for (uint16_t i = 0; i < n_x_bins; i++)
+        {
+            for (uint16_t j = 0; j < n_y_bins; j++)
+            {
+                for (uint16_t k = 0; k < n_z_bins; k++)
+                {
+                    ret_histo[i] += full_histo[i][j][k]*bins1[j]*bins2[k];
+                }
+            }
+        }
+
+        ret_grid = std::get<0>(xs);
+    }
+    else if (dim_left == 1) //y
+    {
+        bins1.reserve(n_x_bins); //x
+        bins2.reserve(n_z_bins); //z
+
+        prev = std::get<0>(xs)[0];
+        for (uint16_t i = 0; i < n_x_bins; i++)
+        {
+            curr = std::get<0>(xs)[i+1];
+            bins1[i] = curr - prev;
+            prev = curr;
+        }
+        
+        prev = std::get<2>(xs)[0];
+        for (uint16_t i = 0; i < n_z_bins; i++)
+        {
+            curr = std::get<2>(xs)[i+1];
+            bins2[i] = curr - prev;
+            prev = curr;
+        }
+
+        ret_histo = std::vector<double>(n_y_bins, 0.0);
+        for (uint16_t i = 0; i < n_y_bins; i++)
+        {
+            for (uint16_t j = 0; j < n_x_bins; j++)
+            {
+                for (uint16_t k = 0; k < n_z_bins; k++)
+                {
+                    ret_histo[i] += full_histo[j][i][k]*bins1[j]*bins2[k];
+                }
+            }
+        }
+
+        ret_grid = std::get<1>(xs);
+    }
+    else if (dim_left == 2) //z
+    {
+        bins1.reserve(n_y_bins); //y
+        bins2.reserve(n_z_bins); //x
+
+        prev = std::get<1>(xs)[0];
+        for (uint16_t i = 0; i < n_y_bins; i++)
+        {
+            curr = std::get<1>(xs)[i+1];
+            bins1[i] = curr - prev;
+            prev = curr;
+        }
+        
+        prev = std::get<0>(xs)[0];
+        for (uint16_t i = 0; i < n_x_bins; i++)
+        {
+            curr = std::get<0>(xs)[i+1];
+            bins2[i] = curr - prev;
+            prev = curr;
+        }
+
+        ret_histo = std::vector<double>(n_z_bins, 0.0);
+        for (uint16_t i = 0; i < n_z_bins; i++)
+        {
+            for (uint16_t j = 0; j < n_x_bins; j++)
+            {
+                for (uint16_t k = 0; k < n_y_bins; k++)
+                {
+                    ret_histo[i] += full_histo[j][k][i]*bins1[k]*bins2[j];
+                }
+            }
+        }
+
+        ret_grid = std::get<2>(xs);
+    }
+    else
+    {
+        std::cout<<"ERROR dimension must be 0=x, 1=y or 2=z, given: ";
+        std::cout<<dim_left<<std::endl;
+        std::cout<<"Output will be garbage"<<std::endl;
+    }
+
+    return std::make_tuple
+        (
+            std::move(ret_histo),
+            std::get<0>(uf)+std::get<1>(uf)+std::get<2>(uf),
+            std::get<0>(of)+std::get<1>(of)+std::get<2>(of),
+            std::move(ret_grid), 
+            tots
+        );
+}
+
 auto operator==
 (
     const histo_1d& c1, 
@@ -1070,6 +1204,87 @@ int main()
     std::cout<<of8<<std::endl;
     std::cout<<tot8<<std::endl;
     std::cout<<std::endl;
+
+    xs = std::vector<double>{0, 1, 1.5};
+    ys = std::vector<double>{1, 2, 2.5};
+    auto zs = std::vector<double>{2, 3, 3.5};
+
+    histo_3d h3d{xs, ys, zs};
+    h3d.add({0.5, 2.2, 3.2});
+    h3d.add(std::vector<std::tuple<double, double, double> >
+        ({{-1.1, 1.2, 3},{2, 2.2, 3},{1.1, 0.5, 3},{1.1, 2.7, 3},{1.1, 1.2, 1},{1.1, 1.2, 4}}));
+    h3d.add(std::vector<std::tuple<double, double, double> >
+        ({{1.1, 1.2, 3},{2, 2.2, 2.3},{0.1, 2.3, 3.1},{1.1, 1.7, 2.3},{0.2, 1.3, 3.1},{1.1, 1.2, 3.3}}));
     
+    auto [ c9, uf9, of9, x9, tot9 ] = h3d.get_histo();
+    auto [ uf90, uf91, uf92 ] = uf9;
+    auto [ of90, of91, of92 ] = of9;
+    auto [ x90, x91, x92 ] = x9;
+    
+    std::cout<<std::endl;
+    for (auto x : c9)
+    {
+        for (auto y : x)
+        {
+            for (auto z : y)
+                std::cout<<z<<' ';
+            std::cout<<std::endl;
+        }
+        std::cout<<std::endl;
+    }
+    std::cout<<std::endl;
+    for (auto x : x90) std::cout<<x<<' ';
+    std::cout<<std::endl;
+    for (auto y : x91) std::cout<<y<<' ';
+    std::cout<<std::endl;
+    for (auto z : x92) std::cout<<z<<' ';
+    std::cout<<std::endl;
+    std::cout<<uf90<<' '<<uf91<<' '<<uf92<<std::endl;
+    std::cout<<of90<<' '<<of91<<' '<<of92<<std::endl;
+    std::cout<<tot9<<std::endl;
+    std::cout<<std::endl;
+    
+    auto [ c10, uf10, of10, x10, tot10 ] = h3d.project_1d(0);
+    
+    for (auto x : c10)
+    {
+        std::cout<<x<<' ';
+    }
+    std::cout<<std::endl;
+    for (auto x : x10) std::cout<<x<<' ';
+    std::cout<<std::endl;
+    std::cout<<uf10<<std::endl;
+    std::cout<<of10<<std::endl;
+    std::cout<<tot10<<std::endl;
+    std::cout<<std::endl;
+    
+    auto [ c11, uf11, of11, x11, tot11 ] = h3d.project_1d(1);
+    
+    for (auto x : c11)
+    {
+        std::cout<<x<<' ';
+    }
+    std::cout<<std::endl;
+    for (auto x : x11) std::cout<<x<<' ';
+    std::cout<<std::endl;
+    std::cout<<uf11<<std::endl;
+    std::cout<<of11<<std::endl;
+    std::cout<<tot11<<std::endl;
+    std::cout<<std::endl;
+    
+    auto [ c12, uf12, of12, x12, tot12 ] = h3d.project_1d(2);
+    
+    for (auto x : c12)
+    {
+        std::cout<<x<<' ';
+    }
+    std::cout<<std::endl;
+    for (auto x : x12) std::cout<<x<<' ';
+    std::cout<<std::endl;
+    std::cout<<uf12<<std::endl;
+    std::cout<<of12<<std::endl;
+    std::cout<<tot12<<std::endl;
+    std::cout<<std::endl;
+
     return 0;
 }

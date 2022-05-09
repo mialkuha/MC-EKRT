@@ -173,9 +173,7 @@ public:
 
     auto get_histo() const noexcept;
 
-    auto project_1d(const uint8_t dim_left) const noexcept; //TODO
-
-    auto project_2d(const uint8_t dim_projected) const noexcept; //TODO
+    auto project_1d(const uint8_t dim_left) const noexcept;
 
     friend bool operator==
     (
