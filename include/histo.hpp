@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <iostream>
+#include <numeric>
 #include <tuple>
 #include <vector>
 
@@ -98,6 +99,8 @@ public:
     ) noexcept -> void;
 
     auto get_histo() const noexcept;
+
+    auto project_1d(const bool project_ys) const noexcept;
 
     friend bool operator==
     (

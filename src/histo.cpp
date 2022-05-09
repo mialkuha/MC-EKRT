@@ -391,6 +391,62 @@ auto histo_2d::get_histo() const noexcept
         );
 }
 
+auto histo_2d::project_1d(const bool project_ys) const noexcept
+{   
+    auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
+    std::vector<double> ret_histo;
+    std::vector<double> ret_grid;
+    std::vector<double> bins;
+    double curr, prev;
+    uint16_t n_x_bins = full_histo.size();
+    uint16_t n_y_bins = full_histo[0].size();
+
+    if (project_ys == true)
+    {
+        bins.reserve(n_y_bins);
+        prev = std::get<1>(xs)[0];
+        for (uint16_t i = 0; i < n_y_bins; i++)
+        {
+            curr = std::get<1>(xs)[i+1];
+            bins[i] = curr - prev;
+            prev = curr;
+        }
+
+        ret_histo = std::vector<double>(n_x_bins, 0.0);
+        for (uint16_t i = 0; i < n_x_bins; i++)
+        {
+            for (uint16_t j = 0; j < n_y_bins; j++)
+            {
+                ret_histo[i] += full_histo[i][j]*bins[j];
+            }
+        }
+
+        ret_grid = std::get<0>(xs);
+    }
+    else
+    {
+        ret_histo = std::vector<double>(full_histo[0].size(), 0.0);
+        for (uint16_t i = 0; i<ret_histo.size(); i++)
+        {
+            for (uint16_t j = 0; j<full_histo.size(); j++)
+            {
+                ret_histo[i] += full_histo[j][i]*bins[j];
+            }
+        }
+
+        ret_grid = std::get<1>(xs);
+    }
+
+    return std::make_tuple
+        (
+            std::move(ret_histo),
+            std::get<0>(uf)+std::get<1>(uf),
+            std::get<0>(of)+std::get<1>(of),
+            std::move(ret_grid), 
+            tots
+        );
+}
+
 auto operator==
 (
     const histo_1d& c1, 
@@ -536,6 +592,34 @@ int main()
     std::cout<<uf60<<' '<<uf61<<std::endl;
     std::cout<<of60<<' '<<of61<<std::endl;
     std::cout<<tot6<<std::endl;
+    std::cout<<std::endl;
+    
+    auto [ c7, uf7, of7, x7, tot7 ] = h2d.project_1d(true);
+    
+    for (auto x : c7)
+    {
+        std::cout<<x<<' ';
+    }
+    std::cout<<std::endl;
+    for (auto x : x7) std::cout<<x<<' ';
+    std::cout<<std::endl;
+    std::cout<<uf7<<std::endl;
+    std::cout<<of7<<std::endl;
+    std::cout<<tot7<<std::endl;
+    std::cout<<std::endl;
+    
+    auto [ c8, uf8, of8, x8, tot8 ] = h2d.project_1d(false);
+    
+    for (auto x : c8)
+    {
+        std::cout<<x<<' ';
+    }
+    std::cout<<std::endl;
+    for (auto x : x8) std::cout<<x<<' ';
+    std::cout<<std::endl;
+    std::cout<<uf8<<std::endl;
+    std::cout<<of8<<std::endl;
+    std::cout<<tot8<<std::endl;
     std::cout<<std::endl;
     
     return 0;
