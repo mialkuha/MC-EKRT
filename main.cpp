@@ -32,6 +32,7 @@
 #include <vector>
 
 #include "ars.hpp"
+#include "histo.hpp"
 #include "LHAPDF/GridPDF.h"
 #include "linear_interpolator.hpp"
 #include "linterp.h"
@@ -2102,6 +2103,86 @@ auto read_sigma_jets_full
     return InterpMultilinear<5, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data());
 }
 
+auto calculate_sigma_1jet_analytical
+(
+    const momentum &mand_s, 
+    const std::vector<double> &kt_bin_walls,
+    const std::vector<double> &y_bin_walls,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> void
+{
+    std::string dataname = "sigma1jet_analytical.dat";
+    std::ofstream dat_file;
+    dat_file.open(dataname);
+
+    const auto n_kt_bins = kt_bin_walls.size() - 1;
+    const auto n_y_bins = y_bin_walls.size() - 1;
+
+    for (uint8_t i = 0; i < n_kt_bins; i++)
+    {
+        dat_file << kt_bin_walls[i] << ' ' << kt_bin_walls[i+1] << ' ';
+        const auto kt_bin_size = kt_bin_walls[i+1] - kt_bin_walls[i];
+
+        for (uint8_t j = 0; j < n_y_bins; j++)
+        {
+            const auto y_bin_size = y_bin_walls[j+1] - y_bin_walls[j];
+            const auto bin = std::make_tuple(kt_bin_walls[i], kt_bin_walls[i+1], y_bin_walls[j], y_bin_walls[j+1]);
+            
+            dat_file << 
+                pqcd::calculate_sigma_1jet_binned
+                (
+                    p_p_pdf, 
+                    &mand_s,
+                    &bin,
+                    p_params
+                )/(kt_bin_size*y_bin_size) << ' ';
+        }
+        dat_file << std::endl;
+    }
+    std::cout<<"printed to "<<dataname<<std::endl;
+}
+
+auto calculate_sigma_dijet_analytical
+(
+    const momentum &mand_s, 
+    const std::vector<double> &pt_bin_walls,
+    const std::vector<double> &eta_bin_walls,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> void
+{
+    std::string dataname = "sigmadijet_analytical.dat";
+    std::ofstream dat_file;
+    dat_file.open(dataname);
+
+    const auto n_pt_bins = pt_bin_walls.size() - 1;
+    const auto n_eta_bins = eta_bin_walls.size() - 1;
+
+    for (uint8_t i = 0; i < n_pt_bins; i++)
+    {
+        dat_file << pt_bin_walls[i] << ' ' << pt_bin_walls[i+1] << ' ';
+        const auto pt_bin_size = pt_bin_walls[i+1] - pt_bin_walls[i];
+
+        for (uint8_t j = 0; j < n_eta_bins; j++)
+        {
+            const auto eta_bin_size = eta_bin_walls[j+1] - eta_bin_walls[j];
+            const auto bin = std::make_tuple(pt_bin_walls[i], pt_bin_walls[i+1], eta_bin_walls[j], eta_bin_walls[j+1]);
+            
+            dat_file << 
+                pqcd::calculate_sigma_dijet_binned
+                (
+                    p_p_pdf, 
+                    &mand_s,
+                    &bin,
+                    p_params
+                )/(pt_bin_size*eta_bin_size) << ' ';
+        }
+        dat_file << std::endl;
+    }
+    std::cout<<"printed to "<<dataname<<std::endl;
+}
+
 int main()
 {
     //A lot of printing
@@ -2111,7 +2192,7 @@ int main()
     
     //General parameters for the simulation
     const bool    read_nuclei_from_file = false, 
-                  end_state_filtering   = false/*, 
+                  end_state_filtering   = true/*, 
                   average_spatial_taas  = false*/;
     uint16_t      desired_N_events      = 200,
                   AA_events             = 0, 
@@ -2169,7 +2250,10 @@ int main()
     std::vector<nn_coll> binary_collisions;
     std::vector<dijet_specs> filtered_scatterings;
     //std::vector<Coll> collisions_for_reporting;
-    
+    const std::vector<double> kt_bins{linspace(kt0, sqrt_s/2.0, 6)};
+    const std::vector<double> y_bins{linspace(-10.0, 10.0, 6)};
+    histo_2d h_ran_1jet   {kt_bins, y_bins};
+    histo_2d h_ran_dijet  {kt_bins, y_bins};
 
     //sigma_jet parameters
     /*const bool read_sigmajets_from_file = false;*/
@@ -2191,6 +2275,10 @@ int main()
     /*scale_choice=             */pqcd::scaled_from_kt,
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
+
+
+    calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
+    calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
 
     //end state calculation parameters
     const double power_law = 4.0;
