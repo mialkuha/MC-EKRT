@@ -2168,7 +2168,8 @@ int main()
     
     std::vector<nn_coll> binary_collisions;
     std::vector<dijet_specs> filtered_scatterings;
-    std::vector<Coll> collisions_for_reporting;
+    //std::vector<Coll> collisions_for_reporting;
+    
 
     //sigma_jet parameters
     /*const bool read_sigmajets_from_file = false;*/
@@ -2308,6 +2309,8 @@ int main()
         }
         
         binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
+
+
         
         /*if (verbose || (nof_collisions%100)==0)
         {
@@ -2316,8 +2319,7 @@ int main()
 
         std::cout<<"\rA+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events<<std::flush;
 
-
-        uint32_t Npart=0;
+        /*uint32_t Npart=0;
         for (auto &A : pro)
         {
             if (A.wounded)
@@ -2334,12 +2336,13 @@ int main()
         }
 
         Coll coll(NColl, Npart, impact_parameter, eng);
-        collisions_for_reporting.push_back(coll);
+        collisions_for_reporting.push_back(coll);*/
         
         filtered_scatterings.clear();
             
     } while (AA_events < desired_N_events);
 
+/*
     std::cout << collisions_for_reporting.size() << " collisions generated" << std::endl;
 
     //log_file.close();
@@ -2347,7 +2350,7 @@ int main()
     uint nBins = 16;
     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0};
     double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.8, 1.0};
-    mc_glauber_style_report(collisions_for_reporting, sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh);
+    mc_glauber_style_report(collisions_for_reporting, sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh);*/
 
     return 0;
 }

@@ -173,26 +173,128 @@ auto pqcd::calculate_sigma_jet
     const double upper_limits[3] = {1, 1, 1};
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
-    std::tuple< std::shared_ptr<LHAPDF::GridPDF>, 
-                const momentum *const, 
-                const momentum *const, 
-                const pqcd::sigma_jet_params *const> fdata =
-        {p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params};
+    std::tuple
+    < 
+        std::shared_ptr<LHAPDF::GridPDF>, 
+        const momentum *const, 
+        const momentum *const, 
+        const pqcd::sigma_jet_params *const
+    > 
+        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params};
 
     int not_success;
 
-    not_success = hcubature(fdim,                               //Integrand dimension
-                            pqcd::sigma_jet_integrand,          //Integrand function
-                            &fdata,                             //Pointer to additional arguments
-                            3,                                  //Variable dimension
-                            lower_limits,                       //Variables minimum
-                            upper_limits,                       //Variables maximum
-                            0,                                  //Max n:o of function evaluations
-                            0,                                  //Required absolute error
-                            pqcd::g_error_tolerance,            //Required relative error
-                            ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
-                            &sigma_jet,                         //Pointer to output
-                            &error);                            //Pointer to error output
+    not_success = hcubature
+                  (
+                      fdim,                               //Integrand dimension
+                      pqcd::sigma_jet_integrand,          //Integrand function
+                      &fdata,                             //Pointer to additional arguments
+                      3,                                  //Variable dimension
+                      lower_limits,                       //Variables minimum
+                      upper_limits,                       //Variables maximum
+                      0,                                  //Max n:o of function evaluations
+                      0,                                  //Required absolute error
+                      pqcd::g_error_tolerance,            //Required relative error
+                      ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
+                      &sigma_jet,                         //Pointer to output
+                      &error                              //Pointer to error output
+                  );
+
+    if (not_success != 0)
+    {
+        std::cout << "Problem with integration" << std::endl;
+        return -1;
+    }
+
+    return sigma_jet;
+}
+
+auto pqcd::calculate_sigma_1jet_binned
+(
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    const momentum *const p_mand_s,
+    const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> xsectval
+{
+    xsectval sigma_jet, error;
+    const double upper_limits[3] = {1, 1, 1};
+    const double lower_limits[3] = {0, 0, 0};
+    const unsigned fdim = 1;
+    std::tuple
+    < 
+        std::shared_ptr<LHAPDF::GridPDF>, 
+        const momentum *const, 
+        const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
+        const pqcd::sigma_jet_params *const
+    > 
+        fdata = {p_pdf, p_mand_s, p_bin, p_params};
+
+    int not_success;
+
+    not_success = hcubature
+                  (
+                      fdim,                               //Integrand dimension
+                      pqcd::sigma_1jet_integrand_binned,  //Integrand function
+                      &fdata,                             //Pointer to additional arguments
+                      3,                                  //Variable dimension
+                      lower_limits,                       //Variables minimum
+                      upper_limits,                       //Variables maximum
+                      0,                                  //Max n:o of function evaluations
+                      0,                                  //Required absolute error
+                      pqcd::g_error_tolerance,            //Required relative error
+                      ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
+                      &sigma_jet,                         //Pointer to output
+                      &error                              //Pointer to error output
+                  );
+
+    if (not_success != 0)
+    {
+        std::cout << "Problem with integration" << std::endl;
+        return -1;
+    }
+
+    return sigma_jet;
+}
+
+auto pqcd::calculate_sigma_dijet_binned
+(
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    const momentum *const p_mand_s,
+    const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> xsectval
+{
+    xsectval sigma_jet, error;
+    const double upper_limits[3] = {1, 1, 1};
+    const double lower_limits[3] = {0, 0, 0};
+    const unsigned fdim = 1;
+    std::tuple
+    < 
+        std::shared_ptr<LHAPDF::GridPDF>, 
+        const momentum *const, 
+        const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
+        const pqcd::sigma_jet_params *const
+    > 
+        fdata = {p_pdf, p_mand_s, p_bin, p_params};
+
+    int not_success;
+
+    not_success = hcubature
+                  (
+                      fdim,                               //Integrand dimension
+                      pqcd::sigma_dijet_integrand_binned, //Integrand function
+                      &fdata,                             //Pointer to additional arguments
+                      3,                                  //Variable dimension
+                      lower_limits,                       //Variables minimum
+                      upper_limits,                       //Variables maximum
+                      0,                                  //Max n:o of function evaluations
+                      0,                                  //Required absolute error
+                      pqcd::g_error_tolerance,            //Required relative error
+                      ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
+                      &sigma_jet,                         //Pointer to output
+                      &error                              //Pointer to error output
+                  );
 
     if (not_success != 0)
     {
@@ -1070,6 +1172,197 @@ auto pqcd::diff_sigma::sigma_jet
     return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
 }
 
+auto pqcd::diff_sigma::sigma_1jet
+(
+    const rapidity &x1, 
+    const rapidity &x2, 
+    const momentum &q2, 
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    const momentum &s_hat, 
+    const momentum &t_hat, 
+    const momentum &u_hat, 
+    const pqcd::diff_sigma::params *const p_params/*,
+    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
+) noexcept -> xsectval
+{
+    const int A=208, B=208;
+    xsectval sum = 0;
+    const double alpha_s = p_p_pdf->alphasQ2(q2);
+    const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
+
+    std::array<double, 13> cAs, cBs, xfxQ2_1s, xfxQ2_2s;
+    cAs.fill(1.0);
+    cBs.fill(1.0);
+
+    xfxQ2_1s[0] = p_p_pdf->xfxQ2(0, x1, q2); // 0 = gluons
+    xfxQ2_2s[0] = p_p_pdf->xfxQ2(0, x2, q2); // 0 = gluons
+    for (uint8_t i=1; i<7; i++)
+    {
+        xfxQ2_1s[i] = p_p_pdf->xfxQ2(i, x1, q2); // 1-6 = quarks
+        xfxQ2_1s[i+6] = p_p_pdf->xfxQ2(-i, x1, q2); // 7-12 = antiquarks
+
+        xfxQ2_2s[i] = p_p_pdf->xfxQ2(i, x2, q2); // 1-6 = quarks
+        xfxQ2_2s[i+6] = p_p_pdf->xfxQ2(-i, x2, q2); // 7-12 = antiquarks
+    }
+
+    if (p_params->projectile_with_npdfs)
+    {
+        eps09(1, p_params->npdf_setnumber, A, x1, sqrt(q2), 
+          cAs[1], // = up valence
+          cAs[2], // = down valence
+          cAs[7], // = up sea 
+          cAs[8], // = down sea
+          cAs[3], // = strange
+          cAs[4], // = charm
+          cAs[5], // = bottom
+          cAs[0]);// = gluons
+  
+        //eps09 gives valence and sea pdfs separately, we need valence + sea for u and d
+        cAs[1] = cAs[1] + (cAs[7] - cAs[1]) * p_p_pdf->xfxQ2(-1, x1, q2) / p_p_pdf->xfxQ2(1, x1, q2); 
+        cAs[2] = cAs[2] + (cAs[8] - cAs[2]) * p_p_pdf->xfxQ2(-2, x1, q2) / p_p_pdf->xfxQ2(2, x1, q2);
+        cAs[9] = cAs[3]; // \bar{s} = s
+        cAs[10] = cAs[4]; // \bar{c} = c
+        cAs[11] = cAs[5]; // \bar{b} = b
+        cAs[12] = cAs[6]; // \bar{t} = t
+
+        xfxQ2_1s[0] = cAs[0]*xfxQ2_1s[0]; // 0 = gluons
+        for (uint8_t i=1; i<7; i++)
+        {
+            xfxQ2_1s[i] = cAs[i]*xfxQ2_1s[i]; // 1-6 = quarks
+            xfxQ2_1s[i+6] = cAs[i+6]*xfxQ2_1s[i+6]; // 7-12 = antiquarks
+        }
+    }
+
+    if (p_params->target_with_npdfs)
+    {
+        eps09(1, p_params->npdf_setnumber, B, x2, sqrt(q2), 
+          cBs[1], // = up valence
+          cBs[2], // = down valence
+          cBs[7], // = up sea 
+          cBs[8], // = down sea
+          cBs[3], // = strange
+          cBs[4], // = charm
+          cBs[5], // = bottom
+          cBs[0]);// = gluons
+  
+        //eps09 gives valence and sea pdfs separately, we need valence + sea for u and d
+        cBs[1] = cBs[1] + (cBs[7] - cBs[1]) * p_p_pdf->xfxQ2(-1, x2, q2) / p_p_pdf->xfxQ2(1, x2, q2); 
+        cBs[2] = cBs[2] + (cBs[8] - cBs[2]) * p_p_pdf->xfxQ2(-2, x2, q2) / p_p_pdf->xfxQ2(2, x2, q2);
+        cBs[9] = cBs[3]; // \bar{s} = s
+        cBs[10] = cBs[4]; // \bar{c} = c
+        cBs[11] = cBs[5]; // \bar{b} = b
+        cBs[12] = cBs[6]; // \bar{t} = t
+
+        xfxQ2_2s[0] = cBs[0]*xfxQ2_2s[0]; // 0 = gluons
+        for (uint8_t i=1; i<7; i++)
+        {
+            xfxQ2_2s[i] = cBs[i]*xfxQ2_2s[i]; // 1-6 = quarks
+            xfxQ2_2s[i+6] = cBs[i+6]*xfxQ2_2s[i+6]; // 7-12 = antiquarks
+        }
+    }
+    
+    double ZoA = 82.0 / 208.0, NoA = 126.0 / 208.0;
+    double u, ub, d, db;
+    ////ISOSCALAR NUCLEONS
+    if (p_params->isoscalar_projectile)
+    {
+        u = xfxQ2_1s[1];
+        ub = xfxQ2_1s[7];
+        d = xfxQ2_1s[2];
+        db = xfxQ2_1s[8];
+        xfxQ2_1s[1] = ZoA * u + NoA * d;
+        xfxQ2_1s[2] = ZoA * d + NoA * u;
+        xfxQ2_1s[7] = ZoA * ub + NoA * db;
+        xfxQ2_1s[8] = ZoA * db + NoA * ub;
+    }
+    if (p_params->isoscalar_target)
+    {
+        u = xfxQ2_2s[1];
+        ub = xfxQ2_2s[7];
+        d = xfxQ2_2s[2];
+        db = xfxQ2_2s[8];
+        xfxQ2_2s[1] = ZoA * u + NoA * d;
+        xfxQ2_2s[2] = ZoA * d + NoA * u;
+        xfxQ2_2s[7] = ZoA * ub + NoA * db;
+        xfxQ2_2s[8] = ZoA * db + NoA * ub;
+    }
+
+    ///* GG->XX
+    sum += xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+    sum += numFlavours * xfxQ2_1s[0]*xfxQ2_2s[0] * (pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat) 
+                                                    + pqcd::diff_sigma::sigma_gg_qaq(s_hat, u_hat, t_hat));
+    //*/
+    ///* GQ->XX
+    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
+    {
+        sum += xfxQ2_1s[0]*xfxQ2_2s[flavor]   * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+        sum += xfxQ2_1s[0]*xfxQ2_2s[flavor+6] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+        sum += xfxQ2_1s[flavor]*xfxQ2_2s[0]   * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[0] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+    }
+    //*/
+    ///* QQ->XX
+    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
+    {
+        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+    }
+
+    for (uint8_t flavor1 = 1; flavor1 <= numFlavours; ++flavor1)
+    {
+        for (uint8_t flavor2 = 1; flavor2 <= numFlavours; ++flavor2)
+        {
+            if (flavor1 != flavor2)
+            {
+                sum += xfxQ2_1s[flavor1]*xfxQ2_2s[flavor2]     * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+                sum += xfxQ2_1s[flavor1+6]*xfxQ2_2s[flavor2+6] * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+                sum += xfxQ2_1s[flavor1]*xfxQ2_2s[flavor2+6]   * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+                sum += xfxQ2_1s[flavor1+6]*xfxQ2_2s[flavor2]   * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+            }
+        }
+    }
+
+    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
+    {
+        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor+6] *
+                (
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, u_hat, t_hat)
+                    )
+                    + pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                    + (numFlavours - 1) * 
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, u_hat, t_hat)
+                    )
+                );
+        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor] *
+                (
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, u_hat, t_hat)
+                    )
+                    + pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                    + (numFlavours - 1) * 
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, u_hat, t_hat)
+                    )
+                );
+    }
+    //*/
+    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
+}
+
 auto pqcd::diff_sigma::spatial_sigma_jet_mf
 (
     const rapidity &x1, 
@@ -1370,7 +1663,6 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
 }
 
-
 int pqcd::sigma_jet_integrand(unsigned ndim, 
                               const double *p_x, 
                               void *p_fdata, 
@@ -1425,6 +1717,153 @@ int pqcd::sigma_jet_integrand(unsigned ndim,
     {
         p_fval[0] = 0.5 * (pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) + pqcd::diff_sigma::sigma_jet(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
+
+    return 0; // success
+}
+
+auto pqcd::sigma_1jet_integrand_binned
+(
+    unsigned ndim, 
+    const double *p_x, 
+    void *p_fdata, 
+    unsigned fdim, 
+    double *p_fval
+) noexcept -> int
+{
+    (void)ndim;
+    (void)fdim; //To silence "unused" warnings
+
+    auto [ p_pdf, p_mand_s, p_bin, p_params ] =
+        *(static_cast
+             <std::tuple
+                 < 
+                     std::shared_ptr<LHAPDF::GridPDF>, 
+                     const momentum *const, 
+                     const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
+                     const pqcd::sigma_jet_params *const
+                 > *
+             >(p_fdata)
+         );
+
+    auto [ kt_low, kt_upp, y_low, y_upp ] = *p_bin;
+
+    kt_upp = fmin(kt_upp , sqrt(*p_mand_s)/2);    
+    const momentum kt = kt_low + p_x[0] * (kt_upp - kt_low);
+    const momentum kt2 = pow(kt,2);
+    const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
+
+    y_low = fmax(y_low , -acosh(sqrt_s_per_kt/2));
+    y_upp = fmin(y_upp ,  acosh(sqrt_s_per_kt/2));
+    const rapidity y1 = y_low + p_x[1] * (y_upp - y_low);
+
+    const auto y2_upp =  log(sqrt_s_per_kt - exp( y1));
+    const auto y2_low = -log(sqrt_s_per_kt - exp(-y1));
+    const rapidity y2 = y2_low + p_x[2] * (y2_upp - y2_low);
+
+    const xsectval jacobian = (kt_upp - kt_low) * (y_upp - y_low) * (y2_upp - y2_low) * kt;
+
+    momentum fac_scale;
+    switch (p_params->scale_c)
+    {
+    case scaled_from_kt:
+        fac_scale = pow(p_params->scalar, 2) * kt2;
+        break;
+    case constant:
+        fac_scale = pow(p_params->scalar, 2);
+        break;
+    default:
+        fac_scale = kt2;
+        break;
+    }
+
+    const auto x1 = (exp( y1) + exp( y2)) / sqrt_s_per_kt;
+    const auto x2 = (exp(-y1) + exp(-y2)) / sqrt_s_per_kt;
+
+    if (std::isnan(y1)||std::isnan(y2)||std::isnan(x1)||std::isnan(x2)||x1>1||x2>1)
+    {
+        p_fval[0] = 0;
+        return 0;
+    }
+
+    const auto s_hat = pqcd::s_hat_from_ys(y1, y2, kt2);
+    const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
+    const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
+
+    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
+                    * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+
+    return 0; // success
+}
+
+auto pqcd::sigma_dijet_integrand_binned
+(
+    unsigned ndim, 
+    const double *p_x, 
+    void *p_fdata, 
+    unsigned fdim, 
+    double *p_fval
+) noexcept -> int
+{
+    (void)ndim;
+    (void)fdim; //To silence "unused" warnings
+
+    auto [ p_pdf, p_mand_s, p_bin, p_params ] =
+        *(static_cast
+             <std::tuple
+                 < 
+                     std::shared_ptr<LHAPDF::GridPDF>, 
+                     const momentum *const, 
+                     const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
+                     const pqcd::sigma_jet_params *const
+                 > *
+             >(p_fdata)
+         );
+
+    auto [ kt_low, kt_upp, eta_low, eta_upp ] = *p_bin;
+
+    kt_upp = fmin(kt_upp , sqrt(*p_mand_s)/2);    
+    const momentum kt = kt_low + p_x[0] * (kt_upp - kt_low);
+    const momentum kt2 = pow(kt,2);
+    const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
+    
+    const rapidity eta = eta_low + p_x[1] * (eta_upp - eta_low);
+
+    const auto ystar_upp = acosh(sqrt_s_per_kt*exp(-abs(eta))/2.0);
+    const auto ystar_low = 0.0;
+    const rapidity ystar = ystar_low + p_x[2] * (ystar_upp - ystar_low);
+
+    const xsectval jacobian = (kt_upp - kt_low) * (eta_upp - eta_low) * (ystar_upp - ystar_low) * kt;
+
+    momentum fac_scale;
+    switch (p_params->scale_c)
+    {
+    case scaled_from_kt:
+        fac_scale = pow(p_params->scalar, 2) * kt2;
+        break;
+    case constant:
+        fac_scale = pow(p_params->scalar, 2);
+        break;
+    default:
+        fac_scale = kt2;
+        break;
+    }
+
+
+    const auto x1 = 2.0*exp( eta)*cosh(ystar)/sqrt_s_per_kt;
+    const auto x2 = 2.0*exp(-eta)*cosh(ystar)/sqrt_s_per_kt;
+
+    if (std::isnan(eta)||std::isnan(ystar)||std::isnan(x1)||std::isnan(x2)||x1>1||x2>1)
+    {
+        p_fval[0] = 0;
+        return 0;
+    }
+
+    const auto s_hat = 2.0*kt2*(1+cosh(2.0*ystar));
+    const auto t_hat = - kt2*(1 + exp(-2.0*ystar));
+    const auto u_hat = - kt2*(1 + exp( 2.0*ystar));
+
+    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
+                    * 2.0 * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
 }
