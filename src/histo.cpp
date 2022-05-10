@@ -746,7 +746,12 @@ auto histo_2d::get_histo() const noexcept -> std::tuple
         );
 }
 
-auto histo_3d::get_histo() const noexcept
+auto histo_3d::get_histo() const noexcept -> std::tuple
+<   std::vector<std::vector<std::vector<double> > >&&, 
+    std::tuple<double, double, double>, 
+    std::tuple<double, double, double>, 
+    std::tuple<std::vector<double>, std::vector<double>, std::vector<double> >,
+    uint64_t >
 {   
     auto ret_histo{this->counts};
     auto total = this->total_counts;
@@ -883,7 +888,12 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
         );
 }
 
-auto histo_3d::project_1d(const uint8_t dim_left) const noexcept
+auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
+<   std::vector<double>&&, 
+    double, 
+    double, 
+    std::vector<double>&&, 
+    uint64_t >
 {   
     auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
     std::vector<double> ret_histo;

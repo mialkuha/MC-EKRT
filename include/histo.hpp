@@ -63,7 +63,7 @@ public:
 
     /**
      * @brief Adds multiple points to the histogram, faster than
-     * adding one by one.
+     * adding one by one. Goes only once through each of the bins
      * 
      * @param ys A vector of points to add to the histogram
      */
@@ -102,6 +102,15 @@ public:
         std::vector<double>, 
         uint64_t >;
 
+    /**
+     * @brief Checks whether the binning coords in the histograms
+     * are the same. DOES NOT compare the points in the histograms
+     * 
+     * @param c1 One histogram
+     * @param c2 Another histogram
+     * @return true The bins are the same
+     * @return false Not all the bins are same
+     */
     friend bool operator==
     (
         const histo_1d& c1, 
@@ -164,7 +173,7 @@ public:
 
     /**
      * @brief Adds multiple points to the histogram, faster than
-     * adding one by one.
+     * adding one by one. Goes only once through each of the bins
      * 
      * @param news A vector of points to add to the histogram
      */
@@ -227,6 +236,15 @@ public:
         std::vector<double>&&, 
         uint64_t >;
 
+    /**
+     * @brief Checks whether the binning coords in the histograms
+     * are the same. DOES NOT compare the points in the histograms
+     * 
+     * @param c1 One histogram
+     * @param c2 Another histogram
+     * @return true The bins are the same
+     * @return false Not all the bins are same
+     */
     friend bool operator==
     (
         const histo_2d& c1, 
@@ -243,9 +261,21 @@ private:
     std::tuple<double, double> overf{0.0, 0.0};
 };
 
+/**
+ * @brief An object class to make 3D histograms
+ * 
+ */
 class histo_3d
 {
 public:
+
+    /**
+     * @brief Construct a new 3D histogram object
+     * 
+     * @param xs_ Coordinates of the bin edges, 1st dim
+     * @param ys_ Coordinates of the bin edges, 2nd dim
+     * @param zs_ Coordinates of the bin edges, 3rd dim
+     */
     histo_3d
     (
         const std::vector<double> &xs_,
@@ -273,25 +303,90 @@ public:
         overf({0.0, 0.0, 0.0})
     {}
 
+    /**
+     * @brief Adds a single point to the histogram
+     * 
+     * @param x The coordinates of the point
+     */
     auto add
     (
         const std::tuple<double, double, double> &x
     ) noexcept -> void;
 
+    /**
+     * @brief Adds multiple points to the histogram, faster than
+     * adding one by one. Goes only once through each of the bins
+     * 
+     * @param news A vector of points to add to the histogram
+     */
     auto add
     (
         std::vector<std::tuple<double, double, double> > news
     ) noexcept -> void;
 
+    /**
+     * @brief Adds all the points of another histogram to the histogram
+     * 
+     * @param other The other histogram from which the points are added
+     */
     auto add
     (
         const histo_3d &other
     ) noexcept -> void;
 
-    auto get_histo() const noexcept;
+    /**
+     * @brief  Gets the collected data from the histogram. The returned
+     * histogram values are normalized (divided) with the #of total
+     * points and bin size (for each bin separately). The overflow and
+     * the underflow are normalized only with #of total points.
+     * 
+     * @return std::tuple
+     * <   std::vector<std::vector<std::vector<double>>>&&, = Normalized histogram
+     *     std::tuple<double, double, double>,              = Underflow (all dims)
+     *     std::tuple<double, double, double>,              = Overflow (all dims)
+     *     std::tuple<std::vector<double>, 
+     *                std::vector<double>, 
+     *                std::vector<double> >,                = Bin edge coords (all dims)
+     *     uint64_t >                                       = Total # of points
+     */
+    auto get_histo() const noexcept -> std::tuple
+    <   std::vector<std::vector<std::vector<double> > >&&, 
+        std::tuple<double, double, double>, 
+        std::tuple<double, double, double>, 
+        std::tuple<std::vector<double>, std::vector<double>, std::vector<double> >,
+        uint64_t >;
 
-    auto project_1d(const uint8_t dim_left) const noexcept;
+    /**
+     * @brief Integrate over one of the dimensions. The returned
+     * histogram values are normalized (divided) with the #of total
+     * points and bin size (for each bin separately). The overflow and
+     * the underflow are normalized only with #of total points.
+     * 
+     * @param dim_left The dimension that is not integrated over. 0, 1 or 2.
+     * 
+     * @return std::tuple
+     *         <std::vector<double>&&, = Normalized histogram
+     *          double,                = Underflow
+     *          double,                = Overflow
+     *          std::vector<double>&&, = Bin edge coords
+     *          uint64_t>              = Total # of points 
+     */
+    auto project_1d(const uint8_t dim_left) const noexcept -> std::tuple
+    <   std::vector<double>&&, 
+        double, 
+        double, 
+        std::vector<double>&&, 
+        uint64_t >;
 
+    /**
+     * @brief Checks whether the binning coords in the histograms
+     * are the same. DOES NOT compare the points in the histograms
+     * 
+     * @param c1 One histogram
+     * @param c2 Another histogram
+     * @return true The bins are the same
+     * @return false Not all the bins are same
+     */
     friend bool operator==
     (
         const histo_3d& c1, 
