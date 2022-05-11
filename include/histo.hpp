@@ -224,8 +224,8 @@ public:
      * 
      * @return std::tuple
      *         <std::vector<double>&&, = Normalized histogram
-     *          double,                = Underflow
-     *          double,                = Overflow
+     *          double,                = #of all underflow
+     *          double,                = #of all overflow
      *          std::vector<double>&&, = Bin edge coords
      *          uint64_t>              = Total # of points 
      */
@@ -357,7 +357,7 @@ public:
         uint64_t >;
 
     /**
-     * @brief Integrate over one of the dimensions. The returned
+     * @brief Integrate over two of the dimensions. The returned
      * histogram values are normalized (divided) with the #of total
      * points and bin size (for each bin separately). The overflow and
      * the underflow are normalized only with #of total points.
@@ -366,8 +366,8 @@ public:
      * 
      * @return std::tuple
      *         <std::vector<double>&&, = Normalized histogram
-     *          double,                = Underflow
-     *          double,                = Overflow
+     *          double,                = #of all underflow
+     *          double,                = #of all overflow
      *          std::vector<double>&&, = Bin edge coords
      *          uint64_t>              = Total # of points 
      */
@@ -376,6 +376,30 @@ public:
         double, 
         double, 
         std::vector<double>&&, 
+        uint64_t >;
+
+    /**
+     * @brief Integrate over one of the dimensions. The returned
+     * histogram values are normalized (divided) with the #of total
+     * points and bin size (for each bin separately). The overflow and
+     * the underflow are normalized only with #of total points.
+     * 
+     * @param dim_integrated The integrated dimension. 0, 1 or 2.
+     * 
+     * @return std::tuple
+     * <   std::vector<std::vector<double> >&&, = Normalized histogram
+     *     double,                              = #of all underflow
+     *     double,                              = #of all overflow
+     *     std::tuple<std::vector<double>,      
+     *                std::vector<double> >,    = Bin edge coords (both dims)
+     *     uint64_t>                            = Total # of points 
+     */
+    auto project_2d(const uint8_t dim_integrated)
+    const noexcept -> std::tuple
+    <   std::vector<std::vector<double> >&&, 
+        double, 
+        double, 
+        std::tuple<std::vector<double>, std::vector<double> >,
         uint64_t >;
 
     /**
