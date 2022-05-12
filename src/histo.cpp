@@ -702,7 +702,7 @@ auto histo_1d::get_histo() const noexcept
 }
 
 auto histo_2d::get_histo() const noexcept -> std::tuple
-<   std::vector<std::vector<double> >&&, 
+<   std::vector<std::vector<double> >, 
     std::tuple<double, double>, 
     std::tuple<double, double>, 
     std::tuple<std::vector<double>, std::vector<double> >,
@@ -1221,7 +1221,7 @@ auto operator==
     }
     return ret;
 }
-
+/*
 int main()
 {
     std::vector<double> xs{0.0,0.5,1.0,1.5,2.5};
@@ -1445,4 +1445,4 @@ int main()
     std::cout<<std::endl;
 
     return 0;
-}
+}*/
