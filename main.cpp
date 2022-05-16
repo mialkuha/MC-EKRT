@@ -174,10 +174,10 @@ auto secant_method
  */
 struct f_params
 {
-    momentum kt;
-    momentum sqrt_s;
+    const momentum &kt;
+    const momentum &sqrt_s;
     std::shared_ptr<LHAPDF::GridPDF> p_pdf;
-    pqcd::diff_sigma::params *p_sigma_params;
+    const pqcd::sigma_jet_params *p_sigma_params;
 };
 
 /*
@@ -198,7 +198,7 @@ double fdsigma
     y1 = gsl_vector_get(v, 0);
     y2 = gsl_vector_get(v, 1);
 
-    auto xsection = pqcd::diff_sigma::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, p_sigma_params);
+    auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, p_sigma_params);
     xsectval total_xsection = 0;
     for (auto xsect : xsection)
     {
@@ -213,7 +213,7 @@ auto find_max_dsigma
     const momentum &kt, 
     const momentum &sqrt_s,
     std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-    pqcd::diff_sigma::params *const p_params
+    const pqcd::sigma_jet_params *const p_params
 ) noexcept
 {
     xsectval max_dsigma;
@@ -642,7 +642,7 @@ auto collide_nuclei
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng, 
     const AA_collision_params &AA_params,
-    const pqcd::diff_sigma::params &dsigma_params,
+    const pqcd::sigma_jet_params &dsigma_params,
     const momentum &kt0,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     const double &power_law,
@@ -920,7 +920,7 @@ auto collide_nuclei_with_spatial_pdfs_averaging
     const AA_collision_params &AA_params,
     const momentum &kt0,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::diff_sigma::params *const p_params,
+    const pqcd::sigma_jet_params *const p_params,
     const double &power_law,
     xsectval &envelope_maximum,
     const bool &verbose
@@ -2223,7 +2223,7 @@ int main()
     const bool    read_nuclei_from_file = false, 
                   end_state_filtering   = true/*, 
                   average_spatial_taas  = false*/;
-    uint16_t      desired_N_events      = 1000,
+    uint16_t      desired_N_events      = 100,
                   AA_events             = 0, 
                   nof_collisions        = 0;
     const spatial b_min                 = 0, 
@@ -2307,11 +2307,11 @@ int main()
 
 
     //calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
-    //calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
+    calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
 
     //end state calculation parameters
     const double power_law = 3.0;
-    auto [max_dsigma, err] = find_max_dsigma(kt0, sqrt_s, p_pdf, &diff_params);
+    auto [max_dsigma, err] = find_max_dsigma(kt0, sqrt_s, p_pdf, &jet_params);
     std::cout<<max_dsigma<<" "<<err<<std::endl;
     std::variant<linear_interpolator, xsectval> envelope_maximums = (max_dsigma + fabs(err))*pow(kt0,power_law);;
 
@@ -2387,7 +2387,7 @@ int main()
             unirand, 
             eng, 
             coll_params, 
-            diff_params,
+            jet_params,
             kt0,
             p_pdf,
             power_law,
@@ -2427,8 +2427,8 @@ int main()
         {
             filter_end_state(binary_collisions, filtered_scatterings);
             binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
-            std::vector<std::tuple<double, double> > new_jets(filtered_scatterings.size());
-            std::vector<std::tuple<double, double> > new_dijets(filtered_scatterings.size());
+            std::vector<std::tuple<double, double> > new_jets;
+            std::vector<std::tuple<double, double> > new_dijets;
 
             for (auto e : filtered_scatterings)
             {
@@ -2503,9 +2503,6 @@ int main()
     auto n_kt_bins = jets_histo.size();
     auto n_y_bins = jets_histo[0].size();
 
-    std::cout<<jets_histo.size()<<std::endl;
-    std::cout<<jets_histo[0].size()<<std::endl;
-
     for (uint8_t i = 0; i < n_kt_bins; i++)
     {
         file_1jet << xs_j0[i] << ' ' << xs_j0[i+1] << ' ';
@@ -2515,7 +2512,7 @@ int main()
         {
             /*const auto y_bin_size = xs_j1[j+1] - xs_j1[j];*/
             
-            file_1jet << 2 * jets_histo[i][j] * std::get<xsectval>(sigma_jets)/*/(kt_bin_size*y_bin_size)*/ << ' ';
+            file_1jet << jets_histo[i][j] * std::get<xsectval>(sigma_jets)/*/(kt_bin_size*y_bin_size)*/ << ' ';
         }
         file_1jet << std::endl;
     }
@@ -2546,7 +2543,7 @@ int main()
         {
             /*const auto y_bin_size = xs_d1[j+1] - xs_d1[j];*/
             
-            file_dijet << dijets_histo[i][j] * std::get<xsectval>(sigma_jets)/*/(kt_bin_size*y_bin_size)*/ << ' ';
+            file_dijet << dijets_histo[i][j] * std::get<xsectval>(sigma_jets) / 2/*/(kt_bin_size*y_bin_size)*/ << ' ';
         }
         file_dijet << std::endl;
     }

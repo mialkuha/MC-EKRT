@@ -7,7 +7,294 @@
 #endif
 #include "eps09.cxx"
 
-auto pqcd::throw_0_truncated_poissonian
+auto pqcd::diff_sigma::make_pdfs
+(
+    const rapidity &x1, 
+    const rapidity &x2, 
+    const momentum &q2, 
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, */
+    const bool &projectile_with_npdfs,
+    const bool &target_with_npdfs,
+    const bool &isoscalar_projectile,
+    const bool &isoscalar_target,
+    const bool &npdfs_spatial,
+    const int &npdf_setnumber,
+    const int &A,
+    const int &B,
+    const int &ZA,
+    const int &ZB,
+    const std::function<double (const double &)> &rA_spatial,
+    const std::function<double (const double &)> &rB_spatial
+) noexcept -> std::tuple
+    <
+        std::array<double, 7>,
+        std::array<double, 7>,
+        std::array<double, 7>,
+        std::array<double, 7>
+    >
+{
+    double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
+    double ru = 1.0, rd = 1.0;
+
+    if (projectile_with_npdfs)
+    {
+        eps09(1, npdf_setnumber, A, x1, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
+        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x1, q2) / p_p_pdf->xfxQ2(1, x1, q2);
+        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x1, q2) / p_p_pdf->xfxQ2(2, x1, q2);
+
+        if (npdfs_spatial)
+        {
+            ru = rA_spatial(ru); rd = rA_spatial(rd); rus = rA_spatial(rus);
+            rds = rA_spatial(rds); rs = rA_spatial(rs); rc = rA_spatial(rc); 
+            rb = rA_spatial(rb); rt = rA_spatial(rt); rg = rA_spatial(rg);
+        }
+    }
+    std::array<double, 7> f_i_x1 = 
+    {
+        rg * p_p_pdf->xfxQ2(0, x1, q2),
+        ru * p_p_pdf->xfxQ2(1, x1, q2),
+        rd * p_p_pdf->xfxQ2(2, x1, q2),
+        rs * p_p_pdf->xfxQ2(3, x1, q2),
+        rc * p_p_pdf->xfxQ2(4, x1, q2),
+        rb * p_p_pdf->xfxQ2(5, x1, q2),
+        rt * p_p_pdf->xfxQ2(6, x1, q2)
+    };
+    std::array<double, 7> f_ai_x1 = 
+    {
+        rg * p_p_pdf->xfxQ2(0, x1, q2),
+        rus * p_p_pdf->xfxQ2(-1, x1, q2),
+        rds * p_p_pdf->xfxQ2(-2, x1, q2),
+        rs * p_p_pdf->xfxQ2(-3, x1, q2),
+        rc * p_p_pdf->xfxQ2(-4, x1, q2),
+        rb * p_p_pdf->xfxQ2(-5, x1, q2),
+        rt * p_p_pdf->xfxQ2(-6, x1, q2)
+    };
+
+    if (target_with_npdfs)
+    {
+        eps09(1, npdf_setnumber, B, x2, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
+        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x2, q2) / p_p_pdf->xfxQ2(1, x2, q2);
+        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x2, q2) / p_p_pdf->xfxQ2(2, x2, q2);
+
+        if (npdfs_spatial)
+        {
+            ru = rB_spatial(ru); rd = rB_spatial(rd); rus = rB_spatial(rus);
+            rds = rB_spatial(rds); rs = rB_spatial(rs); rc = rB_spatial(rc); 
+            rb = rB_spatial(rb); rt = rB_spatial(rt); rg = rB_spatial(rg);
+        }
+    }
+    else
+    {
+        ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; 
+        rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
+    }
+    std::array<double, 7> f_i_x2 = 
+    {
+        rg * p_p_pdf->xfxQ2(0, x2, q2),
+        ru * p_p_pdf->xfxQ2(1, x2, q2),
+        rd * p_p_pdf->xfxQ2(2, x2, q2),
+        rs * p_p_pdf->xfxQ2(3, x2, q2),
+        rc * p_p_pdf->xfxQ2(4, x2, q2),
+        rb * p_p_pdf->xfxQ2(5, x2, q2),
+        rb * p_p_pdf->xfxQ2(6, x2, q2)
+    };
+    std::array<double, 7> f_ai_x2 = 
+    {
+        rg * p_p_pdf->xfxQ2(0, x2, q2),
+        rus * p_p_pdf->xfxQ2(-1, x2, q2),
+        rds * p_p_pdf->xfxQ2(-2, x2, q2),
+        rs * p_p_pdf->xfxQ2(-3, x2, q2),
+        rc * p_p_pdf->xfxQ2(-4, x2, q2),
+        rb * p_p_pdf->xfxQ2(-5, x2, q2),
+        rb * p_p_pdf->xfxQ2(-6, x2, q2)
+    };
+
+    if (!projectile_with_npdfs && isoscalar_projectile)
+    {
+        double ZoA = /*82/208.0*/ ZA / static_cast<double>(A);
+        double NoA = /*126/208.0*/ (A - ZA) / static_cast<double>(A);
+        double u, ub, d, db;
+        u = f_i_x1[1];
+        ub = f_ai_x1[1];
+        d = f_i_x1[2];
+        db = f_ai_x1[2];
+        f_i_x1[1] = ZoA * u + NoA * d;
+        f_i_x1[2] = ZoA * d + NoA * u;
+        f_ai_x1[1] = ZoA * ub + NoA * db;
+        f_ai_x1[2] = ZoA * db + NoA * ub;
+    }    
+    if (!target_with_npdfs && isoscalar_target)
+    {
+        double ZoA = /*82/208.0*/ ZB / static_cast<double>(B);
+        double NoA = /*126/208.0*/ (B - ZB) / static_cast<double>(B);
+        double u, ub, d, db;
+        u = f_i_x2[1];
+        ub = f_ai_x2[1];
+        d = f_i_x2[2];
+        db = f_ai_x2[2];
+        f_i_x2[1] = ZoA * u + NoA * d;
+        f_i_x2[2] = ZoA * d + NoA * u;
+        f_ai_x2[1] = ZoA * ub + NoA * db;
+        f_ai_x2[2] = ZoA * db + NoA * ub;
+    }
+
+    return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);
+}
+
+auto pqcd::diff_sigma::full_partonic_bookkeeping
+(
+    const std::array<double, 7> &f_i_x1, 
+    const std::array<double, 7> &f_i_x2,
+    const std::array<double, 7> &f_ai_x1,
+    const std::array<double, 7> &f_ai_x2,
+    const uint8_t &num_flavors,
+    const momentum &s_hat,
+    const momentum &t_hat, 
+    const momentum &u_hat
+
+) noexcept -> xsectval
+{
+    xsectval sum =0;
+
+    ///* GG->XX
+    sum += 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+    sum += num_flavors * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
+    //*/
+    ///* GQ->XX
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        sum += f_i_x1[0] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x1[0] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_i_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+        sum += f_ai_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
+    }
+    //*/
+    ///* QQ->XX
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        sum += 0.5 * f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        sum += 0.5 * f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+    }
+
+    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
+    {
+        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
+        {
+            if (flavor1 != flavor2)
+            {
+                sum += f_i_x1[flavor1] * f_i_x2[flavor2]  * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_ai_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_i_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                sum += f_ai_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+            }
+        }
+    }
+
+    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    {
+        sum += f_i_x1[flavor] * f_ai_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                  + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                  + (num_flavors - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += f_ai_x1[flavor] * f_i_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                  + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                  + (num_flavors - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+    }
+    //*/
+
+    return sum;
+}
+
+auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
+(
+    const std::array<double, 7> &f_i_x1, 
+    const std::array<double, 7> &f_i_x2,
+    const std::array<double, 7> &f_ai_x1,
+    const std::array<double, 7> &f_ai_x2,
+    const uint8_t &num_flavours,
+    const momentum &s_hat,
+    const momentum &t_hat, 
+    const momentum &u_hat
+
+) noexcept -> xsectval
+{
+    xsectval sum =0;
+
+    ///* GG->XX
+    sum += f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
+    sum += num_flavours * f_i_x1[0] * f_i_x2[0] * (pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat) 
+                                                  + pqcd::diff_sigma::sigma_gg_qaq(s_hat, u_hat, t_hat));
+    //*/
+    ///* GQ->XX
+    for (uint8_t flavor = 1; flavor <= num_flavours; ++flavor)
+    {
+        sum += f_i_x1[0] * f_i_x2[flavor] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                            + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+        sum += f_i_x1[0] * f_ai_x2[flavor] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                             + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+        sum += f_i_x1[flavor] * f_i_x2[0] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                            + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+        sum += f_ai_x1[flavor] * f_i_x2[0] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
+                                             + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
+    }
+    //*/
+    ///* QQ->XX
+    for (uint8_t flavor = 1; flavor <= num_flavours; ++flavor)
+    {
+        sum += f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+        sum += f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
+    }
+
+    for (uint8_t flavor1 = 1; flavor1 <= num_flavours; ++flavor1)
+    {
+        for (uint8_t flavor2 = 1; flavor2 <= num_flavours; ++flavor2)
+        {
+            if (flavor1 != flavor2)
+            {
+                sum += f_i_x1[flavor1] * f_i_x2[flavor2] * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                           + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+                sum += f_ai_x1[flavor1] * f_ai_x2[flavor2] * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                             + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+                sum += f_i_x1[flavor1] * f_ai_x2[flavor2] * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                            + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+                sum += f_ai_x1[flavor1] * f_i_x2[flavor2] * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
+                                                            + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
+            }
+        }
+    }
+
+    for (uint8_t flavor = 1; flavor <= num_flavours; ++flavor)
+    {
+        sum += f_i_x1[flavor] * f_ai_x2[flavor] *
+                (
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, u_hat, t_hat)
+                    )
+                    + pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                    + (num_flavours - 1) * 
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, u_hat, t_hat)
+                    )
+                );
+        sum += f_ai_x1[flavor] * f_i_x2[flavor] *
+                (
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, u_hat, t_hat)
+                    )
+                    + pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                    + (num_flavours - 1) * 
+                    (
+                        pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat) 
+                        + pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, u_hat, t_hat)
+                    )
+                );
+    }
+    //*/
+    return sum;
+}auto pqcd::throw_0_truncated_poissonian
 (
     const double &lambda, 
     std::uniform_real_distribution<double> unirand, 
@@ -42,7 +329,7 @@ auto pqcd::generate_2_to_2_scatt
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::diff_sigma::params  *const p_params,
+    const pqcd::sigma_jet_params  *const p_params,
     const double &power_law,
     const momentum &envelope_maximum
 
@@ -76,7 +363,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_sigma::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, p_params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, p_params);
 
         xsectval total_xsection = 0;
 
@@ -133,7 +420,7 @@ auto pqcd::generate_bin_NN_coll
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::diff_sigma::params *const p_params,
+    const pqcd::sigma_jet_params *const p_params,
     const double &power_law,
     const momentum &envelope_maximum
 ) noexcept -> void
@@ -622,25 +909,26 @@ auto pqcd::diff_sigma::sigma_gg_gg
     return 4.5 * (3.0 - (u * t) / (s * s) - (u * s) / (t * t) - (s * t) / (u * u));
 }
 
-auto pqcd::diff_sigma::diff_cross_section_2jet
+auto pqcd::diff_cross_section_2jet
 (
     const momentum &sqrt_s,
     const momentum &kt, 
     const rapidity &y1, 
     const rapidity &y2,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::diff_sigma::params *const p_params
+    const pqcd::sigma_jet_params *const p_sigma_params
 ) noexcept -> std::vector<xsection_id>
 {
     std::vector<xsection_id> xsection;
+    auto p_diff_params = p_sigma_params->p_d_params;
 
-    const momentum kt2 = kt * kt;
     const particle_id num_flavors = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
     xsectval xsect;
     xsection_id process;
     bool debug = false; //true prints the calculated processes
 
-    //Mandelstam variables for the subprocesses
+    //Mandelstam variables for the subprocesses    
+    const momentum kt2 = kt * kt; 
     const auto s_hat = pqcd::s_hat_from_ys(y1, y2, kt2);
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
@@ -649,8 +937,23 @@ auto pqcd::diff_sigma::diff_cross_section_2jet
     const rapidity x1 = (kt / sqrt_s) * (exp(y1) + exp(y2));
     const rapidity x2 = (kt / sqrt_s) * (exp(-y1) + exp(-y2));
 
-    //Units for dsigma/dptdy1dy2 as [mb/GeV]
-    const momentum alpha_s = p_p_pdf->alphasQ2(kt2);
+    //Factorization / renormalization scale
+    momentum q2; 
+    switch (p_sigma_params->scale_c)
+    {
+    case scaled_from_kt:
+        q2 = pow(p_sigma_params->scalar, 2) * kt2;
+        break;
+    case constant:
+        q2 = pow(p_sigma_params->scalar, 2);
+        break;
+    default:
+        q2 = kt2;
+        break;
+    }
+
+    //Units for dsigma/dktdy1dy2 as [mb/GeV]
+    const momentum alpha_s = p_p_pdf->alphasQ2(q2);
     const xsectval units = 2.0 * kt * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * 10 / pow(FMGEV, 2);
 
     //Returns zero when outside the physical boundaries
@@ -666,93 +969,27 @@ auto pqcd::diff_sigma::diff_cross_section_2jet
     }
 
     //Nuclear modifications and PDF manipulations 
-    double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
-    double ru = 1.0, rd = 1.0;
+    auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
+        = pqcd::diff_sigma::make_pdfs
+          (
+              x1, 
+              x2, 
+              q2, 
+              p_p_pdf, 
+              p_diff_params->projectile_with_npdfs,
+              p_diff_params->target_with_npdfs,
+              p_diff_params->isoscalar_projectile,
+              p_diff_params->isoscalar_target,
+              p_diff_params->npdfs_spatial,
+              p_diff_params->npdf_setnumber,
+              p_diff_params->A,
+              p_diff_params->B,
+              p_diff_params->ZA,
+              p_diff_params->ZB,
+              p_diff_params->rA_spatial,
+              p_diff_params->rB_spatial
+          );
 
-    if (p_params->projectile_with_npdfs)
-    {
-        eps09(1, p_params->npdf_setnumber, p_params->A, x1, sqrt(kt2), ruv, rdv, rus, rds, rs, rc, rb, rg);
-        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x1, kt2) / p_p_pdf->xfxQ2(1, x1, kt2);
-        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x1, kt2) / p_p_pdf->xfxQ2(2, x1, kt2);
-
-        ru = p_params->rA_spatial(ru); rd = p_params->rA_spatial(rd); rus = p_params->rA_spatial(rus);
-        rds = p_params->rA_spatial(rds); rs = p_params->rA_spatial(rs); rc = p_params->rA_spatial(rc); 
-        rb = p_params->rA_spatial(rb); rt = p_params->rA_spatial(rt); rg = p_params->rA_spatial(rg);
-
-    }
-    double f_i_x1[] = {rg * p_p_pdf->xfxQ2(0, x1, kt2),
-                       ru * p_p_pdf->xfxQ2(1, x1, kt2),
-                       rd * p_p_pdf->xfxQ2(2, x1, kt2),
-                       rs * p_p_pdf->xfxQ2(3, x1, kt2),
-                       rc * p_p_pdf->xfxQ2(4, x1, kt2),
-                       rb * p_p_pdf->xfxQ2(5, x1, kt2),
-                       rt * p_p_pdf->xfxQ2(6, x1, kt2)};
-    double f_ai_x1[] = {rg * p_p_pdf->xfxQ2(0, x1, kt2),
-                        rus * p_p_pdf->xfxQ2(-1, x1, kt2),
-                        rds * p_p_pdf->xfxQ2(-2, x1, kt2),
-                        rs * p_p_pdf->xfxQ2(-3, x1, kt2),
-                        rc * p_p_pdf->xfxQ2(-4, x1, kt2),
-                        rb * p_p_pdf->xfxQ2(-5, x1, kt2),
-                        rt * p_p_pdf->xfxQ2(-6, x1, kt2)};
-
-    if (p_params->target_with_npdfs)
-    {
-        eps09(1, p_params->npdf_setnumber, p_params->B, x2, sqrt(kt2), ruv, rdv, rus, rds, rs, rc, rb, rg);
-        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x2, kt2) / p_p_pdf->xfxQ2(1, x2, kt2);
-        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x2, kt2) / p_p_pdf->xfxQ2(2, x2, kt2);
-
-        ru = p_params->rB_spatial(ru); rd = p_params->rB_spatial(rd); rus = p_params->rB_spatial(rus);
-        rds = p_params->rB_spatial(rds); rs = p_params->rB_spatial(rs); rc = p_params->rB_spatial(rc); 
-        rb = p_params->rB_spatial(rb); rt = p_params->rB_spatial(rt); rg = p_params->rB_spatial(rg);
-    }
-    else
-    {
-        ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; 
-        rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
-    }
-    double f_i_x2[] = {rg * p_p_pdf->xfxQ2(0, x2, kt2),
-                       ru * p_p_pdf->xfxQ2(1, x2, kt2),
-                       rd * p_p_pdf->xfxQ2(2, x2, kt2),
-                       rs * p_p_pdf->xfxQ2(3, x2, kt2),
-                       rc * p_p_pdf->xfxQ2(4, x2, kt2),
-                       rb * p_p_pdf->xfxQ2(5, x2, kt2),
-                       rb * p_p_pdf->xfxQ2(6, x2, kt2)};
-    double f_ai_x2[] = {rg * p_p_pdf->xfxQ2(0, x2, kt2),
-                        rus * p_p_pdf->xfxQ2(-1, x2, kt2),
-                        rds * p_p_pdf->xfxQ2(-2, x2, kt2),
-                        rs * p_p_pdf->xfxQ2(-3, x2, kt2),
-                        rc * p_p_pdf->xfxQ2(-4, x2, kt2),
-                        rb * p_p_pdf->xfxQ2(-5, x2, kt2),
-                        rb * p_p_pdf->xfxQ2(-6, x2, kt2)};
-
-    double ZoA = /*82/208.0*/ p_params->ZA / static_cast<double>(p_params->A);
-    double NoA = /*126/208.0*/ (p_params->A - p_params->ZA) / static_cast<double>(p_params->A);
-    double u, ub, d, db;
-    ////ISOSCALAR NUCLEONS TODO
-    if (p_params->isoscalar_projectile)
-    {
-        u = f_i_x1[1];
-        ub = f_ai_x1[1];
-        d = f_i_x1[2];
-        db = f_ai_x1[2];
-        f_i_x1[1] = ZoA * u + NoA * d;
-        f_i_x1[2] = ZoA * d + NoA * u;
-        f_ai_x1[1] = ZoA * ub + NoA * db;
-        f_ai_x1[2] = ZoA * db + NoA * ub;
-    }
-    ZoA = /*82/208.0*/ p_params->ZB / static_cast<double>(p_params->B);
-    NoA = /*126/208.0*/ (p_params->B - p_params->ZB) / static_cast<double>(p_params->B);
-    if (p_params->isoscalar_target)
-    {
-        u = f_i_x2[1];
-        ub = f_ai_x2[1];
-        d = f_i_x2[2];
-        db = f_ai_x2[2];
-        f_i_x2[1] = ZoA * u + NoA * d;
-        f_i_x2[2] = ZoA * d + NoA * u;
-        f_ai_x2[1] = ZoA * ub + NoA * db;
-        f_ai_x2[2] = ZoA * db + NoA * ub;
-    }
 
     xsection.reserve(176); //176 different processes if n:o quark flavors = 5
 
@@ -1027,107 +1264,29 @@ auto pqcd::diff_sigma::sigma_jet
     std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
 ) noexcept -> xsectval
 {
-    const int A=208, B=208;
-    xsectval sum = 0;
     const double alpha_s = p_p_pdf->alphasQ2(q2);
-    const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
+    const int num_flavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
 
-    std::array<double, 13> cAs, cBs, xfxQ2_1s, xfxQ2_2s;
-    cAs.fill(1.0);
-    cBs.fill(1.0);
-
-    xfxQ2_1s[0] = p_p_pdf->xfxQ2(0, x1, q2); // 0 = gluons
-    xfxQ2_2s[0] = p_p_pdf->xfxQ2(0, x2, q2); // 0 = gluons
-    for (uint8_t i=1; i<7; i++)
-    {
-        xfxQ2_1s[i] = p_p_pdf->xfxQ2(i, x1, q2); // 1-6 = quarks
-        xfxQ2_1s[i+6] = p_p_pdf->xfxQ2(-i, x1, q2); // 7-12 = antiquarks
-
-        xfxQ2_2s[i] = p_p_pdf->xfxQ2(i, x2, q2); // 1-6 = quarks
-        xfxQ2_2s[i+6] = p_p_pdf->xfxQ2(-i, x2, q2); // 7-12 = antiquarks
-    }
-
-    if (p_params->projectile_with_npdfs)
-    {
-        eps09(1, p_params->npdf_setnumber, A, x1, sqrt(q2), 
-          cAs[1], // = up valence
-          cAs[2], // = down valence
-          cAs[7], // = up sea 
-          cAs[8], // = down sea
-          cAs[3], // = strange
-          cAs[4], // = charm
-          cAs[5], // = bottom
-          cAs[0]);// = gluons
-  
-        //eps09 gives valence and sea pdfs separately, we need valence + sea for u and d
-        cAs[1] = cAs[1] + (cAs[7] - cAs[1]) * p_p_pdf->xfxQ2(-1, x1, q2) / p_p_pdf->xfxQ2(1, x1, q2); 
-        cAs[2] = cAs[2] + (cAs[8] - cAs[2]) * p_p_pdf->xfxQ2(-2, x1, q2) / p_p_pdf->xfxQ2(2, x1, q2);
-        cAs[9] = cAs[3]; // \bar{s} = s
-        cAs[10] = cAs[4]; // \bar{c} = c
-        cAs[11] = cAs[5]; // \bar{b} = b
-        cAs[12] = cAs[6]; // \bar{t} = t
-
-        xfxQ2_1s[0] = cAs[0]*xfxQ2_1s[0]; // 0 = gluons
-        for (uint8_t i=1; i<7; i++)
-        {
-            xfxQ2_1s[i] = cAs[i]*xfxQ2_1s[i]; // 1-6 = quarks
-            xfxQ2_1s[i+6] = cAs[i+6]*xfxQ2_1s[i+6]; // 7-12 = antiquarks
-        }
-    }
-
-    if (p_params->target_with_npdfs)
-    {
-        eps09(1, p_params->npdf_setnumber, B, x2, sqrt(q2), 
-          cBs[1], // = up valence
-          cBs[2], // = down valence
-          cBs[7], // = up sea 
-          cBs[8], // = down sea
-          cBs[3], // = strange
-          cBs[4], // = charm
-          cBs[5], // = bottom
-          cBs[0]);// = gluons
-  
-        //eps09 gives valence and sea pdfs separately, we need valence + sea for u and d
-        cBs[1] = cBs[1] + (cBs[7] - cBs[1]) * p_p_pdf->xfxQ2(-1, x2, q2) / p_p_pdf->xfxQ2(1, x2, q2); 
-        cBs[2] = cBs[2] + (cBs[8] - cBs[2]) * p_p_pdf->xfxQ2(-2, x2, q2) / p_p_pdf->xfxQ2(2, x2, q2);
-        cBs[9] = cBs[3]; // \bar{s} = s
-        cBs[10] = cBs[4]; // \bar{c} = c
-        cBs[11] = cBs[5]; // \bar{b} = b
-        cBs[12] = cBs[6]; // \bar{t} = t
-
-        xfxQ2_2s[0] = cBs[0]*xfxQ2_2s[0]; // 0 = gluons
-        for (uint8_t i=1; i<7; i++)
-        {
-            xfxQ2_2s[i] = cBs[i]*xfxQ2_2s[i]; // 1-6 = quarks
-            xfxQ2_2s[i+6] = cBs[i+6]*xfxQ2_2s[i+6]; // 7-12 = antiquarks
-        }
-    }
-    
-    double ZoA = 82.0 / 208.0, NoA = 126.0 / 208.0;
-    double u, ub, d, db;
-    ////ISOSCALAR NUCLEONS
-    if (p_params->isoscalar_projectile)
-    {
-        u = xfxQ2_1s[1];
-        ub = xfxQ2_1s[7];
-        d = xfxQ2_1s[2];
-        db = xfxQ2_1s[8];
-        xfxQ2_1s[1] = ZoA * u + NoA * d;
-        xfxQ2_1s[2] = ZoA * d + NoA * u;
-        xfxQ2_1s[7] = ZoA * ub + NoA * db;
-        xfxQ2_1s[8] = ZoA * db + NoA * ub;
-    }
-    if (p_params->isoscalar_target)
-    {
-        u = xfxQ2_2s[1];
-        ub = xfxQ2_2s[7];
-        d = xfxQ2_2s[2];
-        db = xfxQ2_2s[8];
-        xfxQ2_2s[1] = ZoA * u + NoA * d;
-        xfxQ2_2s[2] = ZoA * d + NoA * u;
-        xfxQ2_2s[7] = ZoA * ub + NoA * db;
-        xfxQ2_2s[8] = ZoA * db + NoA * ub;
-    }
+    auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
+        = pqcd::diff_sigma::make_pdfs
+          (
+              x1, 
+              x2, 
+              q2, 
+              p_p_pdf, 
+              p_params->projectile_with_npdfs,
+              p_params->target_with_npdfs,
+              p_params->isoscalar_projectile,
+              p_params->isoscalar_target,
+              p_params->npdfs_spatial,
+              p_params->npdf_setnumber,
+              p_params->A,
+              p_params->B,
+              p_params->ZA,
+              p_params->ZB,
+              p_params->rA_spatial,
+              p_params->rB_spatial
+          );
 
     ///* GG->XX
     sum += 0.5 * xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
@@ -1165,8 +1324,12 @@ auto pqcd::diff_sigma::sigma_jet
 
     for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
-        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                     + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                     + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                     + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                     + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
     }
     //*/
     return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
@@ -1185,10 +1348,8 @@ auto pqcd::diff_sigma::sigma_1jet
     std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
 ) noexcept -> xsectval
 {
-    const int A=208, B=208;
-    xsectval sum = 0;
     const double alpha_s = p_p_pdf->alphasQ2(q2);
-    const int numFlavours = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
+    const uint8_t num_flavors = static_cast<uint8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
 
     std::array<double, 13> cAs, cBs, xfxQ2_1s, xfxQ2_2s;
     cAs.fill(1.0);
@@ -1287,80 +1448,19 @@ auto pqcd::diff_sigma::sigma_1jet
         xfxQ2_2s[8] = ZoA * db + NoA * ub;
     }
 
-    ///* GG->XX
-    sum += xfxQ2_1s[0]*xfxQ2_2s[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
-    sum += numFlavours * xfxQ2_1s[0]*xfxQ2_2s[0] * (pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat) 
-                                                    + pqcd::diff_sigma::sigma_gg_qaq(s_hat, u_hat, t_hat));
-    //*/
-    ///* GQ->XX
-    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
-    {
-        sum += xfxQ2_1s[0]*xfxQ2_2s[flavor]   * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
-                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
-        sum += xfxQ2_1s[0]*xfxQ2_2s[flavor+6] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
-                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
-        sum += xfxQ2_1s[flavor]*xfxQ2_2s[0]   * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
-                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
-        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[0] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
-                                                 + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
-    }
-    //*/
-    ///* QQ->XX
-    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
-    {
-        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
-        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
-    }
+    xsectval d_sigma = pqcd::diff_sigma::full_partonic_bookkeeping_1jet
+                       (
+                           f_i_x1, 
+                           f_i_x2,
+                           f_ai_x1,
+                           f_ai_x2,
+                           num_flavors,
+                           s_hat,
+                           t_hat, 
+                           u_hat
+                       );
 
-    for (uint8_t flavor1 = 1; flavor1 <= numFlavours; ++flavor1)
-    {
-        for (uint8_t flavor2 = 1; flavor2 <= numFlavours; ++flavor2)
-        {
-            if (flavor1 != flavor2)
-            {
-                sum += xfxQ2_1s[flavor1]*xfxQ2_2s[flavor2]     * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
-                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
-                sum += xfxQ2_1s[flavor1+6]*xfxQ2_2s[flavor2+6] * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
-                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
-                sum += xfxQ2_1s[flavor1]*xfxQ2_2s[flavor2+6]   * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
-                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
-                sum += xfxQ2_1s[flavor1+6]*xfxQ2_2s[flavor2]   * (pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat) 
-                                                                  + pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, u_hat, t_hat));
-            }
-        }
-    }
-
-    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
-    {
-        sum += xfxQ2_1s[flavor]*xfxQ2_2s[flavor+6] *
-                (
-                    (
-                        pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
-                        + pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, u_hat, t_hat)
-                    )
-                    + pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
-                    + (numFlavours - 1) * 
-                    (
-                        pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat) 
-                        + pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, u_hat, t_hat)
-                    )
-                );
-        sum += xfxQ2_1s[flavor+6]*xfxQ2_2s[flavor] *
-                (
-                    (
-                        pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
-                        + pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, u_hat, t_hat)
-                    )
-                    + pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
-                    + (numFlavours - 1) * 
-                    (
-                        pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat) 
-                        + pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, u_hat, t_hat)
-                    )
-                );
-    }
-    //*/
-    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
+    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
 }
 
 auto pqcd::diff_sigma::spatial_sigma_jet_mf
@@ -1375,7 +1475,6 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
     const pqcd::diff_sigma::params *const p_params
 ) noexcept -> xsectval
 {
-    xsectval sum = 0;
     const double alpha_s = p_p_pdf->alphasQ2(q2);
     const uint8_t num_flavors = static_cast<uint8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
 
@@ -1467,53 +1566,20 @@ auto pqcd::diff_sigma::spatial_sigma_jet_mf
         f_ai_x2[2] = ZoA * db + NoA * ub;
     }
 
-    ///* GG->XX
-    sum += 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
-    sum += num_flavors * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
-    //*/
-    ///* GQ->XX
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
-    {
-        sum += f_i_x1[0] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
-        sum += f_i_x1[0] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
-        sum += f_i_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
-        sum += f_ai_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
-    }
-    //*/
-    ///* QQ->XX
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
-    {
-        sum += 0.5 * f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
-        sum += 0.5 * f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
-    }
+    xsectval d_sigma = pqcd::diff_sigma::full_partonic_bookkeeping
+                       (
+                           f_i_x1, 
+                           f_i_x2,
+                           f_ai_x1,
+                           f_ai_x2,
+                           num_flavors,
+                           s_hat,
+                           t_hat, 
+                           u_hat
+                       );
 
-    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
-    {
-        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
-        {
-            if (flavor1 != flavor2)
-            {
-                sum += f_i_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
-                sum += f_ai_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
-                sum += f_i_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
-                sum += f_ai_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
-            }
-        }
-    }
-
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
-    {
-        sum += f_i_x1[flavor] * f_ai_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
-                                                  + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
-                                                  + (num_flavors - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
-        sum += f_ai_x1[flavor] * f_i_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
-                                                  + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
-                                                  + (num_flavors - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
-    }
-    //*/
-    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
+    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
 }
-
 
 auto pqcd::diff_sigma::spatial_sigma_jet_full
 (
@@ -1656,8 +1722,12 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
 
     for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
     {
-        sum += f_i_x_matrix[flavor][flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
-        sum += f_i_x_matrix[flavor+6][flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += f_i_x_matrix[flavor][flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
+        sum += f_i_x_matrix[flavor+6][flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
+                                                + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
+                                                + (numFlavours - 1) * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat));
     }
     //*/
     return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * sum;
@@ -1715,7 +1785,7 @@ int pqcd::sigma_jet_integrand(unsigned ndim,
     }
     else //FULL SUMMATION
     {
-        p_fval[0] = 0.5 * (pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) + pqcd::diff_sigma::sigma_jet(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success
@@ -1747,9 +1817,9 @@ auto pqcd::sigma_1jet_integrand_binned
 
     auto [ kt_low, kt_upp, y_low, y_upp ] = *p_bin;
 
-    kt_upp = fmin(kt_upp , sqrt(*p_mand_s)/2);    
-    const momentum kt = kt_low + p_x[0] * (kt_upp - kt_low);
-    const momentum kt2 = pow(kt,2);
+    const momentum kt2_upp = fmin(pow(kt_upp,2) , *p_mand_s/4);    
+    const momentum kt2_low = pow(kt_low,2);
+    const momentum kt2 = kt2_low + p_x[0] * (kt2_upp - kt2_low);
     const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
 
     y_low = fmax(y_low , -acosh(sqrt_s_per_kt/2));
@@ -1760,7 +1830,7 @@ auto pqcd::sigma_1jet_integrand_binned
     const auto y2_low = -log(sqrt_s_per_kt - exp(-y1));
     const rapidity y2 = y2_low + p_x[2] * (y2_upp - y2_low);
 
-    const xsectval jacobian = (kt_upp - kt_low) * (y_upp - y_low) * (y2_upp - y2_low) * kt;
+    const xsectval jacobian = (kt2_upp - kt2_low) * (y_upp - y_low) * (y2_upp - y2_low);
 
     momentum fac_scale;
     switch (p_params->scale_c)
@@ -1821,9 +1891,9 @@ auto pqcd::sigma_dijet_integrand_binned
 
     auto [ kt_low, kt_upp, eta_low, eta_upp ] = *p_bin;
 
-    kt_upp = fmin(kt_upp , sqrt(*p_mand_s)/2);    
-    const momentum kt = kt_low + p_x[0] * (kt_upp - kt_low);
-    const momentum kt2 = pow(kt,2);
+    const momentum kt2_upp = fmin(pow(kt_upp,2) , *p_mand_s/4);    
+    const momentum kt2_low = pow(kt_low,2);
+    const momentum kt2 = kt2_low + p_x[0] * (kt2_upp - kt2_low);
     const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
     
     const rapidity eta = eta_low + p_x[1] * (eta_upp - eta_low);
@@ -1832,7 +1902,7 @@ auto pqcd::sigma_dijet_integrand_binned
     const auto ystar_low = 0.0;
     const rapidity ystar = ystar_low + p_x[2] * (ystar_upp - ystar_low);
 
-    const xsectval jacobian = (kt_upp - kt_low) * (eta_upp - eta_low) * (ystar_upp - ystar_low) * kt;
+    const xsectval jacobian = (kt2_upp - kt2_low) * (eta_upp - eta_low) * (ystar_upp - ystar_low);
 
     momentum fac_scale;
     switch (p_params->scale_c)
@@ -1922,8 +1992,8 @@ auto pqcd::spatial_sigma_jet_integrand_mf
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = 0.5 * (pqcd::diff_sigma::spatial_sigma_jet_mf(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) 
-        + pqcd::diff_sigma::spatial_sigma_jet_mf(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+        p_fval[0] = pqcd::diff_sigma::spatial_sigma_jet_mf(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) 
+                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success
@@ -1984,8 +2054,8 @@ auto pqcd::spatial_sigma_jet_integrand_full
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = 0.5 * (pqcd::diff_sigma::spatial_sigma_jet_full(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params,/* p_n_pdf,*/ cA, cB, T_sums) 
-        + pqcd::diff_sigma::spatial_sigma_jet_full(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params,/* p_n_pdf,*/ cA, cB, T_sums)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+        p_fval[0] = pqcd::diff_sigma::spatial_sigma_jet_full(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params,/* p_n_pdf,*/ cA, cB, T_sums)
+                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success
@@ -2044,8 +2114,8 @@ auto pqcd::spatial_sigma_jet_integrand_factored
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = 0.5 * (pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params/*, p_n_pdf*/) 
-        + pqcd::diff_sigma::sigma_jet(x2, x1, fac_scale, p_pdf, s_hat, u_hat, t_hat, p_params->p_d_params/*, p_n_pdf*/)) * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params/*, p_n_pdf*/) 
+                    * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success
