@@ -229,18 +229,6 @@ public:
           std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
         ) noexcept -> xsectval;
 
-        static auto spatial_sigma_jet_mf
-        (
-          const rapidity &x1,    
-          const rapidity &x2, 
-          const momentum &q2,    
-          std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-          const momentum &s_hat, 
-          const momentum &t_hat, 
-          const momentum &u_hat, 
-          const pqcd::diff_sigma::params *const p_params
-        ) noexcept -> xsectval;
-
         static auto spatial_sigma_jet_full
         (
           const rapidity &x1,    
@@ -369,15 +357,6 @@ public:
         xsectval &jacobian //output
       ) noexcept -> void;
 
-    static auto spatial_sigma_jet_integrand_mf
-      (
-        unsigned ndim, 
-        const double *p_x, 
-        void *p_fdata, 
-        unsigned fdim, 
-        double *p_fval
-      ) noexcept -> int;
-
     static auto spatial_sigma_jet_integrand_full
       (
         unsigned ndim, 
@@ -452,10 +431,10 @@ public:
     static auto calculate_spatial_sigma_jet_mf
       (
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-        std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, 
+        /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/ 
         const momentum *const p_mand_s, 
         const momentum *const p_kt2_lower_cutoff, 
-        const pqcd::sigma_jet_params *const p_params, 
+        const pqcd::sigma_jet_params * p_params, 
         const spatial &sum_tppa, 
         const spatial &sum_tppb, 
         const spatial &tAA_0, 
