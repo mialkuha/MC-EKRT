@@ -11,32 +11,41 @@ kt_max = 11
 
 #infile_name  = 'sigma1jet_analytical_AA.dat'
 #infile_name  = 'sigma1jet_analytical_pp.dat'
-#infile_name  = 'sigma1jet_sim_AA.dat'
+infile_name1  = 'sigma1jet_sim_AA.dat'
 #infile_name  = 'sigma1jet_sim_pp.dat'
-#infile_name  = 'sigma1jet_sim_sAA.dat'
+infile_name2  = 'sigma1jet_sim_sAA.dat'
 #infile_name  = 'sigmadijet_analytical_AA.dat'
 #infile_name  = 'sigmadijet_analytical_pp.dat'
 #infile_name  = 'sigmadijet_sim_AA.dat'
 #infile_name  = 'sigmadijet_sim_pp.dat'
-infile_name  = 'sigmadijet_sim_sAA.dat'
+#infile_name  = 'sigmadijet_sim_sAA.dat'
 
-pdf_name  = infile_name[:-3]+'pdf'
+pdf_name  = infile_name1[:-4]+'_vs_'+infile_name2[14:-3]+'pdf'
 
-infile  = open(infile_name,'r')
+infile1  = open(infile_name1,'r')
+infile2  = open(infile_name2,'r')
 
-lines = infile.readlines()	
-infile.close()
+lines1 = infile1.readlines()	
+infile1.close()
+lines2 = infile2.readlines()	
+infile2.close()
 
-data  = []
+data1  = []
+data2  = []
 
-for line in lines:
+for line in lines1:
 	if line.startswith('///') or len(line) < 4 :
 		continue
-	data.append(tuple(map(float,line.split())))
+	data1.append(tuple(map(float,line.split())))
+
+for line in lines2:
+	if line.startswith('///') or len(line) < 4 :
+		continue
+	data2.append(tuple(map(float,line.split())))
 
 kts = []
 
-for tupl in data:
+for tupl in data1:
 	kts.append(tupl[0])
 	kts.append(tupl[1])
 
@@ -47,12 +56,15 @@ kts = [kt for kt in kts if kt <= kt_max]
 kt_dim = len(kts)
 y_dim = len(y_walls)
 
+sigmas1  = []
+sigmas2  = []
 
-sigmas  = []
+for tupl in data1:
+	sigmas1.append(list(tupl[2:]))
+for tupl in data2:
+	sigmas2.append(list(tupl[2:]))
 
-for tupl in data:
-	sigmas.append(list(tupl[2:]))
-
+sigmas = np.array(sigmas1[:kt_dim]) - np.array(sigmas2[:kt_dim])
 
 # use latex for font rendering
 mpl.rcParams['text.usetex'] = True
@@ -77,7 +89,7 @@ dummy = []
 for i in range(kt_dim):
 	dummy.append(y_walls)
 Y = np.array(dummy)
-Z = np.array(sigmas[:kt_dim])
+Z = sigmas
 #print(np.shape(Y))
 #print(np.shape(Z))
 #print(Y)
@@ -92,7 +104,7 @@ Z = np.array(sigmas[:kt_dim])
 #ax.set_ylabel(r'$y$', size='xx-large')
 plt.ylim(-8,8)
 plt.xlim(2.5,11)
-ax.set_zlim(0,12)
+ax.set_zlim(-1,4)
 #plt.xscale('log')
 #plt.grid(visible=True, which='both', axis='both')
 #print(np.shape(kts[:-1]))

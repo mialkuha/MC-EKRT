@@ -9,7 +9,7 @@ CC=/usr/bin/clang++
 CFLAGS=-I$(IDIR) -I$(SDIR) -I. \
 	   -I/usr/local/include -I/usr/local/include/boost \
 	   -I/home/mikko/vcpkg/installed/x64-linux/include \
-	   -march=corei7 -O1 -std=c++2a -m64 -pthread -g -ltbb
+	   -march=corei7 -O1 -std=c++2a -m64 -pthread -g
 WFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor \
 	   -Wold-style-cast -Wcast-align -Wunused \
 	   -Woverloaded-virtual -Wpedantic -Wconversion \
@@ -18,7 +18,7 @@ WFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor \
 FLAGS=$(CFLAGS) $(WFLAGS)
 
 LIBS=-L/usr/local/lib -lgsl -lpthread\
-	   -lgslcblas -lm -lLHAPDF
+	   -lgslcblas -lm -lLHAPDF -ltbb
 
 _SRCS_CPP = ars.cpp hcubature.cpp histo.cpp linear_interpolator.cpp nn_coll.cpp nucleon.cpp nucleus_generator.cpp pqcd.cpp
 SRCS_CPP = $(patsubst %,$(SDIR)/%,$(_SRCS_CPP))

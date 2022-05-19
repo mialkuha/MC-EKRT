@@ -2237,6 +2237,90 @@ auto calculate_sigma_dijet_analytical
     std::cout<<"printed to "<<dataname<<std::endl;
 }
 
+auto print_2d_histo
+(
+    const histo_2d &histo_, 
+    const std::string &filename,
+    const double normalization = 1.0,
+    const bool divide_tot = true
+) noexcept -> void
+{
+    std::ofstream file;
+
+    file.open(filename);
+
+    auto [ histo, uf, of, xs, tot ] = histo_.get_histo();
+    auto [ uf0, uf1 ] = uf;
+    auto [ of0, of1 ] = of;
+    auto [ xs0, xs1 ] = xs;
+
+    file << "///Total count: "<<tot<<std::endl;
+    file << "///underflow: "<<uf0<<' '<<uf1<<std::endl;
+    file << "///overflow: "<<of0<<' '<<of1<<std::endl;
+
+    file << "///y bin walls:  ";
+    for (auto y : xs1)
+    {
+        file<<y<<' ';
+    }
+    file << std::endl;
+
+    auto norm = (divide_tot)? normalization : normalization * static_cast<double>(tot);
+
+    auto n_x_bins = histo.size();
+    auto n_y_bins = histo[0].size();
+
+    for (uint8_t i = 0; i < n_x_bins; i++)
+    {
+        file << xs0[i] << ' ' << xs0[i+1] << ' ';
+
+        for (uint8_t j = 0; j < n_y_bins; j++)
+        {   
+            file << histo[i][j] * norm << ' ';
+        }
+        file << std::endl;
+    }
+    std::cout<<"printed to "<<filename<<std::endl;
+    file.close();
+}
+
+auto print_1d_histo
+(
+    const histo_1d &histo_, 
+    const std::string &filename,
+    const double normalization = 1.0,
+    const bool divide_tot = true
+) noexcept -> void
+{
+    std::ofstream file;
+
+    file.open(filename);
+
+    auto [ histo, uf, of, xs, tot ] = histo_.get_histo();
+
+    file << "///Total count: "<<tot<<std::endl;
+    file << "///underflow: "<<uf<<std::endl;
+    file << "///overflow: "<<of<<std::endl;
+
+    file << "///x bin walls:  ";
+    for (auto x : xs)
+    {
+        file<<x<<' ';
+    }
+    file << std::endl;
+
+    auto norm = (divide_tot)? normalization : normalization * static_cast<double>(tot);
+
+    for (auto e : histo)
+    {
+        file<< e * norm <<' ';
+    }
+    file << std::endl;
+
+    std::cout<<"printed to "<<filename<<std::endl;
+    file.close();
+}
+
 int main()
 {
     //A lot of printing
@@ -2290,7 +2374,7 @@ int main()
     const AA_collision_params coll_params
     {
     /*mc_glauber_mode=          */false,
-    /*spatial_pdfs=             */true,
+    /*spatial_pdfs=             */false,
     /*spatial_averaging=        */false,
     /*calculate_end_state=      */true,
     /*reduce_nucleon_energies=  */false,
@@ -2306,15 +2390,13 @@ int main()
     //std::vector<Coll> collisions_for_reporting;
     const std::vector<double> kt_bins{loglinspace(kt0, sqrt_s/2.0, 21)};
     const std::vector<double> y_bins{linspace(-7.5, 7.5, 31)};
-    histo_2d h_ran_1jet   {kt_bins, y_bins};
-
-    histo_2d h_ran_dijet  {kt_bins, y_bins};
+    const std::vector<double> b_bins{linspace(b_min, b_max, 21)};
 
     //sigma_jet parameters
     /*const bool read_sigmajets_from_file = false;*/
     pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
-    /*projectile_with_npdfs=    */true,
-    /*target_with_npdfs=        */true,
+    /*projectile_with_npdfs=    */false,
+    /*target_with_npdfs=        */false,
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */coll_params.spatial_pdfs,
@@ -2337,7 +2419,7 @@ int main()
     //calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
 
     //end state calculation parameters
-    const double power_law = 2.2;
+    const double power_law = 3.0;
     auto [max_dsigma, err] = find_max_dsigma(kt0, sqrt_s, p_pdf, &jet_params);
     std::cout<<max_dsigma<<" "<<err<<std::endl;
     std::variant<linear_interpolator, xsectval> 
@@ -2349,8 +2431,9 @@ int main()
     //std::variant<linear_interpolator, xsectval> sigma_jets = linear_interpolator(xs, ys);
 
     //Only one sigma_jet
-    //std::variant<linear_interpolator, xsectval> sigma_jets = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params);
-    //std::cout<<std::get<xsectval>(sigma_jets)<<std::endl;
+    std::variant<InterpMultilinear<4, xsectval>, linear_interpolator, xsectval>
+        sigma_jets = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, &jet_params);
+    std::cout<<std::get<xsectval>(sigma_jets)<<std::endl;
     
     //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
     //std::cout<<kt02<<std::endl;
@@ -2358,8 +2441,8 @@ int main()
     //std::array<xsectval,4> sigma_jets = pqcd::calculate_spatial_sigma_jet_factored(p_pdf, p_pdf, &mand_s, &kt02, &jet_params);
     //std::cout<<sigma_jets[0]<<' '<<sigma_jets[1]<<' '<<sigma_jets[2]<<' '<<sigma_jets[3]<<std::endl;
 
-    std::variant<InterpMultilinear<4, xsectval>, linear_interpolator, xsectval> 
-         sigma_jets = read_sigma_jets_mf("sigma_jet_grid_mf.dat");
+    //std::variant<InterpMultilinear<4, xsectval>, linear_interpolator, xsectval> 
+    //     sigma_jets = read_sigma_jets_mf("sigma_jet_grid_mf.dat");
     //InterpMultilinear<5, xsectval> sigma_jets = read_sigma_jets_full("sigma_jet_full_grid.dat");
     
     //if (!read_sigmajets_from_file)
@@ -2393,9 +2476,19 @@ int main()
     histo_2d jets{kt_bins, y_bins};
     histo_2d dijets{kt_bins, y_bins};
 
+    histo_1d dETdy {y_bins};
+    histo_1d dEdy  {y_bins};
+
+    histo_1d dETdeta {y_bins};
+    histo_1d dEdeta  {y_bins};
+
+    histo_1d dETdb {b_bins};
+    histo_1d dEdb  {b_bins};
+
     do // while (AA_events < desired_N_events);
     {
-        spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); //B^2 from a uniform distribution
+        //B^2 from a uniform distribution
+        spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
         if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
         auto [pro, tar] = generate_nuclei
@@ -2477,10 +2570,15 @@ int main()
 
         if (end_state_filtering)
         {
+            momentum ET=0, E=0;
             filter_end_state(binary_collisions, filtered_scatterings);
             binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
             std::vector<std::tuple<double, double> > new_jets;
             std::vector<std::tuple<double, double> > new_dijets;
+            std::vector<std::tuple<double, double> > new_ET_y;
+            std::vector<std::tuple<double, double> > new_E_y;
+            std::vector<std::tuple<double, double> > new_ET_eta;
+            std::vector<std::tuple<double, double> > new_E_eta;
 
             for (auto e : filtered_scatterings)
             {
@@ -2488,9 +2586,31 @@ int main()
                 new_jets.emplace_back(e.kt, e.y2);
 
                 new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+
+                new_ET_y.emplace_back(e.y1, e.kt);
+                new_ET_y.emplace_back(e.y2, e.kt);
+
+                new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+
+                new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+
+                new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+
+                ET += 2*e.kt;
+                E += e.kt*(cosh(e.y1) + cosh(e.y2));
             }
             jets.add(new_jets);
             dijets.add(new_dijets);
+
+            dETdy.add(new_ET_y);
+            dEdy.add(new_E_y);
+
+            dETdeta.add(new_ET_eta);
+            dEdeta.add(new_E_eta);
+
+            dETdb.add(std::make_tuple(impact_parameter, ET));
+            dEdb.add(std::make_tuple(impact_parameter, E));
 
             filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
         }
@@ -2529,77 +2649,67 @@ int main()
             
     } while (AA_events < desired_N_events || !(std::cout<<" ...done!"<<std::endl));
 
+    print_2d_histo
+    (
+        jets, 
+        "sigma1jet_sim.dat", 
+        2.0 * std::get<xsectval>(sigma_jets)
+    );
 
-    std::string dataname_1jet = "sigma1jet_sim.dat";
-    std::string dataname_dijet = "sigmadijet_sim.dat";
-    std::ofstream file_1jet, file_dijet;
-    file_1jet.open(dataname_1jet);
-    file_dijet.open(dataname_dijet);
+    print_2d_histo
+    (
+        dijets, 
+        "sigmadijet_sim.dat", 
+        std::get<xsectval>(sigma_jets)
+    );
 
-    auto [ jets_histo, uf_j, of_j, xs_j, tot_j ] = jets.get_histo();
-    auto [ uf_j0, uf_j1 ] = uf_j;
-    auto [ of_j0, of_j1 ] = of_j;
-    auto [ xs_j0, xs_j1 ] = xs_j;
+    print_1d_histo
+    (
+        dETdy, 
+        "dETdy_sim.dat", 
+        1.0 / AA_events,
+        false
+    );
 
-    file_1jet << "///Total jets: "<<tot_j<<std::endl;
-    file_1jet << "///underflow: "<<uf_j0<<' '<<uf_j1<<std::endl;
-    file_1jet << "///overflow: "<<of_j0<<' '<<of_j1<<std::endl;
+    print_1d_histo
+    (
+        dEdy, 
+        "dEdy_sim.dat", 
+        1.0 / AA_events,
+        false
+    );
 
-    file_1jet << "///y bin walls:  ";
-    for (auto y : xs_j1)
-    {
-        file_1jet<<y<<' ';
-    }
-    file_1jet << std::endl;
+    print_1d_histo
+    (
+        dETdeta, 
+        "dETdeta_sim.dat", 
+        1.0 / AA_events,
+        false
+    );
 
-    auto n_kt_bins = jets_histo.size();
-    auto n_y_bins = jets_histo[0].size();
+    print_1d_histo
+    (
+        dEdeta, 
+        "dEdeta_sim.dat", 
+        1.0 / AA_events,
+        false
+    );
 
-    for (uint8_t i = 0; i < n_kt_bins; i++)
-    {
-        file_1jet << xs_j0[i] << ' ' << xs_j0[i+1] << ' ';
-        /*const auto kt_bin_size = xs_j0[i+1] - xs_j0[i];*/
+    print_1d_histo
+    (
+        dETdb, 
+        "dETdb_sim.dat", 
+        1.0,
+        true
+    );
 
-        for (uint8_t j = 0; j < n_y_bins; j++)
-        {
-            /*const auto y_bin_size = xs_j1[j+1] - xs_j1[j];*/
-            
-            file_1jet << 2.0 * jets_histo[i][j] * 93.7604/*std::get<xsectval>(sigma_jets)/(kt_bin_size*y_bin_size)*/ << ' ';
-        }
-        file_1jet << std::endl;
-    }
-    std::cout<<"printed to "<<dataname_1jet<<std::endl;
-
-    auto [ dijets_histo, uf_d, of_d, xs_d, tot_d ] = dijets.get_histo();
-    auto [ uf_d0, uf_d1 ] = uf_d;
-    auto [ of_d0, of_d1 ] = of_d;
-    auto [ xs_d0, xs_d1 ] = xs_d;
-
-    file_dijet << "///Total dijets: "<<tot_d<<std::endl;
-    file_dijet << "///underflow: "<<uf_d0<<' '<<uf_d1<<std::endl;
-    file_dijet << "///overflow: "<<of_d0<<' '<<of_d1<<std::endl;
-
-    file_dijet << "///y bin walls:  ";
-    for (auto y : xs_d1)
-    {
-        file_dijet<<y<<' ';
-    }
-    file_dijet << std::endl;
-
-    for (uint8_t i = 0; i < n_kt_bins; i++)
-    {
-        file_dijet << xs_d0[i] << ' ' << xs_d0[i+1] << ' ';
-        /*const auto kt_bin_size = xs_d0[i+1] - xs_d0[i];*/
-
-        for (uint8_t j = 0; j < n_y_bins; j++)
-        {
-            /*const auto y_bin_size = xs_d1[j+1] - xs_d1[j];*/
-            
-            file_dijet << dijets_histo[i][j] * 93.7604/*std::get<xsectval>(sigma_jets) /(kt_bin_size*y_bin_size)*/ << ' ';
-        }
-        file_dijet << std::endl;
-    }
-    std::cout<<"printed to "<<dataname_dijet<<std::endl;
+    print_1d_histo
+    (
+        dEdb, 
+        "dEdb_sim.dat", 
+        1.0,
+        true
+    );
 
 /*
     std::cout << collisions_for_reporting.size() << " collisions generated" << std::endl;

@@ -38,6 +38,42 @@ auto histo_1d::add
 
 auto histo_1d::add
 (
+    const std::tuple<double, double> &y_
+) noexcept -> void
+{
+    auto [ y , w ] = y_;
+
+    if (y <= this->xs[0])
+    {
+        this->underf += w;
+        this->total_counts++;
+        return;
+    }
+    
+    uint16_t y_index = 0;
+
+    for 
+    (
+        auto x_it = ++this->xs.begin();
+        x_it!=this->xs.end(); 
+        x_it++
+    )
+    {
+        if (y <= *x_it)
+        {
+            this->counts[y_index] += w;
+            this->total_counts++;
+            return;
+        }
+        y_index++;
+    }
+
+    this->overf += w;
+    this->total_counts++;
+}
+
+auto histo_1d::add
+(
     const std::vector<double> &news
 ) noexcept -> void
 {
@@ -92,6 +128,77 @@ auto histo_1d::add
     while (news_index < news_tot)
     {
         this->overf++;
+        this->total_counts++;
+        news_index++;
+    }
+}
+
+auto histo_1d::add
+(
+    const std::vector<std::tuple<double, double> > &news
+) noexcept -> void
+{
+    uint64_t news_tot = news.size();
+
+    if (news_tot <= 0)
+    {
+        return;
+    }
+    else if (news_tot == 1)
+    {
+        this->add(news[0]);
+        return;
+    }
+
+    uint64_t news_index = 0;
+    std::vector<std::tuple<double, double> > to_add{news};
+    std::sort
+    (
+        to_add.begin(), 
+        to_add.end(),
+        [](std::tuple<double, double> a, std::tuple<double, double> b)
+            {
+                auto [ a0, ph1 ] = a;
+                auto [ b0, ph2 ] = b;
+                return a0 < b0;
+            }
+    );
+
+    while (std::get<0>(to_add[news_index]) <= this->xs[0])
+    {
+        this->underf += std::get<1>(to_add[news_index]);
+        this->total_counts++;
+        news_index++;
+        if (news_index == news_tot)
+        {
+            return;
+        }
+    }
+    
+    uint16_t counts_index = 0;
+    for 
+    (
+        auto x_it = ++this->xs.begin();
+        x_it!=this->xs.end(); 
+        x_it++
+    )
+    {
+        while (std::get<0>(to_add[news_index]) <= *x_it)
+        {
+            this->counts[counts_index] += std::get<1>(to_add[news_index]);
+            this->total_counts++;
+            news_index++;
+            if (news_index == news_tot)
+            {
+                return;
+            }
+        }
+        counts_index++;
+    }
+
+    while (news_index < news_tot)
+    {
+        this->overf += std::get<1>(to_add[news_index]);
         this->total_counts++;
         news_index++;
     }
@@ -675,7 +782,7 @@ auto histo_3d::add
 }
 
 auto histo_1d::get_histo() const noexcept 
--> std::tuple<std::vector<double>&&, double, double, std::vector<double>, uint64_t>
+-> std::tuple<std::vector<double>, double, double, std::vector<double>, uint64_t>
 {   
     auto ret_histo{this->counts};
     auto total = this->total_counts;
@@ -689,11 +796,12 @@ auto histo_1d::get_histo() const noexcept
         bin_size = curr_x-prev_x;
         prev_x = curr_x;
         ret_histo[i] /= total*bin_size;
+
     }
 
     return std::make_tuple
         (
-            std::move(ret_histo),
+            ret_histo,
             this->underf / total,
             this->overf / total,
             this->xs, 

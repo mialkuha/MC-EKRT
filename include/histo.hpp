@@ -62,14 +62,37 @@ public:
     ) noexcept -> void;
 
     /**
-     * @brief Adds multiple points to the histogram, faster than
-     * adding one by one. Goes only once through each of the bins
+     * @brief Adds a single point with a weight to the histogram
      * 
-     * @param ys A vector of points to add to the histogram
+     * @param y_ The point and the weight
      */
     auto add
     (
-        const std::vector<double> &ys
+        const std::tuple<double, double> &y_
+    ) noexcept -> void;
+
+    /**
+     * @brief Adds multiple points to the histogram, faster than
+     * adding one by one. Goes only once through each of the bins
+     * 
+     * @param news A vector of points to add to the histogram
+     */
+    auto add
+    (
+        const std::vector<double> &news
+    ) noexcept -> void;
+
+    /**
+     * @brief Adds multiple points with varying weights to the 
+     * histogram, faster than adding one by one. Goes only once 
+     * through each of the bins
+     * 
+     * @param ys A vector of points and their weights to add to the 
+     *           histogram
+     */
+    auto add
+    (
+        const std::vector<std::tuple<double, double> > &news
     ) noexcept -> void;
 
     /**
@@ -89,14 +112,14 @@ public:
      * the underflow are normalized only with #of total points.
      * 
      * @return std::tuple
-     *         <std::vector<double>&&, = Normalized histogram
+     *         <std::vector<double>,   = Normalized histogram
      *          double,                = Underflow
      *          double,                = Overflow
      *          std::vector<double>,   = Bin edge coords
      *          uint64_t>              = Total # of points
      */
     auto get_histo() const noexcept -> std::tuple
-    <   std::vector<double>&&, 
+    <   std::vector<double>, 
         double, 
         double, 
         std::vector<double>, 

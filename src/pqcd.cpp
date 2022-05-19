@@ -294,7 +294,9 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
     }
     //*/
     return sum;
-}auto pqcd::throw_0_truncated_poissonian
+}
+
+auto pqcd::throw_0_truncated_poissonian
 (
     const double &lambda, 
     std::uniform_real_distribution<double> unirand, 
