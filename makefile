@@ -9,12 +9,12 @@ CC=/usr/bin/clang++
 CFLAGS=-I$(IDIR) -I$(SDIR) -I. \
 	   -I/usr/local/include -I/usr/local/include/boost \
 	   -I/home/mikko/vcpkg/installed/x64-linux/include \
-	   -march=corei7 -O1 -std=c++2a -m64 -pthread -g
+	   -march=corei7 -O1 -std=c++2a -m64 -pthread
 WFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor \
 	   -Wold-style-cast -Wcast-align -Wunused \
 	   -Woverloaded-virtual -Wpedantic -Wconversion \
 	   -Wsign-conversion -Wdouble-promotion -Wformat=2 \
-	   -pedantic -Weffc++ #-fsanitize=address,undefined
+	   -pedantic -Weffc++
 FLAGS=$(CFLAGS) $(WFLAGS)
 
 LIBS=-L/usr/local/lib -lgsl -lpthread\

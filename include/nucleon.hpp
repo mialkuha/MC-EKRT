@@ -12,6 +12,8 @@ class nucleon
 {
 public:
     nucleon(coords co_, const momentum & mom_) noexcept;
+    nucleon(coords co_, const momentum & mom_, const bool & wounded_, const bool & is_neutron_)
+        noexcept : co(std::move(co_)), mom(mom_), wounded(wounded_), is_neutron(is_neutron_) {};
 
     spatial calculate_bsquared(const nucleon & other) noexcept;
 

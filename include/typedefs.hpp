@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <functional>
+#include <iostream>
 #include <tuple>
 
 typedef double momentum;
@@ -43,6 +44,25 @@ enum class B2_normalization_mode
     inelastic,
     nothing
 };
+
+inline std::ostream& operator<<(std::ostream& os, const B2_normalization_mode& mode)
+{
+    switch (mode)
+    {
+    case B2_normalization_mode::total:
+      os << "total";
+      break;
+    case B2_normalization_mode::inelastic:
+      os << "inelastic";
+      break;
+    case B2_normalization_mode::nothing:
+      os << "nothing";
+      break;
+    default:
+      break;
+    }
+    return os;
+}
 
 struct AA_collision_params
 {
@@ -122,6 +142,12 @@ struct coords {
   {
     lhs *= rhs;
     return lhs;
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const coords& co)
+  {
+    os << '{' << co.x << ", " << co.y << ", " << co.z<<'}';
+    return os;
   }
 };
 
