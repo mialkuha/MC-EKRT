@@ -488,7 +488,8 @@ auto mc_glauber_style_report
     const uint &N_events, 
     const uint &nBins, 
     const double *const binsLow, 
-    const double *const binsHigh
+    const double *const binsHigh,
+    std::ostream out_stream
 ) noexcept -> void
 {
     // Make sure that no rounding downwards.
@@ -498,38 +499,38 @@ auto mc_glauber_style_report
     for (uint8_t comp = 1; comp <= 4; ++comp) {
 
         // Print out the header.
-        std::cout  << std::endl;
-        std::cout << "# sigma_inel = " << sigma_inel << " mb" << std::endl;
+        out_stream << std::endl;
+        out_stream << "# sigma_inel = " << sigma_inel << " mb" << std::endl;
 
         switch (comp)
         {
             case 1:
                 std::sort(collisions.begin(), collisions.end(), compNpart);
-                std::cout << "Using Npart for centrality determination" 
-                          << std::endl << std::endl
-                          << "# cent%\t nPmax\t nPmin\t <b>\t <nPart> <nColl> <T_AA>"
-                          << std::endl;
+                out_stream << "Using Npart for centrality determination" 
+                           << std::endl << std::endl
+                           << "# cent%\t nPmax\t nPmin\t <b>\t <nPart> <nColl> <T_AA>"
+                           << std::endl;
                 break;
             case 2:
                 std::sort(collisions.begin(), collisions.end(), compNcoll);
-                std::cout << "Using Ncoll for centrality determination" 
-                          << std::endl << std::endl
-                          << "# cent%\t nCmax\t nCmin\t <b>\t <nPart> <nColl> <T_AA>"
-                          << std::endl;
+                out_stream << "Using Ncoll for centrality determination" 
+                           << std::endl << std::endl
+                           << "# cent%\t nCmax\t nCmin\t <b>\t <nPart> <nColl> <T_AA>"
+                           << std::endl;
                 break;
             case 3:
                 std::sort(collisions.begin(), collisions.end(), compNtwo);
-                std::cout << "Using two-component (ancestors) model for centrality determination"
-                          << std::endl << std::endl
-                          << "# cent%\t nAmax\t nAmin\t <b>\t <nPart> <nColl> <T_AA>"
-                          << std::endl;
+                out_stream << "Using two-component (ancestors) model for centrality determination"
+                           << std::endl << std::endl
+                           << "# cent%\t nAmax\t nAmin\t <b>\t <nPart> <nColl> <T_AA>"
+                           << std::endl;
                 break;
             default: //case 4
                 std::sort(collisions.begin(), collisions.end(), compET);
-                std::cout << "Using sumET model for centrality determination" 
-                          << std::endl << std::endl
-                          << "# cent%\t ETmax\t ETmin\t <b>\t <nPart> <nColl> <T_AA>"
-                          << std::endl;
+                out_stream << "Using sumET model for centrality determination" 
+                           << std::endl << std::endl
+                           << "# cent%\t ETmax\t ETmin\t <b>\t <nPart> <nColl> <T_AA>"
+                           << std::endl;
         }
         std::reverse(collisions.begin(), collisions.end());
 
@@ -546,34 +547,34 @@ auto mc_glauber_style_report
             }
 
             // Print the centrality selection.
-            std::cout << binsLow[i]*100 << " " << binsHigh[i]*100 << '\t';
+            out_stream << binsLow[i]*100 << " " << binsHigh[i]*100 << '\t';
 
             switch (comp)
             {
                 case 1:
-                    std::cout << centrality[0].getNpart() << '\t' 
-                              << centrality[centrality.size() - 1].getNpart() << '\t';
+                    out_stream << centrality[0].getNpart() << '\t' 
+                               << centrality[centrality.size() - 1].getNpart() << '\t';
                     break;
                 case 2:
-                    std::cout << centrality[0].getNcoll() << '\t' 
-                              << centrality[centrality.size() - 1].getNcoll() << '\t';
+                    out_stream << centrality[0].getNcoll() << '\t' 
+                               << centrality[centrality.size() - 1].getNcoll() << '\t';
                     break;
                 case 3:
-                    std::cout << centrality[0].getNtwo() << '\t' 
-                              << centrality[centrality.size() - 1].getNtwo() << '\t';
+                    out_stream << centrality[0].getNtwo() << '\t' 
+                               << centrality[centrality.size() - 1].getNtwo() << '\t';
                     break;
                 default : //case 4
-                    std::cout << centrality[0].getET() << '\t' 
-                              << centrality[centrality.size() - 1].getET() << '\t';
+                    out_stream << centrality[0].getET() << '\t' 
+                               << centrality[centrality.size() - 1].getET() << '\t';
                     break;
             }
 
-            std::cout << calc_ave<double>(centrality, &Coll::getB) << '\t' 
-                      << calc_ave<ulong>(centrality, &Coll::getNpart) << '\t' 
-                      << calc_ave<ulong>(centrality, &Coll::getNcoll) << '\t' 
-                      << calc_ave<ulong>(centrality, &Coll::getNcoll)/sigma_inel << '\t' 
-                      // << calc_ave<double>(centrality, &Coll::getET) << '\t' 
-                      << std::endl;      
+            out_stream << calc_ave<double>(centrality, &Coll::getB) << '\t' 
+                       << calc_ave<ulong>(centrality, &Coll::getNpart) << '\t' 
+                       << calc_ave<ulong>(centrality, &Coll::getNcoll) << '\t' 
+                       << calc_ave<ulong>(centrality, &Coll::getNcoll)/sigma_inel << '\t' 
+                       // << calc_ave<double>(centrality, &Coll::getET) << '\t' 
+                       << std::endl;      
         }
     }
 } 
@@ -851,8 +852,8 @@ auto collide_nuclei_with_spatial_pdfs_averaging
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
     spatial sum_tppa=0, sum_tppb=0;
 
-    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+    spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+    spatial tBB_0 = 30.5;//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
     
     if (verbose)
     {
@@ -943,8 +944,8 @@ auto collide_nuclei_with_spatial_pdfs_averaging
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
     spatial sum_tppa=0, sum_tppb=0;
 
-    spatial tAA_0 = calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-    spatial tBB_0 = calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+    spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+    spatial tBB_0 = 30.5;//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
     
     if (verbose)
     {
@@ -2190,6 +2191,53 @@ auto calculate_sigma_1jet_analytical
     std::cout<<"printed to "<<dataname<<std::endl;
 }
 
+auto calculate_sigma_jet_analytical
+(
+    const momentum &mand_s, 
+    const std::vector<double> &kt_bin_walls,
+    const std::vector<double> &y_bin_walls,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> void
+{
+    std::string dataname = "sigmajet_analytical.dat";
+    std::ofstream dat_file;
+    dat_file.open(dataname);
+
+    const auto n_kt_bins = kt_bin_walls.size() - 1;
+    const auto n_y_bins = y_bin_walls.size() - 1;
+
+    dat_file << "///y bin walls:  ";
+    for (auto y : y_bin_walls)
+    {
+        dat_file<<y<<' ';
+    }
+    dat_file << std::endl;
+
+    for (uint8_t i = 0; i < n_kt_bins; i++)
+    {
+        dat_file << kt_bin_walls[i] << ' ' << kt_bin_walls[i+1] << ' ';
+        const auto kt_bin_size = kt_bin_walls[i+1] - kt_bin_walls[i];
+
+        for (uint8_t j = 0; j < n_y_bins; j++)
+        {
+            const auto y_bin_size = y_bin_walls[j+1] - y_bin_walls[j];
+            const auto bin = std::make_tuple(kt_bin_walls[i], kt_bin_walls[i+1], y_bin_walls[j], y_bin_walls[j+1]);
+            
+            dat_file << 
+                pqcd::calculate_sigma_jet_binned
+                (
+                    p_p_pdf, 
+                    &mand_s,
+                    &bin,
+                    p_params
+                )/(kt_bin_size*y_bin_size) << ' ';
+        }
+        dat_file << std::endl;
+    }
+    std::cout<<"printed to "<<dataname<<std::endl;
+}
+
 auto calculate_sigma_dijet_analytical
 (
     const momentum &mand_s, 
@@ -2235,6 +2283,76 @@ auto calculate_sigma_dijet_analytical
         dat_file << std::endl;
     }
     std::cout<<"printed to "<<dataname<<std::endl;
+}
+
+auto print_3d_histo
+(
+    const histo_3d &histo_, 
+    const std::string &filename,
+    const double normalization = 1.0,
+    const bool divide_tot = true
+) noexcept -> void
+{
+    std::ofstream file;
+
+    file.open(filename);
+
+    auto [ histo, uf, of, xs, tot ] = histo_.project_2d(1);
+    auto [ xs0, xs1 ] = xs;
+
+    file << "///Total count: "<<tot<<std::endl;
+    file << "///underflow: "<<uf<<std::endl;
+    file << "///overflow: "<<of<<std::endl;
+
+    file << "///y bin walls:  ";
+    for (auto y : xs1)
+    {
+        file<<y<<' ';
+    }
+    file << std::endl;
+
+    auto norm = (divide_tot)? normalization : normalization * static_cast<double>(tot);
+
+    auto n_x_bins = xs0.size()-1;
+    auto n_y_bins = xs1.size()-1;
+
+    for (auto i = 0; i < n_x_bins; i++)
+    {
+        file << xs0[i] << ' ' << xs0[i+1] << ' ';
+
+        for (auto j = 0; j < n_y_bins; j++)
+        {   
+            file << histo[i][j] * norm << ' ';
+        }
+        file << std::endl;
+    }
+
+    auto [ histo2, uf2, of2, xs2, tot2 ] = histo_.project_2d(2);
+    auto [ xs02, xs12 ] = xs2;
+    file << "///y bin walls:  ";
+    for (auto y : xs12)
+    {
+        file<<y<<' ';
+    }
+    file << std::endl;
+
+    norm = (divide_tot)? normalization : normalization * static_cast<double>(tot2);
+
+    n_x_bins = xs02.size()-1;
+    n_y_bins = xs12.size()-1;
+
+    for (auto i = 0; i < n_x_bins; i++)
+    {
+        file << xs02[i] << ' ' << xs02[i+1] << ' ';
+
+        for (auto j = 0; j < n_y_bins; j++)
+        {   
+            file << histo2[i][j] * norm << ' ';
+        }
+        file << std::endl;
+    }
+    std::cout<<"printed to "<<filename<<std::endl;
+    file.close();
 }
 
 auto print_2d_histo
@@ -2442,7 +2560,7 @@ auto print_1d_histo
 }
 
 int main()
-{
+{ 
     //A lot of printing
     bool verbose = false;
 
@@ -2454,14 +2572,15 @@ int main()
                   end_state_filtering   = true, 
                   save_events           = true/*, 
                   average_spatial_taas  = false*/;
-    std::string event_file_name = "event_derp.dat";
-    uint32_t      desired_N_events      = 0,
+    std::string   name_prefix = "_pp",
+                  event_file_name = "event_log"+name_prefix+".dat";
+    uint32_t      desired_N_events      = 1000,
                   AA_events             = 0, 
                   nof_collisions        = 0;
     const spatial b_min                 = 0, 
                   b_max                 = 20;
-    auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
-    //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
+    //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
+    auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
     //Parameters for the nuclei
@@ -2492,7 +2611,7 @@ int main()
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
     momentum kt0                          = 2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
-    //rapidity ycut = 10.0;
+    rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
     const AA_collision_params coll_params
     {
@@ -2512,8 +2631,8 @@ int main()
     std::vector<dijet_specs> filtered_scatterings;
     //std::vector<Coll> collisions_for_reporting;
     const std::vector<double> kt_bins{loglinspace(kt0, sqrt_s/2.0, 21)};
-    const std::vector<double> y_bins{linspace(-7.5, 7.5, 31)};
-    const std::vector<double> b_bins{linspace(b_min, b_max, 21)};
+    const std::vector<double> y_bins{linspace(-ylim, ylim, 16)};
+ //   const std::vector<double> b_bins{linspace(b_min, b_max, 21)};
 
     //sigma_jet parameters
     /*const bool read_sigmajets_from_file = false;*/
@@ -2537,12 +2656,12 @@ int main()
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
 
-
-    //calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
+    calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
+    calculate_sigma_jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
     //calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
 
     //end state calculation parameters
-    const double power_law = 3.0;
+    const double power_law = 3.1;
     auto [max_dsigma, err] = find_max_dsigma(kt0, sqrt_s, p_pdf, &jet_params);
     std::cout<<max_dsigma<<" "<<err<<std::endl;
     std::variant<linear_interpolator, xsectval> 
@@ -2564,8 +2683,8 @@ int main()
     //std::array<xsectval,4> sigma_jets = pqcd::calculate_spatial_sigma_jet_factored(p_pdf, p_pdf, &mand_s, &kt02, &jet_params);
     //std::cout<<sigma_jets[0]<<' '<<sigma_jets[1]<<' '<<sigma_jets[2]<<' '<<sigma_jets[3]<<std::endl;
 
-    //std::variant<InterpMultilinear<4, xsectval>, linear_interpolator, xsectval> 
-    //     sigma_jets = read_sigma_jets_mf("sigma_jet_grid_mf.dat");
+//    std::variant<InterpMultilinear<4, xsectval>, linear_interpolator, xsectval> 
+//         sigma_jets = read_sigma_jets_mf("sigma_jet_grid_mf.dat");
     //InterpMultilinear<5, xsectval> sigma_jets = read_sigma_jets_full("sigma_jet_full_grid.dat");
     
     //if (!read_sigmajets_from_file)
@@ -2599,14 +2718,25 @@ int main()
     histo_2d jets{kt_bins, y_bins};
     histo_2d dijets{kt_bins, y_bins};
 
+//    histo_3d jets{kt_bins, y_bins, y_bins};
+//    histo_3d dijets{kt_bins, y_bins, y_bins};
+
     histo_1d dETdy {y_bins};
     histo_1d dEdy  {y_bins};
 
     histo_1d dETdeta {y_bins};
     histo_1d dEdeta  {y_bins};
 
-    histo_1d dETdb {b_bins};
-    histo_1d dEdb  {b_bins};
+    std::ofstream total_energy;
+    auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
+    int64_t max_energy_broken = 0;
+
+    total_energy.open("total_energies"+name_prefix+".dat");
+    total_energy << "///Sum E_T Sum E" << std::endl;
+
+
+ //   histo_1d dETdb {b_bins};
+ //   histo_1d dEdb  {b_bins};
 
     if (!read_events_from_file)
     {
@@ -2741,10 +2871,24 @@ int main()
 
                 for (auto e : filtered_scatterings)
                 {
-                    new_jets.emplace_back(e.kt, e.y1);
-                    new_jets.emplace_back(e.kt, e.y2);
-
-                    new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                    //new_jets.emplace_back(e.kt, e.y1);
+                    //new_jets.emplace_back(e.kt, e.y2);
+//
+                    //new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+//                    new_jets.emplace_back(e.kt, e.y1, e.y2);
+//                    new_dijets.emplace_back(e.kt,/* e.y2,*/ e.y1);
+                    if ( unirand(*eng)<0.5)
+                    {
+                        new_jets.emplace_back(e.kt, e.y1);
+                        //new_dijets.emplace_back(e.kt, e.y2);
+                    }
+                    else
+                    {
+                        new_jets.emplace_back(e.kt, e.y2);
+                        //new_dijets.emplace_back(e.kt, e.y1);
+                    }
+                    new_dijets.emplace_back(e.kt, e.y1);
+                    new_dijets.emplace_back(e.kt, e.y2);
 
                     new_ET_y.emplace_back(e.y1, e.kt);
                     new_ET_y.emplace_back(e.y2, e.kt);
@@ -2768,8 +2912,29 @@ int main()
                 dETdeta.add(new_ET_eta);
                 dEdeta.add(new_E_eta);
 
-                dETdb.add(std::make_tuple(impact_parameter, ET));
-                dEdb.add(std::make_tuple(impact_parameter, E));
+                double sum_ET = 0, sum_E = 0;
+                for (auto e : new_ET_y)
+                {
+                    sum_ET += std::get<1>(e);
+                }
+                for (auto e : new_E_y)
+                {
+                    sum_E += std::get<1>(e);
+                }
+
+                total_energy << sum_ET << ' ' << sum_E << std::endl;
+
+                if (sum_E > max_energy)
+                {
+                    std::cout << std::endl 
+                              << "Energy conservation violated! Total "<< ++max_energy_broken
+                              << " times this far." << std::endl
+                              << "E_T = " << sum_ET << ", E = " << sum_E  << std::endl;
+                }
+                
+
+ //               dETdb.add(std::make_tuple(impact_parameter, ET));
+ //               dEdb.add(std::make_tuple(impact_parameter, E));
 
                 if (save_events)
                 {
@@ -2999,8 +3164,8 @@ int main()
                     ET += 2*e.kt;
                     E += e.kt*(cosh(e.y1) + cosh(e.y2));
                 }
-                jets.add(new_jets);
-                dijets.add(new_dijets);
+ //               jets.add(new_jets);
+ //               dijets.add(new_dijets);
 
                 dETdy.add(new_ET_y);
                 dEdy.add(new_E_y);
@@ -3008,8 +3173,8 @@ int main()
                 dETdeta.add(new_ET_eta);
                 dEdeta.add(new_E_eta);
 
-                dETdb.add(std::make_tuple(impact_parameter, ET));
-                dEdb.add(std::make_tuple(impact_parameter, E));
+ //               dETdb.add(std::make_tuple(impact_parameter, ET));
+ //               dEdb.add(std::make_tuple(impact_parameter, E));
 
                 filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
 
@@ -3024,52 +3189,52 @@ int main()
         }
     }
 
-    //print_2d_histo
-    //(
-    //    jets, 
-    //    "sigma1jet_sim_AASD.dat", 
-    //    2.0 * /*93.7604*/std::get<xsectval>(sigma_jets)
-    //);
-//
-    //print_2d_histo
-    //(
-    //    dijets, 
-    //    "sigmadijet_sim_AASD.dat", 
-    //    /*93.7604*/std::get<xsectval>(sigma_jets)
-    //);
-//
-    //print_1d_histo
-    //(
-    //    dETdy, 
-    //    "dETdy_sim_AASD.dat", 
-    //    1.0 / AA_events,
-    //    false
-    //);
-//
-    //print_1d_histo
-    //(
-    //    dEdy, 
-    //    "dEdy_sim_AASD.dat", 
-    //    1.0 / AA_events,
-    //    false
-    //);
-//
-    //print_1d_histo
-    //(
-    //    dETdeta, 
-    //    "dETdeta_sim_AASD.dat", 
-    //    1.0 / AA_events,
-    //    false
-    //);
-//
-    //print_1d_histo
-    //(
-    //    dEdeta, 
-    //    "dEdeta_sim_AASD.dat", 
-    //    1.0 / AA_events,
-    //    false
-    //);
-//
+    print_2d_histo
+    (
+        jets, 
+        "sigma1jet_sim"+name_prefix+".dat", 
+        2.0 * /*93.7604*/std::get<xsectval>(sigma_jets)
+    );
+
+    print_2d_histo
+    (
+        dijets, 
+        "sigmadijet_sim"+name_prefix+".dat", 
+        2.0 * /*93.7604*/std::get<xsectval>(sigma_jets)
+    );
+
+    print_1d_histo
+    (
+        dETdy, 
+        "dETdy_sim"+name_prefix+".dat", 
+        1.0 / AA_events,
+        false
+    );
+
+    print_1d_histo
+    (
+        dEdy, 
+        "dEdy_sim"+name_prefix+".dat", 
+        1.0 / AA_events,
+        false
+    );
+
+    print_1d_histo
+    (
+        dETdeta, 
+        "dETdeta_sim"+name_prefix+".dat", 
+        1.0 / AA_events,
+        false
+    );
+
+    print_1d_histo
+    (
+        dEdeta, 
+        "dEdeta_sim"+name_prefix+".dat", 
+        1.0 / AA_events,
+        false
+    );
+
     //print_1d_histo
     //(
     //    dETdb, 

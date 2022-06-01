@@ -6,19 +6,21 @@ from matplotlib.backends.backend_pdf import PdfPages
 from mpl_toolkits.mplot3d import axes3d
 
 
-y_walls = np.linspace(-7.25, 7.25, 30)
+y_walls = [-7.016335,	-6.014,	-5.011665,	-4.009335,	-3.007,	-2.004665,	-1.0023335,	0,	1.0023335,	2.004665,	3.007,	4.009335,	5.011665,	6.014,	7.016335]
+
 kt_max = 11
 
 #infile_name  = 'sigma1jet_analytical_AA.dat'
 #infile_name  = 'sigma1jet_analytical_pp.dat'
+#infile_name  = 'sigmajet_analytical_pp.dat'
 #infile_name  = 'sigma1jet_sim_AA.dat'
-#infile_name  = 'sigma1jet_sim_pp.dat'
+infile_name  = 'sigma1jet_sim_pp.dat'
 #infile_name  = 'sigma1jet_sim_sAA.dat'
 #infile_name  = 'sigmadijet_analytical_AA.dat'
 #infile_name  = 'sigmadijet_analytical_pp.dat'
 #infile_name  = 'sigmadijet_sim_AA.dat'
 #infile_name  = 'sigmadijet_sim_pp.dat'
-infile_name  = 'sigmadijet_sim_sAA.dat'
+#infile_name  = 'sigmadijet_sim_sAA.dat'
 
 pdf_name  = infile_name[:-3]+'pdf'
 
@@ -92,7 +94,7 @@ Z = np.array(sigmas[:kt_dim])
 #ax.set_ylabel(r'$y$', size='xx-large')
 plt.ylim(-8,8)
 plt.xlim(2.5,11)
-ax.set_zlim(0,12)
+ax.set_zlim(0,18)
 #plt.xscale('log')
 #plt.grid(visible=True, which='both', axis='both')
 #print(np.shape(kts[:-1]))

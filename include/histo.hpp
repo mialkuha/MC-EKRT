@@ -373,7 +373,7 @@ public:
      *     uint64_t >                                       = Total # of points
      */
     auto get_histo() const noexcept -> std::tuple
-    <   std::vector<std::vector<std::vector<double> > >&&, 
+    <   std::vector<std::vector<std::vector<double> > >, 
         std::tuple<double, double, double>, 
         std::tuple<double, double, double>, 
         std::tuple<std::vector<double>, std::vector<double>, std::vector<double> >,
@@ -419,7 +419,7 @@ public:
      */
     auto project_2d(const uint8_t dim_integrated) const noexcept 
     -> std::tuple
-    <   std::vector<std::vector<double> >&&, 
+    <   std::vector<std::vector<double> >, 
         double, 
         double, 
         std::tuple<std::vector<double>, std::vector<double> >,

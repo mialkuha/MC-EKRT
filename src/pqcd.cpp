@@ -160,6 +160,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping
     ///* GG->XX
     sum += 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
     sum += num_flavors * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
+    
     //*/
     ///* GQ->XX
     for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
@@ -525,6 +526,54 @@ auto pqcd::calculate_sigma_1jet_binned
                   (
                       fdim,                               //Integrand dimension
                       pqcd::sigma_1jet_integrand_binned,  //Integrand function
+                      &fdata,                             //Pointer to additional arguments
+                      3,                                  //Variable dimension
+                      lower_limits,                       //Variables minimum
+                      upper_limits,                       //Variables maximum
+                      0,                                  //Max n:o of function evaluations
+                      0,                                  //Required absolute error
+                      pqcd::g_error_tolerance,            //Required relative error
+                      ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
+                      &sigma_jet,                         //Pointer to output
+                      &error                              //Pointer to error output
+                  );
+
+    if (not_success != 0)
+    {
+        std::cout << "Problem with integration" << std::endl;
+        return -1;
+    }
+
+    return sigma_jet;
+}
+
+auto pqcd::calculate_sigma_jet_binned
+(
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    const momentum *const p_mand_s,
+    const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
+    const pqcd::sigma_jet_params *const p_params
+) noexcept -> xsectval
+{
+    xsectval sigma_jet, error;
+    const double upper_limits[3] = {1, 1, 1};
+    const double lower_limits[3] = {0, 0, 0};
+    const unsigned fdim = 1;
+    std::tuple
+    < 
+        std::shared_ptr<LHAPDF::GridPDF>, 
+        const momentum *const, 
+        const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
+        const pqcd::sigma_jet_params *const
+    > 
+        fdata = {p_pdf, p_mand_s, p_bin, p_params};
+
+    int not_success;
+
+    not_success = hcubature
+                  (
+                      fdim,                               //Integrand dimension
+                      pqcd::sigma_jet_integrand_binned,  //Integrand function
                       &fdata,                             //Pointer to additional arguments
                       3,                                  //Variable dimension
                       lower_limits,                       //Variables minimum
@@ -1005,6 +1054,7 @@ auto pqcd::diff_cross_section_2jet
 
     xsection.reserve(176); //176 different processes if n:o quark flavors = 5
 
+    ///* GG -> XX
     // gg -> gg
     {
         xsect = units * 0.5 * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_gg(s_hat, t_hat, u_hat);
@@ -1035,7 +1085,9 @@ auto pqcd::diff_cross_section_2jet
             std::cout << "gg -> qaq: 0+0 -> " << flavor << '+' << -flavor << std::endl;
         }
     }
+    //*/
 
+    ///* GQ->XX
     // gq -> gq
     for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
@@ -1088,6 +1140,8 @@ auto pqcd::diff_cross_section_2jet
         }
     }
 
+    //*/
+    ///* QQ->XX
     // qiqi -> qiqi
     for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
@@ -1124,6 +1178,7 @@ auto pqcd::diff_cross_section_2jet
             if (flavor1 != flavor2)
             {
                 xsect = units * f_i_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.sigma = xsect;
                 process.init1 = flavor1;
                 process.init2 = flavor2;
                 process.final1 = flavor1;
@@ -1135,6 +1190,7 @@ auto pqcd::diff_cross_section_2jet
                 }
 
                 xsect = units * f_ai_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.sigma = xsect;
                 process.init1 = -flavor1;
                 process.init2 = -flavor2;
                 process.final1 = -flavor1;
@@ -1146,6 +1202,7 @@ auto pqcd::diff_cross_section_2jet
                 }
 
                 xsect = units * f_i_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.sigma = xsect;
                 process.init1 = flavor1;
                 process.init2 = -flavor2;
                 process.final1 = flavor1;
@@ -1157,6 +1214,7 @@ auto pqcd::diff_cross_section_2jet
                 }
 
                 xsect = units * f_ai_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
+                process.sigma = xsect;
                 process.init1 = -flavor1;
                 process.init2 = flavor2;
                 process.final1 = -flavor1;
@@ -1259,6 +1317,7 @@ auto pqcd::diff_cross_section_2jet
             }
         }
     }
+    //*/
 
     return xsection;
 }
@@ -1547,10 +1606,14 @@ auto pqcd::sigma_1jet_integrand_binned
 
     auto [ kt_low, kt_upp, y_low, y_upp ] = *p_bin;
 
-    const momentum kt2_upp = fmin(pow(kt_upp,2) , *p_mand_s/4);    
-    const momentum kt2_low = pow(kt_low,2);
-    const momentum kt2 = kt2_low + p_x[0] * (kt2_upp - kt2_low);
-    const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
+    //const momentum kt2_upp = fmin(pow(kt_upp,2) , *p_mand_s/4);    
+    kt_upp = fmin(kt_upp , sqrt(*p_mand_s)/2.0);    
+    //const momentum kt2_low = pow(kt_low,2);
+    //const momentum kt2 = kt2_low + p_x[0] * (kt2_upp - kt2_low);
+    const momentum kt = kt_low + p_x[0] * (kt_upp - kt_low);
+    //const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
+    const auto sqrt_s_per_kt = sqrt(*p_mand_s) / kt;
+    const auto kt2 = kt*kt;
 
     y_low = fmax(y_low , -acosh(sqrt_s_per_kt/2));
     y_upp = fmin(y_upp ,  acosh(sqrt_s_per_kt/2));
@@ -1560,7 +1623,8 @@ auto pqcd::sigma_1jet_integrand_binned
     const auto y2_low = -log(sqrt_s_per_kt - exp(-y1));
     const rapidity y2 = y2_low + p_x[2] * (y2_upp - y2_low);
 
-    const xsectval jacobian = (kt2_upp - kt2_low) * (y_upp - y_low) * (y2_upp - y2_low);
+    //const xsectval jacobian = (kt2_upp - kt2_low) * (y_upp - y_low) * (y2_upp - y2_low);
+    const xsectval jacobian = 2.0 * kt * (kt_upp - kt_low) * (y_upp - y_low) * (y2_upp - y2_low);
 
     momentum fac_scale;
     switch (p_params->scale_c)
@@ -1590,6 +1654,85 @@ auto pqcd::sigma_1jet_integrand_binned
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
     p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
+                    * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
+
+    return 0; // success
+}
+
+auto pqcd::sigma_jet_integrand_binned
+(
+    unsigned ndim, 
+    const double *p_x, 
+    void *p_fdata, 
+    unsigned fdim, 
+    double *p_fval
+) noexcept -> int
+{
+    (void)ndim;
+    (void)fdim; //To silence "unused" warnings
+
+    auto [ p_pdf, p_mand_s, p_bin, p_params ] =
+        *(static_cast
+             <std::tuple
+                 < 
+                     std::shared_ptr<LHAPDF::GridPDF>, 
+                     const momentum *const, 
+                     const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
+                     const pqcd::sigma_jet_params *const
+                 > *
+             >(p_fdata)
+         );
+
+    auto [ kt_low, kt_upp, y_low, y_upp ] = *p_bin;
+
+    //const momentum kt2_upp = fmin(pow(kt_upp,2) , *p_mand_s/4);    
+    kt_upp = fmin(kt_upp , sqrt(*p_mand_s)/2.0);    
+    //const momentum kt2_low = pow(kt_low,2);
+    //const momentum kt2 = kt2_low + p_x[0] * (kt2_upp - kt2_low);
+    const momentum kt = kt_low + p_x[0] * (kt_upp - kt_low);
+    //const auto sqrt_s_per_kt = sqrt(*p_mand_s / kt2);
+    const auto sqrt_s_per_kt = sqrt(*p_mand_s) / kt;
+    const auto kt2 = kt*kt;
+
+    y_low = fmax(y_low , -acosh(sqrt_s_per_kt/2));
+    y_upp = fmin(y_upp ,  acosh(sqrt_s_per_kt/2));
+    const rapidity y1 = y_low + p_x[1] * (y_upp - y_low);
+
+    const auto y2_upp =  log(sqrt_s_per_kt - exp( y1));
+    const auto y2_low = -log(sqrt_s_per_kt - exp(-y1));
+    const rapidity y2 = y2_low + p_x[2] * (y2_upp - y2_low);
+
+    //const xsectval jacobian = (kt2_upp - kt2_low) * (y_upp - y_low) * (y2_upp - y2_low);
+    const xsectval jacobian = 2.0 * kt * (kt_upp - kt_low) * (y_upp - y_low) * (y2_upp - y2_low);
+
+    momentum fac_scale;
+    switch (p_params->scale_c)
+    {
+    case scaled_from_kt:
+        fac_scale = pow(p_params->scalar, 2) * kt2;
+        break;
+    case constant:
+        fac_scale = pow(p_params->scalar, 2);
+        break;
+    default:
+        fac_scale = kt2;
+        break;
+    }
+
+    const auto x1 = (exp( y1) + exp( y2)) / sqrt_s_per_kt;
+    const auto x2 = (exp(-y1) + exp(-y2)) / sqrt_s_per_kt;
+
+    if (std::isnan(y1)||std::isnan(y2)||std::isnan(x1)||std::isnan(x2)||x1>1||x2>1)
+    {
+        p_fval[0] = 0;
+        return 0;
+    }
+
+    const auto s_hat = pqcd::s_hat_from_ys(y1, y2, kt2);
+    const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
+    const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
+
+    p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1881,8 +2024,13 @@ auto pqcd::scale_limits_from_0_1
     xsectval &jacobian
 ) noexcept -> void
 {
-    kt2 = kt2_lower_cutoff + z1 * ((mand_s / 4) - kt2_lower_cutoff);
-    const auto sqrt_s_per_kt = sqrt(mand_s / kt2);
+    //kt2 = kt2_lower_cutoff + z1 * ((mand_s / 4) - kt2_lower_cutoff);
+    //const auto sqrt_s_per_kt = sqrt(mand_s / kt2);
+    const auto kt_upp = sqrt(mand_s)/2.0;
+    const auto kt_low = sqrt(kt2_lower_cutoff);
+    const auto kt = kt_low + z1 * (kt_upp - kt_low);
+    const auto sqrt_s_per_kt = sqrt(mand_s) / kt;
+    kt2 = kt*kt;
 
     const auto y1_upper = acosh(sqrt_s_per_kt / 2);
     //const auto y1_lower = -y1_upper;
@@ -1892,7 +2040,8 @@ auto pqcd::scale_limits_from_0_1
     const auto y2_lower = -log(sqrt_s_per_kt - exp(-y1));
     y2 = y2_lower + z3 * (y2_upper - y2_lower);
 
-    jacobian = ((mand_s / 4) - kt2_lower_cutoff) * (2 * y1_upper) * (y2_upper - y2_lower);
+    //jacobian = ((mand_s / 4) - kt2_lower_cutoff) * (2 * y1_upper) * (y2_upper - y2_lower);
+    jacobian = 2.0 * kt * (kt_upp - kt_low) * (2 * y1_upper) * (y2_upper - y2_lower);
 }
 
 auto pqcd::s_hat_from_ys

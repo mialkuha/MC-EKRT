@@ -855,7 +855,7 @@ auto histo_2d::get_histo() const noexcept -> std::tuple
 }
 
 auto histo_3d::get_histo() const noexcept -> std::tuple
-<   std::vector<std::vector<std::vector<double> > >&&, 
+<   std::vector<std::vector<std::vector<double> > >, 
     std::tuple<double, double, double>, 
     std::tuple<double, double, double>, 
     std::tuple<std::vector<double>, std::vector<double>, std::vector<double> >,
@@ -1134,7 +1134,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
 }
 auto histo_3d::project_2d(const uint8_t dim_integrated)
 const noexcept -> std::tuple
-<   std::vector<std::vector<double> >&&, 
+<   std::vector<std::vector<double> >, 
     double, 
     double, 
     std::tuple<std::vector<double>, std::vector<double> >,
@@ -1146,13 +1146,13 @@ const noexcept -> std::tuple
     std::vector<double> ret_grid2;
     std::vector<double> bins;
     double curr, prev;
-    uint16_t n_x_bins = full_histo.size();
-    uint16_t n_y_bins = full_histo[0].size();
-    uint16_t n_z_bins = full_histo[0][0].size();
+    uint16_t n_x_bins = std::get<0>(xs).size()-1;
+    uint16_t n_y_bins = std::get<1>(xs).size()-1;
+    uint16_t n_z_bins = std::get<2>(xs).size()-1;
 
     if (dim_integrated == 0) //x
     {
-        bins.reserve(n_x_bins);
+        bins = std::vector<double>(n_x_bins, 0.0);
 
         prev = std::get<0>(xs)[0];
         for (uint16_t i = 0; i < n_x_bins; i++)
@@ -1187,7 +1187,7 @@ const noexcept -> std::tuple
     }
     else if (dim_integrated == 1) //y
     {
-        bins.reserve(n_y_bins);
+        bins = std::vector<double>(n_y_bins, 0.0);
 
         prev = std::get<1>(xs)[0];
         for (uint16_t i = 0; i < n_y_bins; i++)
@@ -1222,7 +1222,7 @@ const noexcept -> std::tuple
     }
     else if (dim_integrated == 2) //z
     {
-        bins.reserve(n_z_bins);
+        bins = std::vector<double>(n_z_bins, 0.0);
 
         prev = std::get<2>(xs)[0];
         for (uint16_t i = 0; i < n_z_bins; i++)

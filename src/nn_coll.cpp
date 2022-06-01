@@ -77,7 +77,9 @@ void nn_coll::calculate_xsects(const xsectval &sigma_jet, const std::function<sp
 void nn_coll::push_end_states_to_collider_frame() noexcept
 {
     //Calculate transformation btw events CMS and collider frame
-    rapidity rap = atanh((this->projectile->mom - this->target->mom) / (this->projectile->mom + this->target->mom));
+    //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
+    //                    / (this->projectile->mom + this->target->mom));
+    rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
 
     //Push all end states with the transformation
     for (auto &s : this->dijets)

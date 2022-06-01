@@ -335,6 +335,15 @@ public:
         double *p_fval
       ) noexcept -> int;
 
+    static auto sigma_jet_integrand_binned
+      (
+        unsigned ndim, 
+        const double *p_x, 
+        void *p_fdata, 
+        unsigned fdim, 
+        double *p_fval
+      ) noexcept -> int;
+
     static auto sigma_dijet_integrand_binned
       (
         unsigned ndim, 
@@ -413,6 +422,14 @@ public:
       ) noexcept -> xsectval;
 
     static auto calculate_sigma_1jet_binned
+      (
+        std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+        const momentum *const p_mand_s, 
+        const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
+        const pqcd::sigma_jet_params *const p_params
+      ) noexcept -> xsectval;
+
+    static auto calculate_sigma_jet_binned
       (
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
         const momentum *const p_mand_s, 
