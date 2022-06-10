@@ -2579,9 +2579,9 @@ int main()
                   end_state_filtering   = true, 
                   save_events           = false/*, 
                   average_spatial_taas  = false*/;
-    std::string   name_postfix = "_TESTI_1MAA",
+    std::string   name_postfix = "_TESTI_100Mpp",
                   event_file_name = "event_log"+name_postfix+".dat";
-    uint32_t      desired_N_events      = 1000000,
+    uint32_t      desired_N_events      = 10000,
                   AA_events             = 0,
                   nof_collisions        = 0;
     const spatial b_min                 = 0,
@@ -2815,49 +2815,49 @@ int main()
                 );
                 lock.~unique_lock();
 
-                do
-                {
-                    binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
-                    if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
-
-                    if (coll_params.spatial_pdfs)
-                    {
-                        collide_nuclei_with_spatial_pdfs_averaging
-                        (
-                            pro, 
-                            tar, 
-                            binary_collisions, 
-                            sigma_jets, 
-                            unirand, 
-                            eng, 
-                            coll_params, 
-                            jet_params,
-                            kt0,
-                            p_pdf,
-                            power_law,
-                            envelope_maximums,
-                            verbose
-                        );
-                    }
-                    else
-                    {
-                        collide_nuclei
-                        (
-                            pro, 
-                            tar, 
-                            binary_collisions, 
-                            sigma_jets, 
-                            unirand, 
-                            eng, 
-                            coll_params, 
-                            jet_params,
-                            kt0,
-                            p_pdf,
-                            power_law,
-                            envelope_maximums,
-                            verbose
-                        );
-                    }
+//                do
+//                {
+//                    binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
+//                    if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
+//
+//                    if (coll_params.spatial_pdfs)
+//                    {
+//                        collide_nuclei_with_spatial_pdfs_averaging
+//                        (
+//                            pro, 
+//                            tar, 
+//                            binary_collisions, 
+//                            sigma_jets, 
+//                            unirand, 
+//                            eng, 
+//                            coll_params, 
+//                            jet_params,
+//                            kt0,
+//                            p_pdf,
+//                            power_law,
+//                            envelope_maximums,
+//                            verbose
+//                        );
+//                    }
+//                    else
+//                    {
+//                        collide_nuclei
+//                        (
+//                            pro, 
+//                            tar, 
+//                            binary_collisions, 
+//                            sigma_jets, 
+//                            unirand, 
+//                            eng, 
+//                            coll_params, 
+//                            jet_params,
+//                            kt0,
+//                            p_pdf,
+//                            power_law,
+//                            envelope_maximums,
+//                            verbose
+//                        );
+//                    }
                     
                     /*if (average_spatial_taas)
                     {
@@ -2870,23 +2870,54 @@ int main()
                         //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
                         //log_file << std::endl;
                     }*/
-                    NColl = static_cast<uint32_t>(binary_collisions.size());
-                    if (NColl<1)
-                    {
-                        impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
-                        const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
-                        std::tie(pro, tar) = generate_nuclei
-                        (
-                            nuc_params, 
-                            sqrt_s, 
-                            impact_parameter, 
-                            eng, 
-                            radial_sampler, 
-                            read_nuclei_from_file, 
-                            verbose
-                        );
-                    }
-                } while (NColl<1);
+//                    NColl = static_cast<uint32_t>(binary_collisions.size());
+//                    if (NColl<1)
+//                    {
+//                        impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
+//                        const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
+//                        std::tie(pro, tar) = generate_nuclei
+//                        (
+//                            nuc_params, 
+//                            sqrt_s, 
+//                            impact_parameter, 
+//                            eng, 
+//                            radial_sampler, 
+//                            read_nuclei_from_file, 
+//                            verbose
+//                        );
+//                    }
+//                } while (NColl<1);
+
+                for (int i=0; i<10000; i++)
+                {
+                    nn_coll coll(&pro[0],&tar[0],sqrt_s);
+                    pqcd::generate_bin_NN_coll
+                    (
+                        coll,
+                        std::get<xsectval>(sigma_jets),
+                        Tpp(impact_parameter),
+                        kt0,
+                        unirand,
+                        eng,
+                        p_pdf,
+                        &jet_params,
+                        power_law,
+                        std::get<xsectval>(envelope_maximums)
+                    );
+                    binary_collisions.push_back(coll);
+                    filtered_scatterings.push_back(pqcd::generate_2_to_2_scatt
+                    (
+                        sqrt_s,
+                        kt0,
+                        sqrt_s/2.0,
+                        unirand,
+                        eng,
+                        p_pdf,
+                        &jet_params,
+                        power_law,
+                        std::get<xsectval>(envelope_maximums)
+                    ));
+                }
 
                 if(!end_state_filtering && save_events)
                 {
@@ -2896,14 +2927,14 @@ int main()
                 else if (end_state_filtering)
                 {
                     momentum ET=0, E=0;
-                    filter_end_state(binary_collisions, filtered_scatterings);
-                    binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
+//                    filter_end_state(binary_collisions, filtered_scatterings);
+//                    binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
                     std::vector<std::tuple<double, double> > new_jets;
                     std::vector<std::tuple<double, double> > new_dijets;
-                    std::vector<std::tuple<double, double> > new_ET_y;
-                    std::vector<std::tuple<double, double> > new_E_y;
-                    std::vector<std::tuple<double, double> > new_ET_eta;
-                    std::vector<std::tuple<double, double> > new_E_eta;
+//                    std::vector<std::tuple<double, double> > new_ET_y;
+//                    std::vector<std::tuple<double, double> > new_E_y;
+//                    std::vector<std::tuple<double, double> > new_ET_eta;
+//                    std::vector<std::tuple<double, double> > new_E_eta;
 
                     for (auto e : filtered_scatterings)
                     {
@@ -2913,18 +2944,18 @@ int main()
                         //new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
                         //new_jets.emplace_back(e.kt, e.y1, e.y2);
                         //new_dijets.emplace_back(e.kt,/* e.y2,*/ e.y1);
-                        if ( unirand(*eng)<0.5)
-                        {
+//                        if ( unirand(*eng)<0.5)
+//                        {
                             new_jets.emplace_back(e.kt, e.y1);
                             //new_dijets.emplace_back(e.kt, e.y2);
-                        }
-                        else
-                        {
+//                        }
+//                        else
+//                        {
                             new_jets.emplace_back(e.kt, e.y2);
                             //new_dijets.emplace_back(e.kt, e.y1);
-                        }
-                        new_dijets.emplace_back(e.kt, e.y1);
-                        new_dijets.emplace_back(e.kt, e.y2);
+//                        }
+//                        new_dijets.emplace_back(e.kt, e.y1);
+//                        new_dijets.emplace_back(e.kt, e.y2);
 
                         //new_ET_y.emplace_back(e.y1, e.kt);
                         //new_ET_y.emplace_back(e.y2, e.kt);
@@ -2944,6 +2975,41 @@ int main()
                         const std::lock_guard<std::mutex> lock(jets_mutex);
                         jets.add(new_jets);
                     }
+                    for (auto s : binary_collisions){
+                    for (auto e : s.dijets)
+                    {
+                        //new_jets.emplace_back(e.kt, e.y1);
+                        //new_jets.emplace_back(e.kt, e.y2);
+                        //
+                        //new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                        //new_jets.emplace_back(e.kt, e.y1, e.y2);
+                        //new_dijets.emplace_back(e.kt,/* e.y2,*/ e.y1);
+//                        if ( unirand(*eng)<0.5)
+//                        {
+//                            new_jets.emplace_back(e.kt, e.y1);
+                            //new_dijets.emplace_back(e.kt, e.y2);
+//                        }
+//                        else
+//                        {
+//                            new_jets.emplace_back(e.kt, e.y2);
+                            //new_dijets.emplace_back(e.kt, e.y1);
+//                        }
+                        new_dijets.emplace_back(e.kt, e.y1);
+                        new_dijets.emplace_back(e.kt, e.y2);
+
+                        //new_ET_y.emplace_back(e.y1, e.kt);
+                        //new_ET_y.emplace_back(e.y2, e.kt);
+                        //
+                        //new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                        //
+                        //new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                        //new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                        //
+                        //new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                        //
+                        //ET += 2*e.kt;
+                        //E += e.kt*(cosh(e.y1) + cosh(e.y2));
+                    }}
                     {
                         const std::lock_guard<std::mutex> lock(dijets_mutex);
                         dijets.add(new_dijets);
@@ -2985,11 +3051,11 @@ int main()
                         save_event(event_file, pro, tar, impact_parameter, filtered_scatterings);
                     }
 
-                    filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
+//                    filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
                 }
                 else
                 {
-                    binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
+//                    binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
                 }
 
                 /*if (verbose || (nof_collisions%100)==0)
