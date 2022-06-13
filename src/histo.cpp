@@ -795,15 +795,15 @@ auto histo_1d::get_histo() const noexcept
         curr_x = this->xs[i+1];
         bin_size = curr_x-prev_x;
         prev_x = curr_x;
-        ret_histo[i] /= total*bin_size;
+        ret_histo[i] /= static_cast<double>(total)*bin_size;
 
     }
 
     return std::make_tuple
         (
             ret_histo,
-            this->underf / total,
-            this->overf / total,
+            this->underf / static_cast<double>(total),
+            this->overf / static_cast<double>(total),
             this->xs, 
             this->total_counts
         );
@@ -837,17 +837,17 @@ auto histo_2d::get_histo() const noexcept -> std::tuple
             y_bin_size = curr_y-prev_y;
             prev_y = curr_y;
 
-            ret_histo[i][j] /= total*x_bin_size*y_bin_size;
+            ret_histo[i][j] /= static_cast<double>(total)*x_bin_size*y_bin_size;
         }
     }
 
     return std::make_tuple
         (
             std::move(ret_histo),
-            std::make_tuple(std::get<0>(this->underf) / total, 
-                            std::get<1>(this->underf) / total),
-            std::make_tuple(std::get<0>(this->overf) / total, 
-                            std::get<1>(this->overf) / total),
+            std::make_tuple(std::get<0>(this->underf) / static_cast<double>(total), 
+                            std::get<1>(this->underf) / static_cast<double>(total)),
+            std::make_tuple(std::get<0>(this->overf) / static_cast<double>(total), 
+                            std::get<1>(this->overf) / static_cast<double>(total)),
             std::make_tuple(this->xs, 
                             this->ys),
             this->total_counts
@@ -903,7 +903,7 @@ auto histo_3d::get_histo() const noexcept -> std::tuple
         {
             for (uint16_t k = 0; k < n_z_bins; k++)
             {
-                ret_histo[i][j][k] /= total*x_bins[i]*y_bins[j]*z_bins[k];
+                ret_histo[i][j][k] /= static_cast<double>(total)*x_bins[i]*y_bins[j]*z_bins[k];
             }
         }
     }
@@ -911,12 +911,12 @@ auto histo_3d::get_histo() const noexcept -> std::tuple
     return std::make_tuple
         (
             std::move(ret_histo),
-            std::make_tuple(std::get<0>(this->underf) / total, 
-                            std::get<1>(this->underf) / total, 
-                            std::get<2>(this->underf) / total),
-            std::make_tuple(std::get<0>(this->overf) / total, 
-                            std::get<1>(this->overf) / total, 
-                            std::get<2>(this->overf) / total),
+            std::make_tuple(std::get<0>(this->underf) / static_cast<double>(total), 
+                            std::get<1>(this->underf) / static_cast<double>(total), 
+                            std::get<2>(this->underf) / static_cast<double>(total)),
+            std::make_tuple(std::get<0>(this->overf) / static_cast<double>(total), 
+                            std::get<1>(this->overf) / static_cast<double>(total), 
+                            std::get<2>(this->overf) / static_cast<double>(total)),
             std::make_tuple(this->xs, 
                             this->ys, 
                             this->zs),
@@ -936,8 +936,8 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
     std::vector<double> ret_grid;
     std::vector<double> bins;
     double curr, prev;
-    uint16_t n_x_bins = full_histo.size();
-    uint16_t n_y_bins = full_histo[0].size();
+    uint16_t n_x_bins = static_cast<uint16_t>(std::get<0>(xs).size()-1);
+    uint16_t n_y_bins = static_cast<uint16_t>(std::get<1>(xs).size()-1);
 
     if (project_ys == true)
     {
@@ -1007,9 +1007,9 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
     std::vector<double> bins1;
     std::vector<double> bins2;
     double curr, prev;
-    uint16_t n_x_bins = full_histo.size();
-    uint16_t n_y_bins = full_histo[0].size();
-    uint16_t n_z_bins = full_histo[0][0].size();
+    uint16_t n_x_bins = static_cast<uint16_t>(std::get<0>(xs).size()-1);
+    uint16_t n_y_bins = static_cast<uint16_t>(std::get<1>(xs).size()-1);
+    uint16_t n_z_bins = static_cast<uint16_t>(std::get<2>(xs).size()-1);
 
     if (dim_left == 0) //x
     {
@@ -1146,9 +1146,9 @@ const noexcept -> std::tuple
     std::vector<double> ret_grid2;
     std::vector<double> bins;
     double curr, prev;
-    uint16_t n_x_bins = std::get<0>(xs).size()-1;
-    uint16_t n_y_bins = std::get<1>(xs).size()-1;
-    uint16_t n_z_bins = std::get<2>(xs).size()-1;
+    uint16_t n_x_bins = static_cast<uint16_t>(std::get<0>(xs).size()-1);
+    uint16_t n_y_bins = static_cast<uint16_t>(std::get<1>(xs).size()-1);
+    uint16_t n_z_bins = static_cast<uint16_t>(std::get<2>(xs).size()-1);
 
     if (dim_integrated == 0) //x
     {
