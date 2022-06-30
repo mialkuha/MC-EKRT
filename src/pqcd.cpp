@@ -332,7 +332,7 @@ auto pqcd::generate_2_to_2_scatt
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::sigma_jet_params  *const p_params,
+    pqcd::sigma_jet_params params,
     const double &power_law,
     const momentum &envelope_maximum
 
@@ -366,7 +366,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, p_params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params);
 
         xsectval total_xsection = 0;
 
@@ -383,7 +383,10 @@ auto pqcd::generate_2_to_2_scatt
             std::cout<<"kT = "<<kt<<std::endl;
             std::cout<<"y1 = "<<y1<<std::endl;
             std::cout<<"y2 = "<<y2<<std::endl;
+            std::cout<<"total_xsection = "<<total_xsection<<std::endl;
+            std::cout<<"limit = "<<(envelope_maximum * pow(kt, -power_law))<<std::endl;
             std::cout<<"Check the power-law behaviour"<<std::endl;
+            continue;
         }
 
         if (ratio > rand[3])
@@ -423,7 +426,7 @@ auto pqcd::generate_bin_NN_coll
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::sigma_jet_params *const p_params,
+    pqcd::sigma_jet_params params,
     const double &power_law,
     const momentum &envelope_maximum
 ) noexcept -> void
@@ -444,7 +447,7 @@ auto pqcd::generate_bin_NN_coll
             unirand,
             eng,
             p_p_pdf,
-            p_params,
+            params,
             power_law,
             envelope_maximum
         ));
@@ -456,7 +459,7 @@ auto pqcd::calculate_sigma_jet
     std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
     const momentum *const p_mand_s,
     const momentum *const p_kt2_lower_cutoff, 
-    const pqcd::sigma_jet_params *const p_params
+    pqcd::sigma_jet_params params
 ) noexcept -> xsectval
 {
     xsectval sigma_jet, error;
@@ -468,9 +471,9 @@ auto pqcd::calculate_sigma_jet
         std::shared_ptr<LHAPDF::GridPDF>, 
         const momentum *const, 
         const momentum *const, 
-        const pqcd::sigma_jet_params *const
+        pqcd::sigma_jet_params
     > 
-        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params};
+        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, params};
 
     int not_success;
 
@@ -504,7 +507,7 @@ auto pqcd::calculate_sigma_1jet_binned
     std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
     const momentum *const p_mand_s,
     const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
-    const pqcd::sigma_jet_params *const p_params
+    pqcd::sigma_jet_params params
 ) noexcept -> xsectval
 {
     xsectval sigma_jet, error;
@@ -516,9 +519,9 @@ auto pqcd::calculate_sigma_1jet_binned
         std::shared_ptr<LHAPDF::GridPDF>, 
         const momentum *const, 
         const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
-        const pqcd::sigma_jet_params *const
+        pqcd::sigma_jet_params
     > 
-        fdata = {p_pdf, p_mand_s, p_bin, p_params};
+        fdata = {p_pdf, p_mand_s, p_bin, params};
 
     int not_success;
 
@@ -552,7 +555,7 @@ auto pqcd::calculate_sigma_jet_binned
     std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
     const momentum *const p_mand_s,
     const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
-    const pqcd::sigma_jet_params *const p_params
+    pqcd::sigma_jet_params params
 ) noexcept -> xsectval
 {
     xsectval sigma_jet, error;
@@ -564,9 +567,9 @@ auto pqcd::calculate_sigma_jet_binned
         std::shared_ptr<LHAPDF::GridPDF>, 
         const momentum *const, 
         const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
-        const pqcd::sigma_jet_params *const
+        pqcd::sigma_jet_params
     > 
-        fdata = {p_pdf, p_mand_s, p_bin, p_params};
+        fdata = {p_pdf, p_mand_s, p_bin, params};
 
     int not_success;
 
@@ -600,7 +603,7 @@ auto pqcd::calculate_sigma_dijet_binned
     std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
     const momentum *const p_mand_s,
     const std::tuple<momentum, momentum, rapidity, rapidity> *const p_bin, 
-    const pqcd::sigma_jet_params *const p_params
+    pqcd::sigma_jet_params params
 ) noexcept -> xsectval
 {
     xsectval sigma_jet, error;
@@ -612,9 +615,9 @@ auto pqcd::calculate_sigma_dijet_binned
         std::shared_ptr<LHAPDF::GridPDF>, 
         const momentum *const, 
         const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
-        const pqcd::sigma_jet_params *const
+        pqcd::sigma_jet_params
     > 
-        fdata = {p_pdf, p_mand_s, p_bin, p_params};
+        fdata = {p_pdf, p_mand_s, p_bin, params};
 
     int not_success;
 
@@ -649,7 +652,7 @@ auto pqcd::calculate_spatial_sigma_jet_full
     std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,
     const momentum *const p_mand_s, 
     const momentum *const p_kt2_lower_cutoff, 
-    const pqcd::sigma_jet_params *const p_params,
+    pqcd::sigma_jet_params params,
     const std::array<const double, 3> &T_sums,
     const spatial &tAA_0, 
     const spatial &tBB_0
@@ -668,12 +671,12 @@ auto pqcd::calculate_spatial_sigma_jet_full
 
     std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
                const momentum *const, const momentum *const, 
-               const pqcd::sigma_jet_params *const, 
+               pqcd::sigma_jet_params, 
                std::shared_ptr<LHAPDF::GridPDF>, 
                std::function<double(double const&)>, 
                std::function<double(double const&)>,
                const std::array<const double, 3> > fdata =
-        {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params, p_n_pdf, cA, cB, T_sums};
+        {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params, p_n_pdf, cA, cB, T_sums};
 
     int not_success;
 
@@ -705,7 +708,7 @@ auto pqcd::calculate_spatial_sigma_jet_factored
     std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,
     const momentum *const p_mand_s, 
     const momentum *const p_kt2_lower_cutoff, 
-    const pqcd::sigma_jet_params *const p_params
+    pqcd::sigma_jet_params params
 ) noexcept -> std::array<xsectval,4>
 {
     std::array<xsectval,4> sigma_jets, errors;
@@ -715,22 +718,21 @@ auto pqcd::calculate_spatial_sigma_jet_factored
     int not_success = 0;
 
     //First piece: pp
-    pqcd::sigma_jet_params params = *p_params;
-    params.p_d_params->projectile_with_npdfs = false;
-    params.p_d_params->target_with_npdfs = false;
+    params.d_params.projectile_with_npdfs = false;
+    params.d_params.target_with_npdfs = false;
 
     std::tuple
     <
       std::shared_ptr<LHAPDF::GridPDF>, 
       const momentum *const, const momentum *const, 
-      const pqcd::sigma_jet_params *const, 
+      pqcd::sigma_jet_params, 
       std::shared_ptr<LHAPDF::GridPDF> 
-    > fdata =
-    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, &params, p_n_pdf};
+    > fdata_pp =
+    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params, p_n_pdf};
 
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
-                            &fdata,                             //Pointer to additional arguments
+                            &fdata_pp,                             //Pointer to additional arguments
                             3,                                  //Variable dimension
                             lower_limits,                       //Variables minimum
                             upper_limits,                       //Variables maximum
@@ -749,12 +751,21 @@ auto pqcd::calculate_spatial_sigma_jet_factored
 
 
     //Second piece: Ap
-    params.p_d_params->projectile_with_npdfs = true;
-    params.p_d_params->target_with_npdfs = false;
+    params.d_params.projectile_with_npdfs = true;
+    params.d_params.target_with_npdfs = false;
+
+    std::tuple
+    <
+      std::shared_ptr<LHAPDF::GridPDF>, 
+      const momentum *const, const momentum *const, 
+      pqcd::sigma_jet_params, 
+      std::shared_ptr<LHAPDF::GridPDF> 
+    > fdata_Ap =
+    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params, p_n_pdf};
 
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
-                            &fdata,                             //Pointer to additional arguments
+                            &fdata_Ap,                             //Pointer to additional arguments
                             3,                                  //Variable dimension
                             lower_limits,                       //Variables minimum
                             upper_limits,                       //Variables maximum
@@ -773,12 +784,21 @@ auto pqcd::calculate_spatial_sigma_jet_factored
 
 
     //Third piece: pA
-    params.p_d_params->projectile_with_npdfs = false;
-    params.p_d_params->target_with_npdfs = true;
+    params.d_params.projectile_with_npdfs = false;
+    params.d_params.target_with_npdfs = true;
+
+    std::tuple
+    <
+      std::shared_ptr<LHAPDF::GridPDF>, 
+      const momentum *const, const momentum *const, 
+      pqcd::sigma_jet_params, 
+      std::shared_ptr<LHAPDF::GridPDF> 
+    > fdata_pA =
+    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params, p_n_pdf};
 
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
-                            &fdata,                             //Pointer to additional arguments
+                            &fdata_pA,                             //Pointer to additional arguments
                             3,                                  //Variable dimension
                             lower_limits,                       //Variables minimum
                             upper_limits,                       //Variables maximum
@@ -797,12 +817,21 @@ auto pqcd::calculate_spatial_sigma_jet_factored
 
 
     //Fourth piece: AA
-    params.p_d_params->projectile_with_npdfs = true;
-    params.p_d_params->target_with_npdfs = true;
+    params.d_params.projectile_with_npdfs = true;
+    params.d_params.target_with_npdfs = true;
+
+    std::tuple
+    <
+      std::shared_ptr<LHAPDF::GridPDF>, 
+      const momentum *const, const momentum *const, 
+      pqcd::sigma_jet_params, 
+      std::shared_ptr<LHAPDF::GridPDF> 
+    > fdata_AA =
+    {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params, p_n_pdf};
 
     not_success = hcubature(fdim,                               //Integrand dimension
                             pqcd::spatial_sigma_jet_integrand_factored,  //Integrand function
-                            &fdata,                             //Pointer to additional arguments
+                            &fdata_AA,                             //Pointer to additional arguments
                             3,                                  //Variable dimension
                             lower_limits,                       //Variables minimum
                             upper_limits,                       //Variables maximum
@@ -828,7 +857,7 @@ auto pqcd::calculate_spatial_sigma_jet_mf
     /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/
     const momentum *const p_mand_s, 
     const momentum *const p_kt2_lower_cutoff, 
-    const pqcd::sigma_jet_params * p_params,
+    pqcd::sigma_jet_params params,
     const spatial &sum_tppa, 
     const spatial &sum_tppb, 
     const spatial &tAA_0, 
@@ -840,8 +869,8 @@ auto pqcd::calculate_spatial_sigma_jet_mf
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
 
-    const int A = p_params->p_d_params->A, 
-              B = p_params->p_d_params->B;
+    const int A = params.d_params.A, 
+              B = params.d_params.B;
 
     //c=A*(R-1)/TAA(0)
     const double scaA = A * sum_tppa / tAA_0, 
@@ -856,16 +885,16 @@ auto pqcd::calculate_spatial_sigma_jet_mf
         rB_spatial_ = [&](double const &r)
             {return r*scaB + intB;};
 
-    p_params->p_d_params->rA_spatial = rA_spatial_;
-    p_params->p_d_params->rB_spatial = rB_spatial_;
+    params.d_params.rA_spatial = rA_spatial_;
+    params.d_params.rB_spatial = rB_spatial_;
 
     std::tuple
     <
         std::shared_ptr<LHAPDF::GridPDF>, 
         const momentum *const, 
         const momentum *const, 
-        const pqcd::sigma_jet_params *const 
-    > fdata = {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, p_params};
+        pqcd::sigma_jet_params 
+    > fdata = {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params};
 
     int not_success;
 
@@ -978,11 +1007,11 @@ auto pqcd::diff_cross_section_2jet
     const rapidity &y1, 
     const rapidity &y2,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    const pqcd::sigma_jet_params *const p_sigma_params
+    pqcd::sigma_jet_params sigma_params
 ) noexcept -> std::vector<xsection_id>
 {
     std::vector<xsection_id> xsection;
-    auto p_diff_params = p_sigma_params->p_d_params;
+    auto diff_params = sigma_params.d_params;
 
     const particle_id num_flavors = std::stoi(p_p_pdf->info().get_entry("NumFlavors"));
     xsectval xsect;
@@ -1001,13 +1030,13 @@ auto pqcd::diff_cross_section_2jet
 
     //Factorization / renormalization scale
     momentum q2; 
-    switch (p_sigma_params->scale_c)
+    switch (sigma_params.scale_c)
     {
     case scaled_from_kt:
-        q2 = pow(p_sigma_params->scalar, 2) * kt2;
+        q2 = pow(sigma_params.scalar, 2) * kt2;
         break;
     case constant:
-        q2 = pow(p_sigma_params->scalar, 2);
+        q2 = pow(sigma_params.scalar, 2);
         break;
     default:
         q2 = kt2;
@@ -1038,18 +1067,18 @@ auto pqcd::diff_cross_section_2jet
               x2, 
               q2, 
               p_p_pdf, 
-              p_diff_params->projectile_with_npdfs,
-              p_diff_params->target_with_npdfs,
-              p_diff_params->isoscalar_projectile,
-              p_diff_params->isoscalar_target,
-              p_diff_params->npdfs_spatial,
-              p_diff_params->npdf_setnumber,
-              p_diff_params->A,
-              p_diff_params->B,
-              p_diff_params->ZA,
-              p_diff_params->ZB,
-              p_diff_params->rA_spatial,
-              p_diff_params->rB_spatial
+              diff_params.projectile_with_npdfs,
+              diff_params.target_with_npdfs,
+              diff_params.isoscalar_projectile,
+              diff_params.isoscalar_target,
+              diff_params.npdfs_spatial,
+              diff_params.npdf_setnumber,
+              diff_params.A,
+              diff_params.B,
+              diff_params.ZA,
+              diff_params.ZB,
+              diff_params.rA_spatial,
+              diff_params.rB_spatial
           );
 
     xsection.reserve(176); //176 different processes if n:o quark flavors = 5
@@ -1331,7 +1360,7 @@ auto pqcd::diff_sigma::sigma_jet
     const momentum &s_hat, 
     const momentum &t_hat, 
     const momentum &u_hat, 
-    const pqcd::diff_sigma::params *const p_params/*,
+    const pqcd::diff_sigma::params params/*,
     std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
 ) noexcept -> xsectval
 {
@@ -1345,18 +1374,18 @@ auto pqcd::diff_sigma::sigma_jet
               x2, 
               q2, 
               p_p_pdf, 
-              p_params->projectile_with_npdfs,
-              p_params->target_with_npdfs,
-              p_params->isoscalar_projectile,
-              p_params->isoscalar_target,
-              p_params->npdfs_spatial,
-              p_params->npdf_setnumber,
-              p_params->A,
-              p_params->B,
-              p_params->ZA,
-              p_params->ZB,
-              p_params->rA_spatial,
-              p_params->rB_spatial
+              params.projectile_with_npdfs,
+              params.target_with_npdfs,
+              params.isoscalar_projectile,
+              params.isoscalar_target,
+              params.npdfs_spatial,
+              params.npdf_setnumber,
+              params.A,
+              params.B,
+              params.ZA,
+              params.ZB,
+              params.rA_spatial,
+              params.rB_spatial
           );
 
     auto d_sigma 
@@ -1384,7 +1413,7 @@ auto pqcd::diff_sigma::sigma_1jet
     const momentum &s_hat, 
     const momentum &t_hat, 
     const momentum &u_hat, 
-    const pqcd::diff_sigma::params *const p_params/*,
+    const pqcd::diff_sigma::params params/*,
     std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
 ) noexcept -> xsectval
 {
@@ -1398,18 +1427,18 @@ auto pqcd::diff_sigma::sigma_1jet
               x2, 
               q2, 
               p_p_pdf, 
-              p_params->projectile_with_npdfs,
-              p_params->target_with_npdfs,
-              p_params->isoscalar_projectile,
-              p_params->isoscalar_target,
-              p_params->npdfs_spatial,
-              p_params->npdf_setnumber,
-              p_params->A,
-              p_params->B,
-              p_params->ZA,
-              p_params->ZB,
-              p_params->rA_spatial,
-              p_params->rB_spatial
+              params.projectile_with_npdfs,
+              params.target_with_npdfs,
+              params.isoscalar_projectile,
+              params.isoscalar_target,
+              params.npdfs_spatial,
+              params.npdf_setnumber,
+              params.A,
+              params.B,
+              params.ZA,
+              params.ZB,
+              params.rA_spatial,
+              params.rB_spatial
           );
 
     auto d_sigma 
@@ -1437,7 +1466,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     const momentum &s_hat, 
     const momentum &t_hat, 
     const momentum &u_hat, 
-    const pqcd::diff_sigma::params *const p_params, 
+    const pqcd::diff_sigma::params params, 
     /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, */
     std::function<double(double const&)> cA,
     std::function<double(double const&)> cB,
@@ -1466,7 +1495,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     }
 
 
-    eps09(1, p_params->npdf_setnumber, A, x1, sqrt(q2), 
+    eps09(1, params.npdf_setnumber, A, x1, sqrt(q2), 
           cAs[1], // = up valence
           cAs[2], // = down valence
           cAs[7], // = up sea 
@@ -1489,7 +1518,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
         r = cA(r);
     }
 
-    eps09(1, p_params->npdf_setnumber, B, x2, sqrt(q2), 
+    eps09(1, params.npdf_setnumber, B, x2, sqrt(q2), 
           cBs[1], // = up valence
           cBs[2], // = down valence
           cBs[7], // = up sea 
@@ -1592,14 +1621,14 @@ auto pqcd::sigma_1jet_integrand_binned
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
 
-    auto [ p_pdf, p_mand_s, p_bin, p_params ] =
+    auto [ p_pdf, p_mand_s, p_bin, params ] =
         *(static_cast
              <std::tuple
                  < 
                      std::shared_ptr<LHAPDF::GridPDF>, 
                      const momentum *const, 
                      const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
-                     const pqcd::sigma_jet_params *const
+                     pqcd::sigma_jet_params
                  > *
              >(p_fdata)
          );
@@ -1627,13 +1656,13 @@ auto pqcd::sigma_1jet_integrand_binned
     const xsectval jacobian = 2.0 * kt * (kt_upp - kt_low) * (y_upp - y_low) * (y2_upp - y2_low);
 
     momentum fac_scale;
-    switch (p_params->scale_c)
+    switch (params.scale_c)
     {
     case scaled_from_kt:
-        fac_scale = pow(p_params->scalar, 2) * kt2;
+        fac_scale = pow(params.scalar, 2) * kt2;
         break;
     case constant:
-        fac_scale = pow(p_params->scalar, 2);
+        fac_scale = pow(params.scalar, 2);
         break;
     default:
         fac_scale = kt2;
@@ -1653,7 +1682,7 @@ auto pqcd::sigma_1jet_integrand_binned
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
-    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
+    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1671,14 +1700,14 @@ auto pqcd::sigma_jet_integrand_binned
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
 
-    auto [ p_pdf, p_mand_s, p_bin, p_params ] =
+    auto [ p_pdf, p_mand_s, p_bin, params ] =
         *(static_cast
              <std::tuple
                  < 
                      std::shared_ptr<LHAPDF::GridPDF>, 
                      const momentum *const, 
                      const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
-                     const pqcd::sigma_jet_params *const
+                     pqcd::sigma_jet_params
                  > *
              >(p_fdata)
          );
@@ -1706,13 +1735,13 @@ auto pqcd::sigma_jet_integrand_binned
     const xsectval jacobian = 2.0 * kt * (kt_upp - kt_low) * (y_upp - y_low) * (y2_upp - y2_low);
 
     momentum fac_scale;
-    switch (p_params->scale_c)
+    switch (params.scale_c)
     {
     case scaled_from_kt:
-        fac_scale = pow(p_params->scalar, 2) * kt2;
+        fac_scale = pow(params.scalar, 2) * kt2;
         break;
     case constant:
-        fac_scale = pow(p_params->scalar, 2);
+        fac_scale = pow(params.scalar, 2);
         break;
     default:
         fac_scale = kt2;
@@ -1732,7 +1761,7 @@ auto pqcd::sigma_jet_integrand_binned
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
-    p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
+    p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1750,14 +1779,14 @@ auto pqcd::sigma_dijet_integrand_binned
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
 
-    auto [ p_pdf, p_mand_s, p_bin, p_params ] =
+    auto [ p_pdf, p_mand_s, p_bin, params ] =
         *(static_cast
              <std::tuple
                  < 
                      std::shared_ptr<LHAPDF::GridPDF>, 
                      const momentum *const, 
                      const std::tuple<momentum, momentum, rapidity, rapidity> *const, 
-                     const pqcd::sigma_jet_params *const
+                     pqcd::sigma_jet_params
                  > *
              >(p_fdata)
          );
@@ -1778,13 +1807,13 @@ auto pqcd::sigma_dijet_integrand_binned
     const xsectval jacobian = (kt2_upp - kt2_low) * (eta_upp - eta_low) * (ystar_upp - ystar_low);
 
     momentum fac_scale;
-    switch (p_params->scale_c)
+    switch (params.scale_c)
     {
     case scaled_from_kt:
-        fac_scale = pow(p_params->scalar, 2) * kt2;
+        fac_scale = pow(params.scalar, 2) * kt2;
         break;
     case constant:
-        fac_scale = pow(p_params->scalar, 2);
+        fac_scale = pow(params.scalar, 2);
         break;
     default:
         fac_scale = kt2;
@@ -1805,7 +1834,7 @@ auto pqcd::sigma_dijet_integrand_binned
     const auto t_hat = - kt2*(1 + exp(-2.0*ystar));
     const auto u_hat = - kt2*(1 + exp( 2.0*ystar));
 
-    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params)
+    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params)
                     * 2.0 * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1822,11 +1851,11 @@ auto pqcd::sigma_jet_integrand
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
-    auto [ p_pdf, p_mand_s, p_p02, p_params ]
+    auto [ p_pdf, p_mand_s, p_p02, params ]
         = *(static_cast<std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
                                    const momentum *const, 
                                    const momentum *const, 
-                                   const pqcd::sigma_jet_params *const > *>(p_fdata));
+                                   pqcd::sigma_jet_params > *>(p_fdata));
 
     momentum kt2;
     rapidity y1, y2;
@@ -1836,13 +1865,13 @@ auto pqcd::sigma_jet_integrand
 
     momentum fac_scale;
 
-    switch (p_params->scale_c)
+    switch (params.scale_c)
     {
     case scaled_from_kt:
-        fac_scale = pow(p_params->scalar, 2) * kt2;
+        fac_scale = pow(params.scalar, 2) * kt2;
         break;
     case constant:
-        fac_scale = pow(p_params->scalar, 2);
+        fac_scale = pow(params.scalar, 2);
         break;
     default:
         fac_scale = kt2;
@@ -1852,12 +1881,18 @@ auto pqcd::sigma_jet_integrand
     const auto x1 = (exp(y1) + exp(y2)) / sqrt_s_per_kt;
     const auto x2 = (exp(-y1) + exp(-y2)) / sqrt_s_per_kt;
 
+    if (std::isnan(y1)||std::isnan(y2)||std::isnan(x1)||std::isnan(x2)||x1>1||x2>1)
+    {
+        p_fval[0] = 0;
+        return 0;
+    }
+
     const auto s_hat = pqcd::s_hat_from_ys(y1, y2, kt2);
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
     //SES
-    if (p_params->use_ses)
+    if (params.use_ses)
     {
         //TODO
         //const auto alpha_s = p_pdf->alphasQ2(fac_scale);
@@ -1866,7 +1901,7 @@ auto pqcd::sigma_jet_integrand
     }
     else//FULL SUMMATION
     {
-        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params) 
+        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params) 
                      * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
@@ -1884,10 +1919,10 @@ auto pqcd::spatial_sigma_jet_integrand_full
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
-    auto [ p_pdf, p_mand_s, p_p02, p_params, p_n_pdf, cA, cB, T_sums ]
+    auto [ p_pdf, p_mand_s, p_p02, params, p_n_pdf, cA, cB, T_sums ]
         = *(static_cast<std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
                                    const momentum *const, const momentum *const, 
-                                   const pqcd::sigma_jet_params *const, 
+                                   pqcd::sigma_jet_params, 
                                    std::shared_ptr<LHAPDF::GridPDF>, 
                                    std::function<double(double const&)>, 
                                    std::function<double(double const&)>,
@@ -1901,13 +1936,13 @@ auto pqcd::spatial_sigma_jet_integrand_full
 
     momentum fac_scale;
 
-    switch (p_params->scale_c)
+    switch (params.scale_c)
     {
     case scaled_from_kt:
-        fac_scale = pow(p_params->scalar, 2) * kt2;
+        fac_scale = pow(params.scalar, 2) * kt2;
         break;
     case constant:
-        fac_scale = pow(p_params->scalar, 2);
+        fac_scale = pow(params.scalar, 2);
         break;
     default:
         fac_scale = kt2;
@@ -1922,13 +1957,13 @@ auto pqcd::spatial_sigma_jet_integrand_full
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
     //SES
-    if (p_params->use_ses)
+    if (params.use_ses)
     {
         //TODO
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = pqcd::diff_sigma::spatial_sigma_jet_full(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params,/* p_n_pdf,*/ cA, cB, T_sums)
+        p_fval[0] = pqcd::diff_sigma::spatial_sigma_jet_full(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params,/* p_n_pdf,*/ cA, cB, T_sums)
                      * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
@@ -1947,10 +1982,10 @@ auto pqcd::spatial_sigma_jet_integrand_factored
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
-    auto [ p_pdf, p_mand_s, p_p02, p_params, p_n_pdf ]
+    auto [ p_pdf, p_mand_s, p_p02, params, p_n_pdf ]
         = *(static_cast<std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
                                    const momentum *const, const momentum *const, 
-                                   const pqcd::sigma_jet_params *const, 
+                                   pqcd::sigma_jet_params, 
                                    std::shared_ptr<LHAPDF::GridPDF> > *>(p_fdata));
 
     momentum kt2;
@@ -1961,13 +1996,13 @@ auto pqcd::spatial_sigma_jet_integrand_factored
 
     momentum fac_scale;
 
-    switch (p_params->scale_c)
+    switch (params.scale_c)
     {
     case scaled_from_kt:
-        fac_scale = pow(p_params->scalar, 2) * kt2;
+        fac_scale = pow(params.scalar, 2) * kt2;
         break;
     case constant:
-        fac_scale = pow(p_params->scalar, 2);
+        fac_scale = pow(params.scalar, 2);
         break;
     default:
         fac_scale = kt2;
@@ -1982,13 +2017,13 @@ auto pqcd::spatial_sigma_jet_integrand_factored
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
     //SES
-    if (p_params->use_ses)
+    if (params.use_ses)
     {
         //TODO
     }//FULL SUMMATION
     else
     {
-        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, p_params->p_d_params/*, p_n_pdf*/) 
+        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params/*, p_n_pdf*/) 
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
