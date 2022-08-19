@@ -70,8 +70,20 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
 
 coords&& nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
 {
-    double new_r, new_phi, new_cos_theta, new_sin_theta, rand1,rand2;
-    new_r = radial_sampler->throw_one(*random_generator, true);
+    double new_r=-1, new_phi, new_cos_theta, new_sin_theta, rand1,rand2;
+
+    do
+    {
+        try
+        {
+            new_r = radial_sampler->throw_one(*random_generator, true);
+        }
+        catch(const std::exception& e)
+        {
+            new_r=-1;
+        }
+    } while (new_r < 0);
+    
     rand1 = nucleus_generator::unif_dist(*random_generator);
     rand2 = nucleus_generator::unif_dist(*random_generator);
     new_phi = 2*M_PI*rand1;

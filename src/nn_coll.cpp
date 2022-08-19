@@ -20,6 +20,7 @@ void nn_coll::reduce_energy() noexcept
         x1 += (s.kt / this->sqrt_s) * (exp(s.y1) + exp(s.y2));
         x2 += (s.kt / this->sqrt_s) * (exp(-s.y1) + exp(-s.y2));
     }
+    
 
     this->projectile->mom *= 1.0 - x1;
     this->target->mom *= 1.0 - x2;

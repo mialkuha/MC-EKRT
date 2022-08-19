@@ -33,11 +33,12 @@ public:
     static spatial randomize_bsquared(const spatial & min, const spatial & max, std::mt19937 random_generator_) noexcept;
 
     std::vector<dijet_specs> dijets;
+    nucleon *target;
+    nucleon *projectile;
+    
 protected:
 private:
 
-    nucleon *target;
-    nucleon *projectile;
     momentum sqrt_s{0};
     spatial bsquared{0};
     xsectval max_inel_xsect{0};       //Inelastic xsect at b=0

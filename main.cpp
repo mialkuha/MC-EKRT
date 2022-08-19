@@ -30,6 +30,8 @@
 #include <sstream>
 #include <thread>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -227,7 +229,7 @@ auto find_max_dsigma
     if (params.d_params.npdfs_spatial)
     {
         //c=A*(R-1)/TAA(0)
-        const double scaA = 208 * 0.01 / 30.5, 
+        const double scaA = 208 * 0.01 / 29.5494,//30.5, 
                     intA = 1.0 - scaA;
         const std::function<double(double const&)> 
             rA_spatial_ = [&](double const &r)
@@ -453,21 +455,119 @@ auto fits_into_ps
     return true;
 }
 
+struct colls_with_ns
+{
+    momentum kt;
+    rapidity y1;
+    rapidity y2;
+    nucleon * pro_nucleon;
+    nucleon * tar_nucleon;
+    dijet_specs * dijet;
+};
+
+auto filter_collisions_MC //TODO discuss with Kari
+(
+    std::vector<nn_coll> &binary_collisions, 
+    std::vector<dijet_specs> &final_candidates, 
+    const momentum sqrt_s
+) noexcept -> void
+{
+    std::unordered_map<nucleon*, double> x1s;
+    std::unordered_map<nucleon*, double> x2s;
+    std::unordered_set<nucleon*> depleted_pro;
+    std::unordered_set<nucleon*> depleted_tar;
+
+    std::vector<colls_with_ns> collision_candidates;
+    collision_candidates.reserve(binary_collisions.size()*10);
+
+    for (auto &col : binary_collisions)
+    {
+        for (auto &dij : col.dijets)
+        {
+            collision_candidates.push_back(colls_with_ns({dij.kt, dij.y1, dij.y2, col.projectile, col.target, &dij}));
+        }
+    }
+
+    std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
+              [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
+
+    for (auto & cand : collision_candidates)
+    {
+        if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
+        {
+            continue;
+        }
+
+        bool discard = false;
+        auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
+        auto x2 = (cand.kt / sqrt_s) * (exp(-cand.y1) + exp(-cand.y2));
+
+        auto i_x1_sum = x1s.find(cand.pro_nucleon);
+        if (i_x1_sum != x1s.end())
+        {
+            i_x1_sum->second += x1;
+
+            if (i_x1_sum->second > 1.0)
+            {
+                discard = true;
+                depleted_pro.insert(cand.pro_nucleon);
+            }
+        }
+        else
+        {
+            x1s.insert({cand.pro_nucleon, x1});
+        }
+
+        auto i_x2_sum = x2s.find(cand.tar_nucleon);
+        if (i_x2_sum != x2s.end())
+        {
+            i_x2_sum->second += x2;
+
+            if (i_x2_sum->second > 1.0)
+            {
+                discard = true;
+                depleted_tar.insert(cand.tar_nucleon);
+            }
+        }
+        else
+        {
+            x2s.insert({cand.tar_nucleon, x2});
+        }
+
+        if (!discard)
+        {
+            final_candidates.push_back(*(cand.dijet));
+        }
+    }
+
+    //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
+
+    //col.dijets.erase ?
+}
+
 auto filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
-    std::vector<dijet_specs> &filtered_scatterings
+    std::vector<dijet_specs> &filtered_scatterings,
+    const bool mom_cons = false,
+    const momentum sqrt_s = 0
 ) noexcept -> void
 {
     std::vector<dijet_specs> candidates;
-
     candidates.reserve(binary_collisions.size()*10); //10 events on average is just an overhead guess
 
-    for (auto &col : binary_collisions) //all of the end states of the binary events are now candidate events
+    if (mom_cons) //TODO discuss with Kari
     {
-        candidates.insert(candidates.end(), std::make_move_iterator(col.dijets.begin()),
-                          std::make_move_iterator(col.dijets.end()));
-        col.dijets.erase(col.dijets.begin(), col.dijets.end());
+        filter_collisions_MC(binary_collisions, candidates, sqrt_s);
+    }
+    else
+    {
+        for (auto &col : binary_collisions) //all of the end states of the binary events are now candidate events
+        {
+            candidates.insert(candidates.end(), std::make_move_iterator(col.dijets.begin()),
+                            std::make_move_iterator(col.dijets.end()));
+            col.dijets.erase(col.dijets.begin(), col.dijets.end());
+        }
     }
 
     candidates.shrink_to_fit();
@@ -751,6 +851,27 @@ auto collide_nuclei
     }
 }
 
+auto calculate_tA
+(
+    const coords &b, 
+    const std::vector<nucleon> &nucleus,
+    const std::function<spatial(const spatial&)> Tp
+) noexcept -> spatial
+{
+    spatial tA=0.0; //sum(T_p(b_ij + b))
+    uint16_t A=static_cast<uint16_t>(nucleus.size());
+
+    auto [bx, by, bz] = b;
+
+    for (uint16_t i=0; i<A; i++)
+    {
+        //tAB1 += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
+        auto [x1, y1, z1] = nucleus.at(i).co;
+        tA += Tp(pow(x1-bx,2) + pow(y1-by,2));
+    }
+    return tA;
+}
+
 auto calculate_tAB
 (
     const coords &b, 
@@ -763,14 +884,18 @@ auto calculate_tAB
     uint16_t A=static_cast<uint16_t>(pro.size()), 
              B=static_cast<uint16_t>(tar.size());
 
+    auto [bx, by, bz] = b;
+
     for (uint16_t i=0; i<A; i++)
     {
         for (uint16_t j=0; j<B; j++)
         {
-            tAB += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
+            //tAB1 += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
+            auto [x1, y1, z1] = pro.at(i).co;
+            auto [x2, y2, z2] = tar.at(j).co;
+            tAB += Tpp(pow(x1-x2+bx,2) + pow(y1-y2+by,2));
         }   
     }
-    
     return tAB;
 }
 
@@ -784,10 +909,15 @@ auto calculate_sum_tpp
     spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
     uint16_t A=static_cast<uint16_t>(nucleus.size());
 
+    auto [x1, y1, z1] = nuc.co;
+
     for (uint16_t i=0; i<A; i++)
     {
-        sum_tpp += Tpp((nuc.co - nucleus.at(i).co).magt2());
+        //sum_tpp += Tpp((nuc.co - nucleus.at(i).co).magt2());
+        auto [x2, y2, z2] = nucleus.at(i).co;
+        sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
     }
+    //std::cout<<sum_tpp1<<' '<<sum_tpp2<<std::endl;
     return sum_tpp;
 }
 
@@ -812,8 +942,8 @@ auto collide_nuclei
 
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
-    spatial tAA_0 = 30.5;//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-    spatial tBB_0 = 30.5;//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+    spatial tAA_0 = 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+    spatial tBB_0 = 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
     
     if (verbose)
     {
@@ -1013,8 +1143,8 @@ auto calculate_spatial_sigma_jets_mf_MC
     const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
     std::array<uint16_t,3> dim_Ns{0}; //How many points to calculate in each dimension
     std::array<xsectval,8> corners{0};
-    const spatial tAA_0 = 30.5;
-    const spatial tBB_0 = 30.5;
+    const spatial tAA_0 = 29.5494;//30.5;
+    const spatial tBB_0 = 29.5494;//30.5;
 
     auto sigma_jet_function = [=](const spatial sum_tppa, const spatial sum_tppb, const momentum mand_s_)
     {
@@ -1187,8 +1317,8 @@ auto calculate_spatial_sigma_jets_mf
     const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
     std::array<uint16_t,2> dim_Ns{0}; //How many points to calculate in each dimension
     std::array<xsectval,4> corners{0};
-    const spatial tAA_0 = 30.5;
-    const spatial tBB_0 = 30.5;
+    const spatial tAA_0 = 29.5494;//30.5
+    const spatial tBB_0 = 29.5494;//30.5
 
     auto sigma_jet_function = [=](const spatial sum_tppa, const spatial sum_tppb)
     {
@@ -2106,6 +2236,7 @@ auto print_2d_histo
     file << "///Total count: "<<tot<<std::endl;
     file << "///underflow: "<<uf0<<' '<<uf1<<std::endl;
     file << "///overflow: "<<of0<<' '<<of1<<std::endl;
+    file << "///normalization: "<<normalization<<std::endl;
 
     file << "///y bin walls:  ";
     for (auto y : xs1)
@@ -2696,14 +2827,466 @@ void abort_handler(int num)
     user_aborted = true;
 }
 
+void calculate_and_save_nuclei_TAs_TAAs
+(
+    const nucleus_generator::nucleus_params &nuc_params,
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<ars> radial_sampler
+)
+{
+    auto num_nuclei = 10000;
+    std::array<double,201> grid_xs;
+    std::array<double,201> grid_ys;
+
+    const spatial proton_width_2 = pow(0.573, 2);
+    const std::function<spatial(const spatial&)> 
+        Tp{[&proton_width_2](const spatial &bsquared)
+        {
+            return exp(-bsquared / (2 * proton_width_2)) / (20 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
+        }}; 
+    //const std::function<spatial(const spatial&)> 
+    //    Tpp{[&proton_width_2](const spatial &bsquared)
+    //    {
+    //        return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
+    //    }};
+
+    std::ofstream nuclei_file;
+    std::ofstream TAs_file;
+    //std::ofstream TAAs_file;
+    std::mutex nuclei_file_mutex;
+    std::mutex TAs_file_mutex;
+    //std::mutex TAAs_file_mutex;
+    std::mutex radial_sampler_mutex; 
+
+    std::iota(grid_xs.begin(), grid_xs.end(), 0);
+    std::iota(grid_ys.begin(), grid_ys.end(), 0);
+
+    for (auto & x : grid_xs)
+    {
+        x = -10.0 + 0.1*x;
+    }
+    for (auto & y : grid_ys)
+    {
+        y = -10.0 + 0.1*y;
+    }
+
+    std::array<std::array<coords,201>,201> grid;
+    for (uint16_t i=0; i<201; i++)
+    {
+        grid[i] = std::array<coords,201>();
+        for (uint16_t j=0; j<201; j++)
+        {
+            grid[i][j] = coords({grid_xs[i], grid_ys[j], 0});
+        }
+    }
+    nuclei_file.open("nuclei_shift.wl");
+    TAs_file.open("TAs_shift.wl");
+    //TAAs_file.open("TAAs_noshift.wl");
+
+    nuclei_file<<"nucleiShift"<<num_nuclei<<" = {";
+    TAs_file<<"TAsShift"<<num_nuclei<<" = {";
+    //TAAs_file<<"TAAsNoShift"<<num_nuclei<<" = {";
+    std::vector<uint64_t> indexes((num_nuclei/2)-1);
+    std::iota(indexes.begin(), indexes.end(), 0); //generates the list as {0,1,2,3,...}
+
+    generate_nuclei
+    (
+        nuc_params, 
+        1000, 
+        0, 
+        eng, 
+        radial_sampler, 
+        false, 
+        false
+    );
+
+    std::for_each
+    (
+        std::execution::par, 
+        indexes.begin(), 
+        indexes.end(), 
+        [&](const uint64_t index) 
+        {
+
+            std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
+            auto [pro, tar] = generate_nuclei
+            (
+                nuc_params, 
+                1000, 
+                0, 
+                eng, 
+                radial_sampler, 
+                false, 
+                false
+            );
+            lock_rad.~unique_lock();
+
+            {
+                const std::lock_guard<std::mutex> lock(nuclei_file_mutex);
+                nuclei_file<<"{";
+                std::for_each(pro.begin(), pro.end()-1, [&nuclei_file](const nucleon &nuc) 
+                { 
+                    nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
+                });
+                nuclei_file<<"{"<<pro.back().co.x<<","<<pro.back().co.y<<","<<pro.back().co.z<<"}},\n    {";
+                std::for_each(tar.begin(), tar.end()-1, [&nuclei_file](const nucleon &nuc) 
+                { 
+                    nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
+                });
+                nuclei_file<<"{"<<tar.back().co.x<<","<<tar.back().co.y<<","<<tar.back().co.z<<"}},\n    ";
+            }
+
+            std::array<std::array<double,201>,201> grid_TAs;
+            //std::array<std::array<double,201>,201> grid_TAAs;
+            std::array<std::array<double,201>,201> grid_TBs;
+            //std::array<std::array<double,201>,201> grid_TBBs;
+
+            for (uint16_t i=0; i<201; i++)
+            {
+                grid_TAs[i] = std::array<double,201>();
+                //grid_TAAs[i] = std::array<double,201>();
+                grid_TBs[i] = std::array<double,201>();
+                //grid_TBBs[i] = std::array<double,201>();
+                for (uint16_t j=0; j<201; j++)
+                {
+                    grid_TAs[i][j] = calculate_tA(grid[i][j], pro, Tp);
+                    //grid_TAAs[i][j] = calculate_tAB(grid[i][j], pro, pro, Tpp);
+                    grid_TBs[i][j] = calculate_tA(grid[i][j], tar, Tp);
+                    //grid_TBBs[i][j] = calculate_tAB(grid[i][j], tar, tar, Tpp);
+                }
+            }
+
+            {
+                const std::lock_guard<std::mutex> lock(TAs_file_mutex);
+                TAs_file<<"{";
+                std::for_each(grid_TAs.begin(), grid_TAs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
+                { 
+                    TAs_file<<"{";
+                    std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
+                    { 
+                        TAs_file<<val<<",";
+                    });
+                    TAs_file<<ys.back()<<"},\n    ";
+                });
+                TAs_file<<"{";
+                std::for_each(grid_TAs.back().begin(), grid_TAs.back().end()-1, [&TAs_file](const double &val) 
+                { 
+                    TAs_file<<val<<",";
+                });
+                TAs_file<<grid_TAs.back().back()<<"}},\n    {";
+                std::for_each(grid_TBs.begin(), grid_TBs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
+                { 
+                    TAs_file<<"{";
+                    std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
+                    { 
+                        TAs_file<<val<<",";
+                    });
+                    TAs_file<<ys.back()<<"},\n    ";
+                });
+                TAs_file<<"{";
+                std::for_each(grid_TBs.back().begin(), grid_TBs.back().end()-1, [&TAs_file](const double &val) 
+                { 
+                    TAs_file<<val<<",";
+                });
+                TAs_file<<grid_TBs.back().back()<<"}},\n    ";
+            }
+
+            //{
+            //    const std::lock_guard<std::mutex> lock(TAAs_file_mutex);
+            //    TAAs_file<<"{";
+            //    std::for_each(grid_TAAs.begin(), grid_TAAs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
+            //    { 
+            //        TAAs_file<<"{";
+            //        std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
+            //        { 
+            //            TAAs_file<<val<<",";
+            //        });
+            //        TAAs_file<<ys.back()<<"},\n    ";
+            //    });
+            //    TAAs_file<<"{";
+            //    std::for_each(grid_TAAs.back().begin(), grid_TAAs.back().end()-1, [&TAAs_file](const double &val) 
+            //    { 
+            //        TAAs_file<<val<<",";
+            //    });
+            //    TAAs_file<<grid_TAAs.back().back()<<"}},\n    {";
+            //    std::for_each(grid_TBBs.begin(), grid_TBBs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
+            //    { 
+            //        TAAs_file<<"{";
+            //        std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
+            //        { 
+            //            TAAs_file<<val<<",";
+            //        });
+            //        TAAs_file<<ys.back()<<"},\n    ";
+            //    });
+            //    TAAs_file<<"{";
+            //    std::for_each(grid_TBBs.back().begin(), grid_TBBs.back().end()-1, [&TAAs_file](const double &val) 
+            //    { 
+            //        TAAs_file<<val<<",";
+            //    });
+            //    TAAs_file<<grid_TBBs.back().back()<<"}},\n    ";
+            //    std::cout<<index<<std::flush;
+            //}
+        }
+    );
+
+    auto [pro, tar] = generate_nuclei
+    (
+        nuc_params, 
+        1000, 
+        0, 
+        eng, 
+        radial_sampler, 
+        false, 
+        false
+    );
+
+    nuclei_file<<"{";
+    std::for_each(pro.begin(), pro.end()-1, [&nuclei_file](const nucleon &nuc) 
+    { 
+        nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
+    });
+    nuclei_file<<"{"<<pro.back().co.x<<","<<pro.back().co.y<<","<<pro.back().co.z<<"}},\n    {";
+    std::for_each(tar.begin(), tar.end()-1, [&nuclei_file](const nucleon &nuc) 
+    { 
+        nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
+    });
+    nuclei_file<<"{"<<tar.back().co.x<<","<<tar.back().co.y<<","<<tar.back().co.z<<"}}};\n\n";
+    nuclei_file.close();
+
+    std::array<std::array<double,201>,201> grid_TAs;
+    //std::array<std::array<double,201>,201> grid_TAAs;
+    std::array<std::array<double,201>,201> grid_TBs;
+    //std::array<std::array<double,201>,201> grid_TBBs;
+
+    for (uint16_t i=0; i<201; i++)
+    {
+        grid_TAs[i] = std::array<double,201>();
+        //grid_TAAs[i] = std::array<double,201>();
+        grid_TBs[i] = std::array<double,201>();
+        //grid_TBBs[i] = std::array<double,201>();
+        for (uint16_t j=0; j<201; j++)
+        {
+            grid_TAs[i][j] = calculate_tA(grid[i][j], pro, Tp);
+            //grid_TAAs[i][j] = calculate_tAB(grid[i][j], pro, pro, Tpp);
+            grid_TBs[i][j] = calculate_tA(grid[i][j], tar, Tp);
+            //grid_TBBs[i][j] = calculate_tAB(grid[i][j], tar, tar, Tpp);
+        }
+    }
+
+    TAs_file<<"{";
+    std::for_each(grid_TAs.begin(), grid_TAs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
+    { 
+        TAs_file<<"{";
+        std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
+        { 
+            TAs_file<<val<<",";
+        });
+        TAs_file<<ys.back()<<"},\n    ";
+    });
+    TAs_file<<"{";
+    std::for_each(grid_TAs.back().begin(), grid_TAs.back().end()-1, [&TAs_file](const double &val) 
+    { 
+        TAs_file<<val<<",";
+    });
+    TAs_file<<grid_TAs.back().back()<<"}},\n    {";
+    std::for_each(grid_TBs.begin(), grid_TBs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
+    { 
+        TAs_file<<"{";
+        std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
+        { 
+            TAs_file<<val<<",";
+        });
+        TAs_file<<ys.back()<<"},\n    ";
+    });
+    TAs_file<<"{";
+    std::for_each(grid_TBs.back().begin(), grid_TBs.back().end()-1, [&TAs_file](const double &val) 
+    { 
+        TAs_file<<val<<",";
+    });
+    TAs_file<<grid_TBs.back().back()<<"}}};\n\n";
+    TAs_file.close();
+
+    //TAAs_file<<"{";
+    //std::for_each(grid_TAAs.begin(), grid_TAAs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
+    //{ 
+    //    TAAs_file<<"{";
+    //    std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
+    //    { 
+    //        TAAs_file<<val<<",";
+    //    });
+    //    TAAs_file<<ys.back()<<"},\n    ";
+    //});
+    //TAAs_file<<"{";
+    //std::for_each(grid_TAAs.back().begin(), grid_TAAs.back().end()-1, [&TAAs_file](const double &val) 
+    //{ 
+    //    TAAs_file<<val<<",";
+    //});
+    //TAAs_file<<grid_TAAs.back().back()<<"}},\n    {";
+    //std::for_each(grid_TBBs.begin(), grid_TBBs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
+    //{ 
+    //    TAAs_file<<"{";
+    //    std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
+    //    { 
+    //        TAAs_file<<val<<",";
+    //    });
+    //    TAAs_file<<ys.back()<<"},\n    ";
+    //});
+    //TAAs_file<<"{";
+    //std::for_each(grid_TBBs.back().begin(), grid_TBBs.back().end()-1, [&TAAs_file](const double &val) 
+    //{ 
+    //    TAAs_file<<val<<",";
+    //});
+    //TAAs_file<<grid_TBBs.back().back()<<"}}};\n\n";
+    //TAAs_file.close();
+}
+
+void calculate_and_save_average_nuclei_TAs_TAAs
+(
+    const nucleus_generator::nucleus_params &nuc_params,
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<ars> radial_sampler
+)
+{
+    auto num_nuclei = 10000;
+    std::array<double,201> grid_xs;
+    std::array<double,201> grid_ys;
+
+    const spatial proton_width_2 = pow(0.573, 2);
+    const std::function<spatial(const spatial&)> 
+        Tp{[&proton_width_2](const spatial &bsquared)
+        {
+            return exp(-bsquared / (2 * proton_width_2)) / (20 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
+        }}; 
+
+    std::ofstream TAs_file;
+    std::mutex radial_sampler_mutex; 
+
+    std::iota(grid_xs.begin(), grid_xs.end(), 0);
+    std::iota(grid_ys.begin(), grid_ys.end(), 0);
+
+    for (auto & x : grid_xs)
+    {
+        x = -10.0 + 0.1*x;
+    }
+    for (auto & y : grid_ys)
+    {
+        y = -10.0 + 0.1*y;
+    }
+
+    std::array<std::array<coords,201>,201> grid;
+    for (uint16_t i=0; i<201; i++)
+    {
+        grid[i] = std::array<coords,201>();
+        for (uint16_t j=0; j<201; j++)
+        {
+            grid[i][j] = coords({grid_xs[i], grid_ys[j], 0});
+        }
+    }
+
+    std::array<std::array<double,201>,201> TA_grid;
+    std::mutex TA_grid_mutex;
+    for (uint16_t i=0; i<201; i++)
+    {
+        TA_grid[i] = std::array<double,201>();
+        for (uint16_t j=0; j<201; j++)
+        {
+            TA_grid[i][j] = 0.0;
+        }
+    }
+
+    TAs_file.open("TA_ave_no_shift.wl");
+
+    TAs_file<<"TAaveNoShift"<<num_nuclei<<" = ";
+    std::vector<uint64_t> indexes((num_nuclei/2)-1);
+    std::iota(indexes.begin(), indexes.end(), 0); //generates the list as {0,1,2,3,...}
+
+    generate_nuclei
+    (
+        nuc_params, 
+        1000, 
+        0, 
+        eng, 
+        radial_sampler, 
+        false, 
+        false
+    );
+
+    std::for_each
+    (
+        std::execution::par, 
+        indexes.begin(), 
+        indexes.end(), 
+        [&](const uint64_t index) 
+        {
+
+            std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
+            auto [pro, tar] = generate_nuclei
+            (
+                nuc_params, 
+                1000, 
+                0, 
+                eng, 
+                radial_sampler, 
+                false, 
+                false
+            );
+            lock_rad.~unique_lock();
+
+            std::array<std::array<double,201>,201> TA_grid_dummy;
+            for (uint16_t i=0; i<201; i++)
+            {
+                TA_grid_dummy[i] = std::array<double,201>();
+                for (uint16_t j=0; j<201; j++)
+                {
+                    TA_grid_dummy[i][j] = calculate_tA(grid[i][j], pro, Tp);
+                    TA_grid_dummy[i][j] += calculate_tA(grid[i][j], tar, Tp);
+                    TA_grid_dummy[i][j] /= num_nuclei;
+                }
+            }
+
+            {
+                const std::lock_guard<std::mutex> lock(TA_grid_mutex);
+                for (uint16_t i=0; i<201; i++)
+                {
+                    for (uint16_t j=0; j<201; j++)
+                    {
+                        TA_grid[i][j] += TA_grid_dummy[i][j];
+                    }
+                }
+            }
+        }
+    );
+
+    TAs_file<<"{";
+    std::for_each(TA_grid.begin(), TA_grid.end()-1, [&TAs_file](const std::array<double,201> &ys) 
+    { 
+        TAs_file<<"{";
+        std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
+        { 
+            TAs_file<<val<<",";
+        });
+        TAs_file<<ys.back()<<"},\n    ";
+    });
+    TAs_file<<"{";
+    std::for_each(TA_grid.back().begin(), TA_grid.back().end()-1, [&TAs_file](const double &val) 
+    { 
+        TAs_file<<val<<",";
+    });
+    TAs_file<<TA_grid.back().back()<<"}};\n\n";
+    TAs_file.close();
+}
+
 #ifndef IS_AA
-#define IS_AA true
+#define IS_AA false
 #endif
 #ifndef SPATIAL_NPDFS
-#define SPATIAL_NPDFS true
+#define SPATIAL_NPDFS false
 #endif
 #ifndef IS_MOM_CONS
 #define IS_MOM_CONS false
+#endif
+#ifndef IS_MOM_CONS2
+#define IS_MOM_CONS2 true
 #endif
 
 int main()
@@ -2720,13 +3303,14 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_sAA_100k_B=0",
+    std::string   name_postfix = "_pp_100k_B=0_UUSMC_fr",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
     const spatial b_min                 = 0,
                   b_max                 = 0;
     std::mutex AA_events_mutex; 
+    std::cout<<"Doing the run "<<name_postfix<<std::endl;
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
@@ -2736,7 +3320,7 @@ int main()
                   rad_max=20;
     const std::function<double(const double&)> rad_pdf{[](const double & x)
     {
-        return x*x/(1+exp((x-6.62)/0.546));
+        return x*x/(1+exp((x-6.624)/0.549));
     }};
     auto radial_sampler = std::make_shared<ars>(rad_pdf, rad_min, rad_max);
     std::mutex radial_sampler_mutex; 
@@ -2746,7 +3330,7 @@ int main()
         /* .Z=                    */82, 
         /* .min_distance=         */0.4, 
         /* .shift_cms=            */true, 
-        /* .correct_overlap_bias= */false
+        /* .correct_overlap_bias= */true
     };
     
     //Parameters for the hard collisions
@@ -3019,7 +3603,7 @@ int main()
                 else if (end_state_filtering)
                 {
                     momentum ET=0, E=0;
-                    filter_end_state(binary_collisions, filtered_scatterings);
+                    filter_end_state(binary_collisions, filtered_scatterings, IS_MOM_CONS2, sqrt_s);
                     binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
                     std::vector<std::tuple<double, double> > new_jets;
                     std::vector<std::tuple<double, double> > new_dijets;
@@ -3387,6 +3971,14 @@ int main()
         jets, 
         "sigma1jet_sim"+name_postfix+".dat", 
         2.0 * dijet_norm
+    );
+
+    print_2d_histo
+    (
+        jets, 
+        "dNdpTdy_sim"+name_postfix+".dat", 
+        1.0,
+        false
     );
 
     print_2d_histo
