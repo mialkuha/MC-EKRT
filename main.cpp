@@ -474,8 +474,8 @@ auto filter_collisions_MC //TODO discuss with Kari
 {
     std::unordered_map<nucleon*, double> x1s;
     std::unordered_map<nucleon*, double> x2s;
-    std::unordered_set<nucleon*> depleted_pro;
-    std::unordered_set<nucleon*> depleted_tar;
+//    std::unordered_set<nucleon*> depleted_pro;
+//    std::unordered_set<nucleon*> depleted_tar;
 
     std::vector<colls_with_ns> collision_candidates;
     collision_candidates.reserve(binary_collisions.size()*10);
@@ -493,10 +493,10 @@ auto filter_collisions_MC //TODO discuss with Kari
 
     for (auto & cand : collision_candidates)
     {
-        if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
-        {
-            continue;
-        }
+//        if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
+//        {
+//            continue;
+//        }
 
         bool discard = false;
         auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
@@ -510,7 +510,7 @@ auto filter_collisions_MC //TODO discuss with Kari
             if (i_x1_sum->second > 1.0)
             {
                 discard = true;
-                depleted_pro.insert(cand.pro_nucleon);
+//                depleted_pro.insert(cand.pro_nucleon);
             }
         }
         else
@@ -526,7 +526,7 @@ auto filter_collisions_MC //TODO discuss with Kari
             if (i_x2_sum->second > 1.0)
             {
                 discard = true;
-                depleted_tar.insert(cand.tar_nucleon);
+//                depleted_tar.insert(cand.tar_nucleon);
             }
         }
         else
@@ -3303,7 +3303,7 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pp_100k_B=0_UUSMC_fr",
+    std::string   name_postfix = "_pp_100k_B=0_TESTI_ND",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
@@ -3389,7 +3389,13 @@ int main()
     //calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params, name_postfix);
     //calculate_sigma_jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
     //calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params, name_postfix);
-
+//std::vector<double> mands = {2., 5., 10., 20., 50.,100.,200.,500.,1000.,2000.,5000.,};
+//for (auto & m : mands) m = m*m;
+//std::vector<double> kt02ss = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
+//std::vector<double> inels = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
+//for (int i=0; i<11 ; i++) find_sigma_jet_cutoff(kt02ss[i], mands[i], 124.6635, p_pdf, jet_params, true);
+//std::cout<<kt02<<std::endl;
+//return 0;
     auto
     [
         dijet_norm,

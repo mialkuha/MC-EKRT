@@ -8,18 +8,18 @@ from matplotlib.backends.backend_pdf import PdfPages
 y_binsize = 0.192756 - (-0.192756) # Indexes 19,20
 pt_points = [ 2.72832, 5.3985, 7.59385, 10.682, 15.0259, 21.1363, 29.7316, 41.8222, 58.8296, 82.7532, 116.406, 163.743, 230.33, 323.996, 455.753, 641.089, 901.793, 1268.52, 1784.37, 2510 ]
 
-obs_name = ['dNdpT_y=0']
+obs_name = ['dNdpT_y=0_B=0']
 
 for name in obs_name:
-	infile_name1  = 'sigma1jet_sim_pp_100k_mb.dat'
-	infile_name2  = 'sigma1jet_sim_AA_100k_mb.dat'
-	infile_name3  = 'sigma1jet_sim_sAA_100k_mb.dat'
-	infile_name4  = 'sigma1jet_sim_pp_100k_mb_UUSMC.dat'
-	infile_name5  = 'sigma1jet_sim_AA_100k_mb_UUSMC.dat'
-	infile_name6  = 'sigma1jet_sim_sAA_100k_mb_UUSMC.dat'
-	infile_name7  = 'sigma1jet_sim_pp_100k_mb_NODEP.dat'
-	infile_name8  = 'sigma1jet_sim_AA_100k_mb_NODEP.dat'
-	infile_name9  = 'sigma1jet_sim_sAA_100k_mb_NODEP.dat'
+	infile_name1  = 'sigma1jet_sim_pp_100k_B=0.dat'
+	infile_name2  = 'sigma1jet_sim_AA_100k_B=0.dat'
+	infile_name3  = 'sigma1jet_sim_sAA_100k_B=0.dat'
+	infile_name4  = 'sigma1jet_sim_pp_100k_B=0_UUSMC.dat'
+	infile_name5  = 'sigma1jet_sim_AA_100k_B=0_UUSMC.dat'
+	infile_name6  = 'sigma1jet_sim_sAA_100k_B=0_UUSMC.dat'
+	infile_name7  = 'sigma1jet_sim_pp_100k_B=0_NODEP.dat'
+	infile_name8  = 'sigma1jet_sim_AA_100k_B=0_NODEP.dat'
+	infile_name9  = 'sigma1jet_sim_sAA_100k_B=0_NODEP.dat'
 
 	pdf_name  = name+'.pdf'
 
