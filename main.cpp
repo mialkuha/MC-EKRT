@@ -30,6 +30,7 @@
 #include <sstream>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
@@ -416,7 +417,8 @@ auto generate_nuclei
         if (verbose) std::cout<<"Generating nuclei..."<<std::flush;
         pro = nucleus_generator::generate_nucleus
               (
-                  nuc_params, 
+                  nuc_params,
+                  false,
                   sqrt_s/2.0, 
                   -impact_parameter/2., 
                   eng, 
@@ -425,6 +427,7 @@ auto generate_nuclei
         tar = nucleus_generator::generate_nucleus
               (
                   nuc_params, 
+                  true,
                   sqrt_s/2.0, 
                   impact_parameter/2., 
                   eng, 
@@ -684,8 +687,7 @@ auto mc_glauber_style_report
     }
 }
 
-#include <type_traits>
-
+//collide_nuclei<false>
 template<bool temp_bool, typename std::enable_if <!temp_bool> :: type* = nullptr>
 auto collide_nuclei
 (
@@ -921,6 +923,7 @@ auto calculate_sum_tpp
     return sum_tpp;
 }
 
+//collide_nuclei<true>
 template<bool temp_bool, typename std::enable_if <temp_bool> :: type* = nullptr>
 auto collide_nuclei
 (
@@ -942,7 +945,7 @@ auto collide_nuclei
 
     uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
-    spatial tAA_0 = 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+    spatial tAA_0 = (AA_params.pA_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
     spatial tBB_0 = 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
     
     if (verbose)
@@ -3276,17 +3279,23 @@ void calculate_and_save_average_nuclei_TAs_TAAs
     TAs_file.close();
 }
 
+#ifndef IS_pA
+#define IS_pA true
+#endif
 #ifndef IS_AA
 #define IS_AA false
 #endif
+#ifndef USE_NPDFS
+#define USE_NPDFS true
+#endif
 #ifndef SPATIAL_NPDFS
-#define SPATIAL_NPDFS false
+#define SPATIAL_NPDFS true
 #endif
 #ifndef IS_MOM_CONS
-#define IS_MOM_CONS false
+#define IS_MOM_CONS true
 #endif
 #ifndef IS_MOM_CONS2
-#define IS_MOM_CONS2 true
+#define IS_MOM_CONS2 false
 #endif
 
 int main()
@@ -3303,12 +3312,12 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pp_100k_B=0_TESTI_ND",
+    std::string   name_postfix = "_pA_100k_mb_sAA_MC",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
     const spatial b_min                 = 0,
-                  b_max                 = 0;
+                  b_max                 = 20;
     std::mutex AA_events_mutex; 
     std::cout<<"Doing the run "<<name_postfix<<std::endl;
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
@@ -3326,8 +3335,10 @@ int main()
     std::mutex radial_sampler_mutex; 
     nucleus_generator::nucleus_params nuc_params = 
     {
-        /* .N=                    */208, 
-        /* .Z=                    */82, 
+        /* .NA=                   */(IS_AA)? 208 : 1, //Pb 
+        /* .ZA=                   */(IS_AA)? 82 : 1, //Pb 
+        /* .NB=                   */208, 
+        /* .ZB=                   */82, 
         /* .min_distance=         */0.4, 
         /* .shift_cms=            */true, 
         /* .correct_overlap_bias= */true
@@ -3349,6 +3360,7 @@ int main()
     const AA_collision_params coll_params
     {
     /*mc_glauber_mode=          */false,
+    /*pA_scattering=            */IS_pA,
     /*spatial_pdfs=             */SPATIAL_NPDFS,
     /*spatial_averaging=        */false,
     /*calculate_end_state=      */true,
@@ -3367,15 +3379,15 @@ int main()
     //sigma_jet parameters
     /*const bool read_sigmajets_from_file = false;*/
     pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
-    /*projectile_with_npdfs=    */IS_AA,
-    /*target_with_npdfs=        */IS_AA,
+    /*projectile_with_npdfs=    */(IS_AA && USE_NPDFS),
+    /*target_with_npdfs=        */USE_NPDFS,
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */coll_params.spatial_pdfs,
     /*npdf_setnumber=           */1,
-    /*A=                        */208, //Pb 
+    /*A=                        */(IS_AA)? 208 : 1, //Pb 
     /*B=                        */208, //Pb
-    /*ZA=                       */82,  //Pb
+    /*ZA=                       */(IS_AA)? 82 : 1,  //Pb
     /*ZB=                       */82   //Pb
     /*p_n_pdf=                  */
     /*rA_spatial=               */

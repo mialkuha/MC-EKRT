@@ -4,19 +4,26 @@
 
 std::uniform_real_distribution<double> nucleus_generator::unif_dist = std::uniform_real_distribution<double>(0.0,1.0);
 
-std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const momentum & mom, 
+std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const bool &target, const momentum & mom, 
         const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
 {
     std::vector<nucleon> generated_nucleus;
     std::vector<coords> generated_coords;
-    generated_nucleus.reserve(params.N);
-    generated_coords.reserve(params.N);
+    auto N = (target) ? params.NB : params.NA;
+    generated_nucleus.reserve(N);
+    generated_coords.reserve(N);
+
+    if (N==1)
+    {
+        generated_nucleus.emplace_back(coords({xshift,0.0,0.0}), mom);
+        return generated_nucleus;
+    }
 
     coords new_coords;
     bool coords_do_fit;
     auto count=0;
 
-    do // while (generated_coords.size() < params.N);
+    do // while (generated_coords.size() < N);
     {
         do // while (!coords_do_fit);
         {
@@ -38,7 +45,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         }
         generated_coords.push_back(std::move(new_coords));
 
-    } while (generated_coords.size() < params.N);
+    } while (generated_coords.size() < N);
     
     //std::cout<<"threw away "<<count<<" times\n";
 
@@ -63,7 +70,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         generated_nucleus.emplace_back(co, mom);
     }
 
-    nucleus_generator::throw_neutrons(&generated_nucleus, params.Z, random_generator);
+    nucleus_generator::throw_neutrons(&generated_nucleus, (target) ? params.ZB : params.ZA, random_generator);
 
     return generated_nucleus;
 }
