@@ -701,7 +701,8 @@ auto collide_nuclei
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     const double &power_law,
     variant_envelope_max &envelope_maximums,
-    const bool &verbose
+    const bool &verbose,
+    linear_interpolator &widths
 ) noexcept -> void
 {
     uint n_pairs = 0, mombroke = 0, nof_softs = 0;
@@ -715,6 +716,15 @@ auto collide_nuclei
             binary_pairs.push_back(std::make_pair(&A, &B));
         }
     }
+    auto tpp = AA_params.Tpp;
+    std::vector<double> sqrt_ss({5, 20, 50, 100, 200, 1000, 2760, 5020});
+    std::vector<double> sss({52.6948, 49.7482, 53.6285, 59.3858, 67.5608, 96.4644, 122.668, 141.376});
+    linear_interpolator sjets(sqrt_ss, sss);
+    std::vector<double> kkk({0.00183662, 0.169166, 0.616526, 0.903109, 1.13365, 1.72728, 2.23967, 2.60876});
+    linear_interpolator kt0s(sqrt_ss, kkk);
+    std::vector<double> maxxss({1, 1, 1.6888, 5.15012, 9.25187, 16.1337, 23.4767, 29.9854});
+    linear_interpolator envss(sqrt_ss, maxxss);
+    double proton_width_2 = 0;
 
     std::vector<uint64_t> pair_indexes(binary_pairs.size());
     std::iota(pair_indexes.begin(), pair_indexes.end(), 0);
@@ -788,14 +798,21 @@ auto collide_nuclei
             xsectval sigma_jet;
             if (AA_params.reduce_nucleon_energies)
             {
-                sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                //sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                sigma_jet = sjets.value_at(newpair.getcr_sqrt_s());
+                proton_width_2 = widths.value_at(newpair.getcr_sqrt_s());
+                proton_width_2 = pow(proton_width_2, 2);
+                tpp = std::function<spatial(const spatial&)>{[&proton_width_2](const spatial &bsquared)
+                    {
+                        return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
+                    }}; 
             }
             else //Single sigma_jet
             {
                 sigma_jet = std::get<xsectval>(sigma_jets);
             }
                 
-            newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
+            newpair.calculate_xsects(sigma_jet, tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
             auto ran = unirand(*eng)*M_PI;
                 
             if (ran > newpair.getcr_effective_inel_xsect())
@@ -813,7 +830,8 @@ auto collide_nuclei
 
                 if (AA_params.reduce_nucleon_energies)
                 {
-                    envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
+                    //envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
+                    envelope_maximum = envss.value_at(newpair.getcr_sqrt_s());
                 }
                 else
                 {
@@ -824,8 +842,8 @@ auto collide_nuclei
                 (
                     newpair, 
                     sigma_jet, 
-                    AA_params.Tpp(newpair.getcr_bsquared()), 
-                    kt0,
+                    tpp(newpair.getcr_bsquared()), 
+                    kt0s.value_at(newpair.getcr_sqrt_s()),
                     unirand, 
                     eng,
                     p_p_pdf,
@@ -2586,7 +2604,7 @@ std::tuple
         }
         else //sigma_jet depends on energy
         {
-            power_law = 2.8;
+            power_law = 2.5;//2.8;
 
             std::cout<<"Calculating sigma_jets..."<<std::flush;
             auto [mand_ss, sigmas] = calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
@@ -3286,7 +3304,7 @@ void calculate_and_save_average_nuclei_TAs_TAAs
 #define IS_MOM_CONS false
 #endif
 #ifndef IS_MOM_CONS2
-#define IS_MOM_CONS2 true
+#define IS_MOM_CONS2 false
 #endif
 
 int main()
@@ -3303,12 +3321,12 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pp_100k_B=0_TESTI_ND",
+    std::string   name_postfix = "_pp_100k_mb_asd",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
     const spatial b_min                 = 0,
-                  b_max                 = 0;
+                  b_max                 = 20;
     std::mutex AA_events_mutex; 
     std::cout<<"Doing the run "<<name_postfix<<std::endl;
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
@@ -3334,7 +3352,7 @@ int main()
     };
     
     //Parameters for the hard collisions
-    const spatial proton_width_2 = pow(0.573, 2);
+    const spatial proton_width_2 = pow(0.527382, 2);//pow(0.573, 2);
     const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared)
     {
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
@@ -3342,7 +3360,7 @@ int main()
     const xsectval sigma_inel_for_glauber = 41.5;//mb
     const momentum sqrt_s                 = 5020;//GeV
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
-    momentum kt0                          = 2.728321;//GeV
+    momentum kt0                          = 2.60876;//2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
     rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
@@ -3389,13 +3407,31 @@ int main()
     //calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params, name_postfix);
     //calculate_sigma_jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
     //calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params, name_postfix);
-//std::vector<double> mands = {2., 5., 10., 20., 50.,100.,200.,500.,1000.,2000.,5000.,};
-//for (auto & m : mands) m = m*m;
-//std::vector<double> kt02ss = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
-//std::vector<double> inels = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
-//for (int i=0; i<11 ; i++) find_sigma_jet_cutoff(kt02ss[i], mands[i], 124.6635, p_pdf, jet_params, true);
-//std::cout<<kt02<<std::endl;
-//return 0;
+    
+/*std::vector<double> mands({5, 20, 50, 100, 200, 1000, 2760, 5020});
+std::vector<double> kt02ss({0.00183662, 0.169166, 0.616526, 0.903109, 1.13365, 1.72728, 2.23967, 2.60876});
+std::vector<double> jetsss({49.7482, 53.6285, 59.3858, 67.5608, 96.4644, 122.668, 141.376});
+for (int i=0; i<8 ; i++) 
+{
+    auto [sqrt_ss, max_dsigmas] = calculate_max_dsigmas_for_MC(kt02ss[i], mands[i], p_pdf, jet_params);
+   
+            for (auto [ds, err] : max_dsigmas)
+            {
+                std::cout<<(ds + fabs(err))*1.05*pow(kt02ss[i],2.5)<<std::endl;
+            }
+}
+return 0;*/
+/*std::vector<double> mands({20, 50, 100, 200, 1000, 2760, 5020});
+for (auto & m : mands) m = m*m;
+std::vector<double> kt02ss({1., 1., 1., 1.,1.,1.,1.});
+std::vector<double> jetsss({49.7482, 53.6285, 59.3858, 67.5608, 96.4644, 122.668, 141.376});
+for (int i=0; i<7 ; i++) 
+{
+    find_sigma_jet_cutoff(kt02ss[i], mands[i], jetsss[i], p_pdf, jet_params, true);
+    std::cout<<sqrt(kt02ss[i])<<std::endl;
+}
+return 0;*/
+
     auto
     [
         dijet_norm,
@@ -3418,6 +3454,10 @@ int main()
         kt0, 
         jet_params
     );
+
+    std::vector<double> sqrt_ss({5, 20, 50, 100, 200, 1000, 2760, 5020});
+    std::vector<double> ws({0.399534, 0.429492, 0.4508, 0.463816, 0.474654, 0.498485, 0.515914, 0.527382});
+    linear_interpolator widths(sqrt_ss, ws);
     
     //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
     //std::cout<<kt02<<std::endl;
@@ -3569,7 +3609,8 @@ int main()
                         p_pdf,
                         power_law,
                         envelope_maximum,
-                        verbose
+                        verbose,
+                        widths
                     );
 
                     /*if (average_spatial_taas)
