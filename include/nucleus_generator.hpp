@@ -19,14 +19,16 @@ public:
     struct nucleus_params 
     {
          //Pb by default
-        const uint N{208};
-        const uint Z{82};
+        const uint NA{208};
+        const uint ZA{82};
+        const uint NB{208};
+        const uint ZB{82};
          //Overall params
         const spatial min_distance{0.4};
         const bool shift_cms{true};
         const bool correct_overlap_bias{true};
     };
-    static std::vector<nucleon> generate_nucleus(const nucleus_params & params, const momentum & mom, 
+    static std::vector<nucleon> generate_nucleus(const nucleus_params & params, const bool &target, const momentum & mom, 
         const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept;
 protected:
     static coords&& throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept;

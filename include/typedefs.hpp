@@ -67,6 +67,7 @@ inline std::ostream& operator<<(std::ostream& os, const B2_normalization_mode& m
 struct AA_collision_params
 {
   bool mc_glauber_mode;
+  bool pA_scattering;
   bool spatial_pdfs;
   bool spatial_averaging;
   bool calculate_end_state;
