@@ -477,8 +477,8 @@ auto filter_collisions_MC //TODO discuss with Kari
 {
     std::unordered_map<nucleon*, double> x1s;
     std::unordered_map<nucleon*, double> x2s;
-//    std::unordered_set<nucleon*> depleted_pro;
-//    std::unordered_set<nucleon*> depleted_tar;
+    //std::unordered_set<nucleon*> depleted_pro;
+    //std::unordered_set<nucleon*> depleted_tar;
 
     std::vector<colls_with_ns> collision_candidates;
     collision_candidates.reserve(binary_collisions.size()*10);
@@ -496,10 +496,10 @@ auto filter_collisions_MC //TODO discuss with Kari
 
     for (auto & cand : collision_candidates)
     {
-//        if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
-//        {
-//            continue;
-//        }
+    //    if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
+    //    {
+    //        continue;
+    //    }
 
         bool discard = false;
         auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
@@ -513,7 +513,7 @@ auto filter_collisions_MC //TODO discuss with Kari
             if (i_x1_sum->second > 1.0)
             {
                 discard = true;
-//                depleted_pro.insert(cand.pro_nucleon);
+    //            depleted_pro.insert(cand.pro_nucleon);
             }
         }
         else
@@ -529,7 +529,7 @@ auto filter_collisions_MC //TODO discuss with Kari
             if (i_x2_sum->second > 1.0)
             {
                 discard = true;
-//                depleted_tar.insert(cand.tar_nucleon);
+    //            depleted_tar.insert(cand.tar_nucleon);
             }
         }
         else
@@ -545,7 +545,11 @@ auto filter_collisions_MC //TODO discuss with Kari
 
     //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
 
-    //col.dijets.erase ?
+
+    for (auto &col : binary_collisions)
+    {
+        col.dijets.erase(col.dijets.begin(), col.dijets.end());
+    }
 }
 
 auto filter_end_state
@@ -3286,16 +3290,16 @@ void calculate_and_save_average_nuclei_TAs_TAAs
 #define IS_AA false
 #endif
 #ifndef USE_NPDFS
-#define USE_NPDFS true
+#define USE_NPDFS false
 #endif
 #ifndef SPATIAL_NPDFS
-#define SPATIAL_NPDFS true
+#define SPATIAL_NPDFS false
 #endif
 #ifndef IS_MOM_CONS
-#define IS_MOM_CONS true
+#define IS_MOM_CONS false
 #endif
 #ifndef IS_MOM_CONS2
-#define IS_MOM_CONS2 false
+#define IS_MOM_CONS2 true
 #endif
 
 int main()
@@ -3312,7 +3316,7 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pA_100k_mb_sAA_MC",
+    std::string   name_postfix = "_pA_100k_mb_ND",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
@@ -3326,7 +3330,7 @@ int main()
 
     //Parameters for the nuclei
     const spatial rad_min=0,
-                  rad_max=20;
+                  rad_max=30;
     const std::function<double(const double&)> rad_pdf{[](const double & x)
     {
         return x*x/(1+exp((x-6.624)/0.549));
