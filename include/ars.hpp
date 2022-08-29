@@ -10,6 +10,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <functional>
 #include <random>
 #include <vector>
@@ -24,10 +25,11 @@ public:
         public:
             piecewise_exponential_distribution() : normalization{}, abscissae{}, weights{} { };
             piecewise_exponential_distribution& operator=(const piecewise_exponential_distribution & other)
-            { if(this != &other) { this->normalization = other.normalization; this->exp_factors = other.exp_factors; this->cdf_weights = other.cdf_weights; this->abscissae = other.abscissae; this->weights = other.weights; } return *this;}
+            { if(this != &other) { std::unique_lock lock{this->m}; this->normalization = other.normalization; this->exp_factors = other.exp_factors; this->cdf_weights = other.cdf_weights; this->abscissae = other.abscissae; this->weights = other.weights; } return *this;}
             template<class InputIteratorB, class InputIteratorW>
             piecewise_exponential_distribution(InputIteratorB firstB, InputIteratorB lastB, InputIteratorW firstW) : normalization{}, exp_factors{}, cdf_weights{}, abscissae{}, weights{}
-            { 
+            {
+                std::unique_lock lock{this->m};
                 for (; firstB!=lastB; firstB++, firstW++) 
                 {
                     this->abscissae.emplace_back(*firstB);
@@ -38,6 +40,7 @@ public:
             }
             void add_point(const double & absc, const double & weight) noexcept
             {
+                std::unique_lock lock{this->m};
                 uint i=0;
                 for (; i<this->abscissae.size(); i++)
                 {
@@ -72,8 +75,9 @@ public:
             }
 
             template<class Generator>
-            double operator()(Generator& g) noexcept
+            double operator()(Generator& g) const noexcept
             {
+                //std::unique_lock lock{this->m};
                 //rand is between 0 and normalization
                 double rand = static_cast<double>(g())*this->normalization/(static_cast<double>(g.max())-static_cast<double>(g.min()));
                 //std::cout<<"here norm:"<<this->normalization<<" rand:"<<rand;
@@ -146,11 +150,28 @@ public:
             
             std::vector<double> abscissae{};
             std::vector<double> weights{};
+
+            std::mutex m;
     };
     ars(const std::function<double(const double&)> & pdf_, const double & min, const double & max) noexcept;
     ars(const std::function<double(const double&)> & pdf_, const std::function<double(const double&)> & pdf_derivative_, const std::initializer_list<double> & init_abscissae, const std::initializer_list<double> & init_intersections, const std::initializer_list<double> & init_uk, const std::map<double, double> & init_log_values, const std::map<double, double> & init_log_der_values) noexcept;
-    double throw_one(std::mt19937 & random_generator, const bool & adaptive) noexcept;
-    std::vector<double> throw_n(const uint & n, std::mt19937 & random_generator, const bool & adaptive) noexcept;
+
+    double throw_one_adaptive(std::mt19937 & random_generator) noexcept;
+    double throw_one_const(std::mt19937 & random_generator) noexcept;
+
+    double throw_one(std::mt19937 & random_generator) noexcept
+    {
+        if (this->adaptive)
+        {
+            return throw_one_adaptive(random_generator);
+        }
+        else
+        {
+            return throw_one_const(random_generator);
+        }
+    }
+    std::vector<double> throw_n(const uint & n, std::mt19937 & random_generator) noexcept;
+    bool is_adaptive() noexcept { return this->adaptive;}
 private:
     void initialize_distribution() noexcept;
     void update_distribution() noexcept;
@@ -185,6 +206,8 @@ private:
         std::cout<<std::endl<<std::endl;
     }
 
+    bool adaptive{};
+
     const size_t absc_count_limit{}; //Maximum abscissae count
 
     const std::function<double(const double&)> log_pdf{};
@@ -198,6 +221,8 @@ private:
 
     std::uniform_real_distribution<double> unif_dist{};
     ars::piecewise_exponential_distribution sk{};
+
+    std::mutex m;
 };
 
 #endif // ARS_HPP

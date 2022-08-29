@@ -83,7 +83,7 @@ coords&& nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> r
     {
         try
         {
-            new_r = radial_sampler->throw_one(*random_generator, true);
+            new_r = radial_sampler->throw_one(*random_generator);
         }
         catch(const std::exception& e)
         {

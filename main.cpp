@@ -477,8 +477,8 @@ auto filter_collisions_MC //TODO discuss with Kari
 {
     std::unordered_map<nucleon*, double> x1s;
     std::unordered_map<nucleon*, double> x2s;
-    //std::unordered_set<nucleon*> depleted_pro;
-    //std::unordered_set<nucleon*> depleted_tar;
+    std::unordered_set<nucleon*> depleted_pro;
+    std::unordered_set<nucleon*> depleted_tar;
 
     std::vector<colls_with_ns> collision_candidates;
     collision_candidates.reserve(binary_collisions.size()*10);
@@ -496,10 +496,10 @@ auto filter_collisions_MC //TODO discuss with Kari
 
     for (auto & cand : collision_candidates)
     {
-    //    if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
-    //    {
-    //        continue;
-    //    }
+        if (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon))
+        {
+            continue;
+        }
 
         bool discard = false;
         auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
@@ -513,7 +513,7 @@ auto filter_collisions_MC //TODO discuss with Kari
             if (i_x1_sum->second > 1.0)
             {
                 discard = true;
-    //            depleted_pro.insert(cand.pro_nucleon);
+                depleted_pro.insert(cand.pro_nucleon);
             }
         }
         else
@@ -529,7 +529,7 @@ auto filter_collisions_MC //TODO discuss with Kari
             if (i_x2_sum->second > 1.0)
             {
                 discard = true;
-    //            depleted_tar.insert(cand.tar_nucleon);
+                depleted_tar.insert(cand.tar_nucleon);
             }
         }
         else
@@ -3290,10 +3290,10 @@ void calculate_and_save_average_nuclei_TAs_TAAs
 #define IS_AA false
 #endif
 #ifndef USE_NPDFS
-#define USE_NPDFS false
+#define USE_NPDFS true
 #endif
 #ifndef SPATIAL_NPDFS
-#define SPATIAL_NPDFS false
+#define SPATIAL_NPDFS true
 #endif
 #ifndef IS_MOM_CONS
 #define IS_MOM_CONS false
@@ -3316,9 +3316,9 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pA_100k_mb_ND",
+    std::string   name_postfix = "_pA_1m_mb_snPDF_MC",
                   event_file_name = "event_log"+name_postfix+".dat";
-    uint32_t      desired_N_events      = 100000,
+    uint32_t      desired_N_events      = 1000000,
                   AA_events             = 0;
     const spatial b_min                 = 0,
                   b_max                 = 20;
@@ -3329,14 +3329,25 @@ int main()
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
     //Parameters for the nuclei
+    //uint8_t samplersN = 32;
     const spatial rad_min=0,
                   rad_max=30;
     const std::function<double(const double&)> rad_pdf{[](const double & x)
     {
         return x*x/(1+exp((x-6.624)/0.549));
     }};
-    auto radial_sampler = std::make_shared<ars>(rad_pdf, rad_min, rad_max);
-    std::mutex radial_sampler_mutex; 
+    auto radial_sampler{std::make_shared<ars>(rad_pdf, rad_min, rad_max)};
+    do //while (radial_sampler->is_adaptive())
+    {
+        radial_sampler->throw_one(*eng);
+    } while (radial_sampler->is_adaptive());
+    //std::vector<std::shared_ptr<ars> > sampler_pointers;
+    //std::mutex radial_sampler_mutex;
+    //for (uint8_t i=0; i<samplersN; i++)
+    //{
+    //    sampler_pointers.push_back(std::make_shared<ars>(rad_pdf, rad_min, rad_max));
+    //}
+
     nucleus_generator::nucleus_params nuc_params = 
     {
         /* .NA=                   */(IS_AA)? 208 : 1, //Pb 
@@ -3553,7 +3564,28 @@ int main()
                 //B^2 from a uniform distribution
                 spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
 
-                std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
+                //std::shared_ptr<ars> radial_sampler;
+                //bool sampler_found = false;
+                //uint8_t s_index = index % samplersN;
+
+                //{
+                //    std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
+                //    do //while sampler_found
+                //    {
+                //        if (!sampler_pointers[s_index]->locked())
+                //        {
+                //            radial_sampler = sampler_pointers[s_index];
+                //            sampler_found = true;
+                //        }
+                //        s_index = (s_index + 1) % samplersN;
+                //        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                //    }
+                //    while (!sampler_found);
+                //    //std::cout<<std::endl<<s_index<<std::endl;
+                //}
+                //std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
+                //auto radial_sampler = sampler_pointers[0];
+
                 auto [pro, tar] = generate_nuclei
                 (
                     nuc_params, 
@@ -3564,7 +3596,7 @@ int main()
                     read_nuclei_from_file, 
                     verbose
                 );
-                lock_rad.~unique_lock();
+                //lock_rad.~unique_lock();
 
                 do
                 {
@@ -3603,7 +3635,7 @@ int main()
                     if (NColl<1)
                     {
                         impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
-                        const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
+                        //const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
                         std::tie(pro, tar) = generate_nuclei
                         (
                             nuc_params, 
@@ -3747,7 +3779,10 @@ int main()
                 {
                     const std::lock_guard<std::mutex> lock(AA_events_mutex);
                     AA_events++;
-                    std::cout <<"\rA+A collisions calculated: " << AA_events << std::flush;
+                    if (AA_events % 100 == 0 )
+                    {
+                        std::cout <<"\rA+A collisions calculated: " << AA_events << std::flush;
+                    }
                 }
                 //PrintThread{} <<"\rA+A collisions calculated: " << AA_events << std::flush;
 
