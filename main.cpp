@@ -839,12 +839,12 @@ auto collide_nuclei
                     power_law,
                     envelope_maximum
                 );
-                newpair.push_end_states_to_collider_frame();
 
                 if (AA_params.reduce_nucleon_energies)
                 {
                     newpair.reduce_energy();
                 }
+                newpair.push_end_states_to_collider_frame();
             }
             newpair.wound();
             binary_collisions.push_back(newpair);
@@ -1089,12 +1089,12 @@ auto collide_nuclei
                 power_law,
                 envelope_maximum
             );
-            newpair.push_end_states_to_collider_frame();
 
             if (AA_params.reduce_nucleon_energies)
             {
                 newpair.reduce_energy();
             }
+            newpair.push_end_states_to_collider_frame();
         }
         newpair.wound();
         binary_collisions.push_back(newpair);
