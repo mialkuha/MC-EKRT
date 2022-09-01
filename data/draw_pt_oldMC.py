@@ -11,8 +11,8 @@ pt_points = [ 2.72832, 5.3985, 7.59385, 10.682, 15.0259, 21.1363, 29.7316, 41.82
 obs_name = ['dNdpT_y=0']
 
 for name in obs_name:
-	infile_name1  = 'sigma1jet_sim_pp_100k_mb_asd.dat'
-	infile_name2  = 'sigma1jet_sim_100k_mb_MCasd.dat'
+	infile_name1  = 'sigma1jet_sim_pA_100k_B=0_MC_ED_fixxd.dat'
+	infile_name2  = 'sigma1jet_sim_pA_100k_B=0_ED_fixxd.dat'
 
 	pdf_name  = name+'.pdf'
 

@@ -3,7 +3,7 @@
 #include "ars.hpp"
 
 ars::ars(const std::function<double(const double&)> & pdf_, const double & min, const double & max) noexcept 
-    : absc_count_limit{1000}, log_pdf([&](const double& x){return log(pdf_(x));}), log_der([&](const double& x){return (log(pdf_(x+1e-5))-log(pdf_(x-1e-5)))/2e-5;}), abscissae({min+(max-min)/10.0, max-(max-min)/10.0}), zk({min,max}), uk(), unif_dist(0.0,1.0)
+    : absc_count_limit{20}, log_pdf([&](const double& x){return log(pdf_(x));}), log_der([&](const double& x){return (log(pdf_(x+1e-5))-log(pdf_(x-1e-5)))/2e-5;}), abscissae({min+(max-min)/10.0, max-(max-min)/10.0}), zk({min,max}), uk(), unif_dist(0.0,1.0)
 {
     this->log_values.clear();
     this->log_der_values.clear();
@@ -12,7 +12,7 @@ ars::ars(const std::function<double(const double&)> & pdf_, const double & min, 
 }
 
 ars::ars(const std::function<double(const double&)> & pdf_, const std::function<double(const double&)> & pdf_derivative_, const std::initializer_list<double> & init_abscissae, const std::initializer_list<double> & init_intersections, const std::initializer_list<double> & init_uk, const std::map<double, double> & init_log_values, const std::map<double, double> & init_log_der_values) noexcept
-    : absc_count_limit{1000}, log_pdf([&](const double& x){return log(pdf_(x));}), log_der([&](const double& x){return log(pdf_derivative_(x));}), log_values(init_log_values), log_der_values(init_log_der_values), abscissae(init_abscissae), zk(init_intersections), uk(init_uk), unif_dist(0.0,1.0) 
+    : absc_count_limit{20}, log_pdf([&](const double& x){return log(pdf_(x));}), log_der([&](const double& x){return log(pdf_derivative_(x));}), log_values(init_log_values), log_der_values(init_log_der_values), abscissae(init_abscissae), zk(init_intersections), uk(init_uk), unif_dist(0.0,1.0) 
 {
     auto temp = std::vector<double>(this->uk.size(), 0.0);
     auto uk_iter = this->uk.cbegin();
@@ -50,7 +50,7 @@ double ars::throw_one(std::mt19937 & random_generator, const bool & adaptive) no
         //rand < x0  OR > xlast -> re-sample
         if (temp_j==-1 || temp_j==static_cast<int>(this->abscissae.size())-1) 
         {
-            if (adaptive || this->abscissae.size()>=this->absc_count_limit)
+            if (adaptive || this->abscissae.size()<this->absc_count_limit)
             {
                 this->abscissae.push_back(rand);
                 std::sort(this->abscissae.begin(),this->abscissae.end());
@@ -84,7 +84,7 @@ double ars::throw_one(std::mt19937 & random_generator, const bool & adaptive) no
         {//std::cout<<"HERE 2 "<<rand<<std::endl;
             return rand;
         }
-        if (adaptive || this->abscissae.size()>=this->absc_count_limit)
+        if (adaptive || this->abscissae.size()<this->absc_count_limit)
         {
             this->abscissae.push_back(rand);
             std::sort(this->abscissae.begin(),this->abscissae.end());

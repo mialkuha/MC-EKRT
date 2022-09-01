@@ -785,11 +785,14 @@ auto collide_nuclei
                     power_law,
                     envelope_maximum
                 );
-                newpair.push_end_states_to_collider_frame();
 
                 if (AA_params.reduce_nucleon_energies)
                 {
-                    newpair.reduce_energy();
+                    newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                }
+                else
+                {
+                    newpair.push_end_states_to_collider_frame();
                 }
             }                    
             newpair.wound();
@@ -853,11 +856,14 @@ auto collide_nuclei
                     power_law,
                     envelope_maximum
                 );
-                newpair.push_end_states_to_collider_frame();
 
                 if (AA_params.reduce_nucleon_energies)
                 {
-                    newpair.reduce_energy();
+                    newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                }
+                else
+                {
+                    newpair.push_end_states_to_collider_frame();
                 }
             }
             newpair.wound();
@@ -1103,11 +1109,14 @@ auto collide_nuclei
                 power_law,
                 envelope_maximum
             );
-            newpair.push_end_states_to_collider_frame();
 
             if (AA_params.reduce_nucleon_energies)
             {
-                newpair.reduce_energy();
+                newpair.reduce_energy_and_push_end_states_to_collider_frame();
+            }
+            else
+            {
+                newpair.push_end_states_to_collider_frame();
             }
         }
         newpair.wound();
@@ -3310,7 +3319,7 @@ void calculate_and_save_average_nuclei_TAs_TAAs
 #define SPATIAL_NPDFS false
 #endif
 #ifndef IS_MOM_CONS
-#define IS_MOM_CONS false
+#define IS_MOM_CONS true
 #endif
 #ifndef IS_MOM_CONS2
 #define IS_MOM_CONS2 false
@@ -3330,7 +3339,7 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pA_100k_mb_ED",
+    std::string   name_postfix = "_pA_100k_mb_MC_ED_fixxd",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
@@ -3344,7 +3353,7 @@ int main()
 
     //Parameters for the nuclei
     const spatial rad_min=0,
-                  rad_max=25;
+                  rad_max=20;
     const std::function<double(const double&)> rad_pdf{[](const double & x)
     {
         return x*x/(1+exp((x-6.624)/0.549));
@@ -3390,8 +3399,8 @@ int main()
     /*energy_threshold=         */kt0
     };
     //std::vector<Coll> collisions_for_reporting;
-    const std::vector<double> kt_bins{loglinspace(kt0, sqrt_s/2.0, 21)};
-    const std::vector<double> y_bins{linspace(-ylim, ylim, 40)};
+    const std::vector<double> kt_bins{loglinspace(1e-3, sqrt_s/2.0, 21)};
+    const std::vector<double> y_bins{linspace(-10, 10, 40)};
     const std::vector<double> b_bins{linspace(b_min, b_max, 21)};
 
     //sigma_jet parameters

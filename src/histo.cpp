@@ -282,7 +282,7 @@ auto histo_2d::add
                 }
                 y_index++;
             }
-            std::cout<<"ERROR, y-bin not found"<<std::endl;
+            std::cout<<"ERROR, y-bin not found! y="<<new_y<<" max_y="<<this->ys.back()<<std::endl;
         }
         x_index++;
     }
@@ -409,7 +409,7 @@ auto histo_2d::add
                 y_index++;
             }
             //All the y-bins checked
-            std::cout<<"ERROR, y-bin not found"<<std::endl;
+            std::cout<<"ERROR, y-bin not found! y="<<to_add_1bin[to_add_index]<<" max_y="<<this->ys.back()<<std::endl;
         }
     added_staged:        
         if (news_index == news_tot)
@@ -536,7 +536,7 @@ auto histo_3d::add
                 }
                 y_index++;
             }
-            std::cout<<"ERROR, y-bin not found"<<std::endl;
+            std::cout<<"ERROR, y-bin not found! y="<<new_y<<" max_y="<<this->ys.back()<<std::endl;
         }
         x_index++;
     }
@@ -733,7 +733,7 @@ auto histo_3d::add
                 y_index++;
             }
             //All the y-bins checked
-            std::cout<<"ERROR, y-bin not found"<<std::endl;
+            std::cout<<"ERROR, y-bin not found! y="<<std::get<0>(to_add_xbin[to_add_xindex])<<" max_y="<<this->ys.back()<<std::endl;
         }
     added_staged:
         if (news_index == news_tot)

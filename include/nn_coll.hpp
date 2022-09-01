@@ -27,6 +27,7 @@ public:
     void wound() noexcept;
     void calculate_xsects(const xsectval &sigma_jet, const std::function<spatial(const spatial&)> &Tpp, const spatial &bsquared, const B2_normalization_mode & mode)  noexcept;
     void push_end_states_to_collider_frame() noexcept;
+    void reduce_energy_and_push_end_states_to_collider_frame() noexcept;
     spatial randomize_bsquared_for_this(const spatial & min, const spatial & max, std::mt19937 random_generator_) noexcept;
         //bgen = TMath::Sqrt((fBmax*fBmax-fBmin*fBmin)*gRandom->Rndm()+fBmin*fBmin);
 

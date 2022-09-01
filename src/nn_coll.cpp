@@ -20,7 +20,6 @@ void nn_coll::reduce_energy() noexcept
         x1 += (s.kt / this->sqrt_s) * (exp(s.y1) + exp(s.y2));
         x2 += (s.kt / this->sqrt_s) * (exp(-s.y1) + exp(-s.y2));
     }
-    
 
     this->projectile->mom *= 1.0 - x1;
     this->target->mom *= 1.0 - x2;
@@ -81,6 +80,30 @@ void nn_coll::push_end_states_to_collider_frame() noexcept
     //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
     //                    / (this->projectile->mom + this->target->mom));
     rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
+
+    //Push all end states with the transformation
+    for (auto &s : this->dijets)
+    {
+        s.y1 += rap;
+        s.y2 += rap;
+    }
+}
+
+void nn_coll::reduce_energy_and_push_end_states_to_collider_frame() noexcept
+{
+    //Calculate transformation btw events CMS and collider frame
+    //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
+    //                    / (this->projectile->mom + this->target->mom));
+    rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
+    auto x1 = 0.0, x2 = 0.0;
+    for (auto s : this->dijets)
+    {
+        x1 += (s.kt / this->sqrt_s) * (exp(s.y1) + exp(s.y2));
+        x2 += (s.kt / this->sqrt_s) * (exp(-s.y1) + exp(-s.y2));
+    }
+
+    this->projectile->mom *= 1.0 - x1;
+    this->target->mom *= 1.0 - x2;
 
     //Push all end states with the transformation
     for (auto &s : this->dijets)

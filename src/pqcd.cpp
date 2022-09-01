@@ -391,20 +391,23 @@ auto pqcd::generate_2_to_2_scatt
 
         if (ratio > rand[3])
         {
-            is_below = true;
-            xsectval rand_xsect = total_xsection * unirand(*eng);
-            xsectval sum = 0;
-            
-            for (auto xsect : xsection)
+            if (std::isfinite(kt)&&std::isfinite(y1)&&std::isfinite(y2))
             {
-                sum += xsect.sigma;
-                if (sum > rand_xsect)
+                is_below = true;
+                xsectval rand_xsect = total_xsection * unirand(*eng);
+                xsectval sum = 0;
+                
+                for (auto xsect : xsection)
                 {
-                    event.init1 = xsect.init1;
-                    event.init2 = xsect.init2;
-                    event.final1 = xsect.final1;
-                    event.final2 = xsect.final2;
-                    break;
+                    sum += xsect.sigma;
+                    if (sum > rand_xsect)
+                    {
+                        event.init1 = xsect.init1;
+                        event.init2 = xsect.init2;
+                        event.final1 = xsect.final1;
+                        event.final2 = xsect.final2;
+                        break;
+                    }
                 }
             }
         }
@@ -439,6 +442,22 @@ auto pqcd::generate_bin_NN_coll
 
     for (uint8_t i=0; i < nof_dijets; i++)
     {
+        auto dummy = pqcd::generate_2_to_2_scatt
+        (
+            sqrt_s,
+            kt0,
+            sqrt_s / 2.0,
+            unirand,
+            eng,
+            p_p_pdf,
+            params,
+            power_law,
+            envelope_maximum
+        );
+        if (!std::isfinite(dummy.kt)||!std::isfinite(dummy.y1)||!std::isfinite(dummy.y2))
+        {
+            std::cout<<dummy.kt<<' '<<dummy.y1<<' '<<dummy.y2<<std::endl;
+        }
         coll.dijets.push_back(pqcd::generate_2_to_2_scatt
         (
             sqrt_s,
