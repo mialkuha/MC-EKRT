@@ -5,14 +5,14 @@ import numpy as np
 from matplotlib.backends.backend_pdf import PdfPages
 
 #y_walls = np.linspace(-7.25, 7.25, 30)
-y_binsize = 0.192756 - (-0.192756) # Indexes 19,20
-pt_points = [ 2.72832, 5.3985, 7.59385, 10.682, 15.0259, 21.1363, 29.7316, 41.8222, 58.8296, 82.7532, 116.406, 163.743, 230.33, 323.996, 455.753, 641.089, 901.793, 1268.52, 1784.37, 2510 ]
+y_binsize = 0.217949 - (-0.217949) # Indexes 19,20
+pt_points = [ 0.75, 1.12536, 1.68858, 2.53369, 3.80175, 5.70446, 8.55943, 12.8433, 19.2711, 28.9159, 43.3878, 65.1026, 97.6852, 146.575, 219.933, 330.005, 495.166, 742.988, 1114.84, 1672.8]
 
 obs_name = ['dNdpT_y=0']
 
 for name in obs_name:
-	infile_name1  = 'sigma1jet_sim_pp_100k_mb_asd.dat'
-	infile_name2  = 'sigma1jet_sim_pp_100k_mb_MCasd.dat'
+	infile_name1  = 'dNdpTdy_sim_pA_100k_mb_ED_fixxd.dat'
+	infile_name2  = 'dNdpTdy_sim_pA_100k_mb_MC_ED_fixxd.dat'
 
 	pdf_name  = name+'.pdf'
 

@@ -3319,7 +3319,7 @@ void calculate_and_save_average_nuclei_TAs_TAAs
 #define SPATIAL_NPDFS false
 #endif
 #ifndef IS_MOM_CONS
-#define IS_MOM_CONS true
+#define IS_MOM_CONS false
 #endif
 #ifndef IS_MOM_CONS2
 #define IS_MOM_CONS2 false
@@ -3339,12 +3339,12 @@ int main()
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   name_postfix = "_pA_100k_mb_MC_ED_fixxd",
+    std::string   name_postfix = "_pA_100k_B=0_ED_fixxd",
                   event_file_name = "event_log"+name_postfix+".dat";
     uint32_t      desired_N_events      = 100000,
                   AA_events             = 0;
     const spatial b_min                 = 0,
-                  b_max                 = 20;
+                  b_max                 = 0;
     std::mutex AA_events_mutex; 
     std::cout<<"Doing the run "<<name_postfix<<std::endl;
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
@@ -3399,8 +3399,8 @@ int main()
     /*energy_threshold=         */kt0
     };
     //std::vector<Coll> collisions_for_reporting;
-    const std::vector<double> kt_bins{loglinspace(1e-3, sqrt_s/2.0, 21)};
-    const std::vector<double> y_bins{linspace(-10, 10, 40)};
+    const std::vector<double> kt_bins{loglinspace(0.75, sqrt_s/2.0, 21)};
+    const std::vector<double> y_bins{linspace(-8.5, 8.5, 40)};
     const std::vector<double> b_bins{linspace(b_min, b_max, 21)};
 
     //sigma_jet parameters
