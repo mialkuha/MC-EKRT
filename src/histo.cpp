@@ -295,37 +295,42 @@ auto histo_2d::add
 ) noexcept -> void
 {
     //Remove all overflow and underflow
-    for (auto it = news.begin(); it != news.end(); ) 
-    {
-        if (std::get<0>(*it) <= this->xs[0])
+    auto uoflow = [&](std::tuple<double, double> n)
         {
-            std::get<0>(this->underf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<1>(*it) <= this->ys[0])
-        {
-            std::get<1>(this->underf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<0>(*it) > this->xs.back())
-        {
-            std::get<0>(this->overf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<1>(*it) > this->ys.back())
-        {
-            std::get<1>(this->overf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else 
-        {
-            ++it;
-        }
-    }
+            if (std::get<0>(n) <= this->xs[0])
+            {
+                std::get<0>(this->underf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<1>(n) <= this->ys[0])
+            {
+                std::get<1>(this->underf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<0>(n) > this->xs.back())
+            {
+                std::get<0>(this->overf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<1>(n) > this->ys.back())
+            {
+                std::get<1>(this->overf)++;
+                this->total_counts++;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }; 
+    news.erase
+    (  
+        std::remove_if(news.begin(), news.end(), uoflow), 
+        news.end()
+    );
 
     uint64_t news_tot = news.size();
 
@@ -549,49 +554,54 @@ auto histo_3d::add
 ) noexcept -> void
 {
     //Remove all overflow and underflow
-    for (auto it = news.begin(); it != news.end(); ) 
-    {
-        if (std::get<0>(*it) <= this->xs[0])
+    auto uoflow = [&](std::tuple<double, double, double> n)
         {
-            std::get<0>(this->underf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<1>(*it) <= this->ys[0])
-        {
-            std::get<1>(this->underf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<2>(*it) <= this->zs[0])
-        {
-            std::get<2>(this->underf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<0>(*it) > this->xs.back())
-        {
-            std::get<0>(this->overf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<1>(*it) > this->ys.back())
-        {
-            std::get<1>(this->overf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else if (std::get<2>(*it) > this->zs.back())
-        {
-            std::get<2>(this->overf)++;
-            this->total_counts++;
-            it = news.erase(it);
-        }
-        else 
-        {
-            ++it;
-        }
-    }
+            if (std::get<0>(n) <= this->xs[0])
+            {
+                std::get<0>(this->underf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<1>(n) <= this->ys[0])
+            {
+                std::get<1>(this->underf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<2>(n) <= this->zs[0])
+            {
+                std::get<2>(this->underf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<0>(n) > this->xs.back())
+            {
+                std::get<0>(this->overf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<1>(n) > this->ys.back())
+            {
+                std::get<1>(this->overf)++;
+                this->total_counts++;
+                return true;
+            }
+            else if (std::get<2>(n) > this->zs.back())
+            {
+                std::get<2>(this->overf)++;
+                this->total_counts++;
+                    return true;
+            }
+            else
+            {
+                return false;
+            }
+        }; 
+    news.erase
+    (  
+        std::remove_if(news.begin(), news.end(), uoflow), 
+        news.end()
+    );
 
     uint64_t news_tot = news.size();
 
