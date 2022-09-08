@@ -100,7 +100,7 @@ void nn_coll::reduce_energy_and_push_end_states_to_collider_frame() noexcept
     //Push all end states with the transformation
     for (auto &s : this->dijets)
     {
-        s.y1 += rap;
+        s.y1 += rap; // y1_LAB = y1_CMS + rap
         s.y2 += rap;
     }
 }

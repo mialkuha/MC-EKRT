@@ -12,6 +12,7 @@
 #include <memory>
 #include <sstream>
 
+#include "generic_helpers.hpp"
 #include "LHAPDF/GridPDF.h"
 #include "linear_interpolator.hpp"
 #include "linterp.h"
@@ -25,35 +26,6 @@ using variant_envelope_max = std::variant<linear_interpolator, xsectval>;
 class calcs
 {
 public:
-    // return an evenly spaced 1d grid of doubles.
-    static auto linspace
-    (
-        const double &first, 
-        const double &last, 
-        const uint16_t &len
-    ) noexcept -> std::vector<double>
-    {
-        std::vector<double> result(len);
-        double step = (last-first) / (len - 1);
-        for (uint16_t i=0; i<len; i++) { result[i] = first + i*step; }
-        return result;
-    }
-
-    // return an  1d grid of doubles distributed evenly in logarithm
-    static auto loglinspace
-    (
-        const double &first, 
-        const double &last, 
-        const uint16_t &len
-    ) noexcept -> std::vector<double>
-    {
-        std::vector<double> result(len);
-        double step = pow(last/first, 1.0/(len-1.0));
-        result[0] = first;
-        for (uint16_t i=1; i<len; i++) { result[i] = result[i-1]*step; }
-        return result;
-    }
-
     static auto find_max_dsigma
     (
         const momentum &kt, 
@@ -148,7 +120,7 @@ public:
         const uint16_t n_divisions = 100
     )
     {
-        const std::vector<double> mand_ss{linspace(kt02, mand_s, n_divisions)};
+        const std::vector<double> mand_ss{helpers::linspace(kt02, mand_s, n_divisions)};
         std::vector<std::tuple<double, double> > ret;
         std::mutex ret_mutex; 
         ret.push_back(std::make_tuple(kt02, 0.0));
@@ -241,7 +213,7 @@ public:
         const uint16_t n_divisions = 100
     )
     {
-        const std::vector<double> sqrt_ss{linspace(kt0, sqrt_s, n_divisions)};
+        const std::vector<double> sqrt_ss{helpers::linspace(kt0, sqrt_s, n_divisions)};
         std::vector<std::tuple<double, std::tuple<double, double> > > ret;
         std::mutex ret_mutex; 
         ret.push_back(std::make_tuple(kt0, std::make_tuple(0.0, 0.0)));
@@ -1592,9 +1564,9 @@ private:
 
         // construct the grid in each dimension. 
         // note that we will pass in a sequence of iterators pointing to the beginning of each grid
-        std::vector<spatial> grid1 = linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
-        std::vector<spatial> grid2 = linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
-        std::vector<spatial> grid3 = linspace(kt02, mand_s, dim_Ns[2]);
+        std::vector<spatial> grid1 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
+        std::vector<spatial> grid2 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
+        std::vector<spatial> grid3 = helpers::linspace(kt02, mand_s, dim_Ns[2]);
         std::vector< std::vector<spatial>::iterator > grid_iter_list;
         grid_iter_list.push_back(grid1.begin());
         grid_iter_list.push_back(grid2.begin());
@@ -1747,8 +1719,8 @@ private:
 
         // construct the grid in each dimension. 
         // note that we will pass in a sequence of iterators pointing to the beginning of each grid
-        std::vector<spatial> grid1 = linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
-        std::vector<spatial> grid2 = linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
+        std::vector<spatial> grid1 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
+        std::vector<spatial> grid2 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
         std::vector< std::vector<spatial>::iterator > grid_iter_list;
         grid_iter_list.push_back(grid1.begin());
         grid_iter_list.push_back(grid2.begin());
@@ -1969,9 +1941,9 @@ private:
 
         // construct the grid in each dimension. 
         // note that we will pass in a sequence of iterators pointing to the beginning of each grid
-        std::vector<spatial> grid1 = linspace(lower_limits[0], upper_limits[0], dim_Ns[0]);
-        std::vector<spatial> grid2 = linspace(lower_limits[1], upper_limits[1], dim_Ns[1]);
-        std::vector<spatial> grid3 = linspace(lower_limits[2], upper_limits[2], dim_Ns[2]);
+        std::vector<spatial> grid1 = helpers::linspace(lower_limits[0], upper_limits[0], dim_Ns[0]);
+        std::vector<spatial> grid2 = helpers::linspace(lower_limits[1], upper_limits[1], dim_Ns[1]);
+        std::vector<spatial> grid3 = helpers::linspace(lower_limits[2], upper_limits[2], dim_Ns[2]);
         std::vector<spatial> grid4 = /*linspace(*/{lower_limits[3]}/*, upper_limits[3], dim_Ns[3])*/;
         std::vector<spatial> grid5 = /*linspace(*/{lower_limits[3]}/*, upper_limits[3], dim_Ns[4])*/;
         std::vector< std::vector<spatial>::iterator > grid_iter_list;
