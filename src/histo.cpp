@@ -326,11 +326,12 @@ auto histo_2d::add
                 return false;
             }
         }; 
-    news.erase
-    (  
-        std::remove_if(news.begin(), news.end(), uoflow), 
-        news.end()
-    );
+    std::erase_if(news, uoflow);
+    //news.erase
+    //(  
+    //    std::remove_if(news.begin(), news.end(), uoflow), 
+    //    news.end()
+    //);
 
     uint64_t news_tot = news.size();
 
@@ -597,11 +598,12 @@ auto histo_3d::add
                 return false;
             }
         }; 
-    news.erase
-    (  
-        std::remove_if(news.begin(), news.end(), uoflow), 
-        news.end()
-    );
+    std::erase_if(news, uoflow);
+    //news.erase
+    //(  
+    //    std::remove_if(news.begin(), news.end(), uoflow), 
+    //    news.end()
+    //);
 
     uint64_t news_tot = news.size();
 

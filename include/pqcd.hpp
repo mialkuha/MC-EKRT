@@ -66,8 +66,8 @@ public:
               ZA(ZA_),
               ZB(ZB_),
               p_n_pdf(p_n_pdf_),
-              rA_spatial(rA_spatial_),
-              rB_spatial(rB_spatial_)
+              rA_spatial(std::move(rA_spatial_)),
+              rB_spatial(std::move(rB_spatial_))
             {}
 
             explicit params

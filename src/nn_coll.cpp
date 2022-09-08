@@ -2,15 +2,6 @@
 
 #include "nn_coll.hpp"
 
-nn_coll::nn_coll(nucleon *const A, nucleon *const B, const momentum &sqrt_s_) noexcept : dijets(0), target(B), projectile(A), sqrt_s(sqrt_s_), bsquared(0), max_inel_xsect(0), effective_inel_xsect(0)
-{
-    this->bsquared = this->projectile->calculate_bsquared(*(this->target));
-    this->max_inel_xsect = 0.0;
-    this->effective_inel_xsect = 0.0;
-    this->max_tot_xsect = 0.0;
-    this->effective_tot_xsect = 0.0;
-}
-
 void nn_coll::reduce_energy() noexcept
 {
     //NO boosts required when massles nucleons and collinear partons
@@ -81,6 +72,30 @@ void nn_coll::push_end_states_to_collider_frame() noexcept
     //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
     //                    / (this->projectile->mom + this->target->mom));
     rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
+
+    //Push all end states with the transformation
+    for (auto &s : this->dijets)
+    {
+        s.y1 += rap;
+        s.y2 += rap;
+    }
+}
+
+void nn_coll::reduce_energy_and_push_end_states_to_collider_frame() noexcept
+{
+    //Calculate transformation btw events CMS and collider frame
+    //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
+    //                    / (this->projectile->mom + this->target->mom));
+    rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
+    auto x1 = 0.0, x2 = 0.0;
+    for (auto s : this->dijets)
+    {
+        x1 += (s.kt / this->sqrt_s) * (exp(s.y1) + exp(s.y2));
+        x2 += (s.kt / this->sqrt_s) * (exp(-s.y1) + exp(-s.y2));
+    }
+
+    this->projectile->mom *= 1.0 - x1;
+    this->target->mom *= 1.0 - x2;
 
     //Push all end states with the transformation
     for (auto &s : this->dijets)
