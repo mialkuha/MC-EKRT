@@ -20,10 +20,10 @@ FLAGS=$(CFLAGS) $(WFLAGS)
 LIBS=-L/usr/local/lib -lgsl -lpthread\
 	   -lgslcblas -lm -lLHAPDF -ltbb
 
-_SRCS_CPP = ars.cpp hcubature.cpp histo.cpp linear_interpolator.cpp nn_coll.cpp nucleon.cpp nucleus_generator.cpp pqcd.cpp
+_SRCS_CPP = ars.cpp hcubature.cpp histo.cpp linear_interpolator.cpp nn_coll.cpp nucleus_generator.cpp pqcd.cpp
 SRCS_CPP = $(patsubst %,$(SDIR)/%,$(_SRCS_CPP))
 
-_SRCS_H = ars.hpp converged.h cubature.h histo.hpp linear_interpolator.hpp linterp.h nn_coll.hpp nucleon.hpp nucleus_generator.hpp pqcd.hpp typedefs.hpp vwrapper.h
+_SRCS_H = ars.hpp converged.h cubature.h generic_helpers.hpp high_level_calcs.hpp histo.hpp io_helpers.hpp linear_interpolator.hpp linterp.h nn_coll.hpp nucleon.hpp nucleus_generator.hpp pqcd.hpp typedefs.hpp vwrapper.h
 SRCS_H = $(patsubst %,$(IDIR)/%,$(_SRCS_H))
 SRCS = $(SRCS_CPP) $(SRCS_H)
 

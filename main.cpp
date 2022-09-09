@@ -5,7 +5,9 @@
 #include <execution>
 #include <csignal>
 #include <iostream>
+#include <mutex>
 #include <random>
+#include <tuple>
 #include <unordered_set>
 #include <vector>
 
@@ -43,6 +45,58 @@ auto find_sigma_jet_cutoff
     
     return;
 }
+auto check_and_place_circle_among_others
+(
+    std::tuple<double, double, double, uint16_t> cand_circle, 
+    std::vector<std::tuple<double, double, double, uint16_t> > &final_circles, 
+    const double &maximum_overlap,
+    std::uniform_real_distribution<double> &unirand,
+    std::shared_ptr<std::mt19937> random_generator
+) noexcept -> bool
+{
+    auto & [cand_x, cand_y, cand_r, cand_overlap] = cand_circle;
+    std::vector<uint16_t*> overlaps_with;
+    
+    for (auto & [circ_x, circ_y, circ_r, circ_overlap] : final_circles)
+    {
+        if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
+        {
+            cand_overlap += 1;
+            if (cand_overlap > maximum_overlap)
+            {
+                if
+                (
+                    ((cand_overlap - maximum_overlap) >= 1) || 
+                    ((cand_overlap - maximum_overlap) > unirand(*random_generator))
+                )
+                {
+                    return false;
+                }
+            }
+            if ((circ_overlap + 1) > maximum_overlap)
+            {
+                if 
+                (
+                    (circ_overlap >= maximum_overlap) || 
+                    ((circ_overlap + 1 - maximum_overlap) > unirand(*random_generator))
+                )
+                {
+                    return false;
+                }
+            }
+            overlaps_with.push_back(&circ_overlap);
+        }
+    }
+    
+    for (auto & c : overlaps_with)
+    {
+        (*c)++;
+    }
+
+    final_circles.emplace_back(std::move(cand_circle));
+        
+    return true;
+}
 
 struct dijet_with_ns
 {
@@ -53,15 +107,41 @@ struct dijet_with_ns
         : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_) { }
 };
 
+auto throw_location_for_dijet //TODO
+(
+    const dijet_with_ns &cand
+) noexcept -> std::tuple<double, double>
+{
+    return std::make_tuple(0, 0);
+}
+
 //Checks whether the saturation criterium allows the candidate to be added TODO
 auto filter_collisions_saturation
 (
     std::vector<dijet_with_ns> &candidates, 
-    std::vector<dijet_specs> &final_candidates
+    std::vector<dijet_specs> &final_candidates,
+    const double & maximum_overlap,
+    std::uniform_real_distribution<double> &unirand,
+    std::shared_ptr<std::mt19937> random_generator
 ) noexcept -> void
 {
+    std::vector<std::tuple<double, double, double, uint16_t> > final_circles;
+    final_circles.reserve(candidates.size());
+    final_candidates.reserve(final_candidates.size()+candidates.size());
+
     std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the biggest kt is first
         [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.dijet.kt > s2.dijet.kt); });
+
+    for (auto & cand : candidates)
+    {
+        auto [cand_x, cand_y] = throw_location_for_dijet(cand);
+        auto cand_circle = std::make_tuple(cand_x, cand_y, 1/cand.dijet.kt, 1);
+        if (check_and_place_circle_among_others(std::move(cand_circle), final_circles, maximum_overlap, unirand, random_generator))
+        {
+            final_candidates.emplace_back(std::move(cand.dijet));
+        }
+    }
+    final_candidates.shrink_to_fit();
 }
 
 struct colls_with_ns
@@ -76,7 +156,7 @@ struct colls_with_ns
         : kt(kt_), y1(y1_), y2(y2_), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_), dijet(dijet_) { }
 };
 //Empties all of the binary_collisions
-auto filter_collisions_MC //TODO discuss with Kari
+auto filter_collisions_MC 
 (
     std::vector<nn_coll> &binary_collisions,
     std::vector<dijet_with_ns> &final_candidates,
@@ -92,7 +172,6 @@ auto filter_collisions_MC //TODO discuss with Kari
     std::vector<colls_with_ns> collision_candidates;
     collision_candidates.reserve(binary_collisions.size()*10);
 
-std::cout << binary_collisions.size() << " " << collision_candidates.size();
     for (auto &col : binary_collisions)
     {
         for (auto &dij : col.dijets)
@@ -101,7 +180,6 @@ std::cout << binary_collisions.size() << " " << collision_candidates.size();
         }
     }
     collision_candidates.shrink_to_fit();
-std::cout << " " << collision_candidates.size();
 
     std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
               [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
@@ -174,16 +252,19 @@ auto filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
     std::vector<dijet_specs> &filtered_scatterings,
+    std::uniform_real_distribution<double> &unirand,
+    std::shared_ptr<std::mt19937> random_generator,
     const bool mom_cons = false,
     const bool saturation = false,
     const bool deplete_nucleons = false,
-    const momentum sqrt_s = 0
+    const momentum sqrt_s = 0,
+    const double & maximum_overlap = 2.0
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
     candidates.reserve(binary_collisions.size()*10); //10 events on average is just an overhead guess
     
-    if (mom_cons) //TODO discuss with Kari
+    if (mom_cons) 
     {
         filter_collisions_MC(binary_collisions, candidates, sqrt_s, deplete_nucleons);
     }
@@ -199,12 +280,11 @@ auto filter_end_state
         binary_collisions.clear();
     }
     candidates.shrink_to_fit();
-std::cout << " " << candidates.size() << std::endl;
     
 
     if (saturation)
     {
-        filter_collisions_saturation(candidates, filtered_scatterings);
+        filter_collisions_saturation(candidates, filtered_scatterings, maximum_overlap, unirand, random_generator);
     }
     else
     {
@@ -603,7 +683,7 @@ int main()
                 else if (end_state_filtering)
                 {
                     momentum ET=0, E=0;
-                    filter_end_state(binary_collisions, filtered_scatterings, IS_MOM_CONS2, IS_SATURATION, ARE_NUCLEONS_DEPLETED, sqrt_s);
+                    filter_end_state(binary_collisions, filtered_scatterings, unirand, eng, IS_MOM_CONS2, IS_SATURATION, ARE_NUCLEONS_DEPLETED, sqrt_s);
 
                     std::vector<std::tuple<double, double> > new_jets;
                     std::vector<std::tuple<double, double> > new_dijets;

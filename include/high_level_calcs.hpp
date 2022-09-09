@@ -11,6 +11,7 @@
 #include <iostream>
 #include <memory>
 #include <sstream>
+#include <tuple>
 
 #include "generic_helpers.hpp"
 #include "LHAPDF/GridPDF.h"
@@ -26,6 +27,23 @@ using variant_envelope_max = std::variant<linear_interpolator, xsectval>;
 class calcs
 {
 public:
+    //class PrintThread: public std::ostringstream
+    //{
+    //public:
+    //    PrintThread() = default;
+//
+    //    ~PrintThread()
+    //    {
+    //        std::lock_guard<std::mutex> guard(_mutexPrint);
+    //        std::cout << this->str();
+    //    }
+//
+    //private:
+    //    static std::mutex _mutexPrint;
+    //};
+//
+    //std::mutex PrintThread::_mutexPrint{};
+    
     static auto find_max_dsigma
     (
         const momentum &kt, 
@@ -1628,8 +1646,8 @@ private:
                                     tBB_0
                                 );
                 f_values[index] = dummy;
-                PrintThread{} <<'\r'<<--running_count<<" left of "
-                            <<num_elements<<" grid points to be calculated";
+                //PrintThread{} <<'\r'<<--running_count<<" left of "
+                //            <<num_elements<<" grid points to be calculated";
             }
         );
         
@@ -1774,8 +1792,8 @@ private:
                                     tBB_0
                                 );
                 f_values[index] = dummy;
-                PrintThread{} <<'\r'<<--running_count<<" left of "
-                            <<num_elements<<" grid points to be calculated";
+                //PrintThread{} <<'\r'<<--running_count<<" left of "
+                //            <<num_elements<<" grid points to be calculated";
             }
         );
         
@@ -2013,7 +2031,7 @@ private:
                 xsectval dummy = sigma_jet_function(grid1[ii], grid2[jj], grid3[kk], grid4[ll], grid5[mm]);
                 //xsectval dummy = pqcd::calculate_spatial_sigma_jet_full(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[ii], &grid2[jj], &grid3[kk], &grid4[ll], &grid5[mm]);
                 f_values[index] = dummy;
-                PrintThread{} <<'\r'<<--running_count<<" left of "<<num_elements<<" grid points to be calculated";
+                //PrintThread{} <<'\r'<<--running_count<<" left of "<<num_elements<<" grid points to be calculated";
             }
         );
 
