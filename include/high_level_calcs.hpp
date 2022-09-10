@@ -569,8 +569,8 @@ public:
     }
 
     //collide_nuclei<false>
-    template<bool temp_bool, typename std::enable_if <!temp_bool> :: type* = nullptr>
-    static auto collide_nuclei
+    //template<bool temp_bool, typename std::enable_if <!temp_bool> :: type* = nullptr>
+    static auto collide_nuclei_no_snPDF
     (
         std::vector<nucleon> &pro, 
         std::vector<nucleon> &tar, 
@@ -741,8 +741,8 @@ public:
     }
 
     //collide_nuclei<true>
-    template<bool temp_bool, typename std::enable_if <temp_bool> :: type* = nullptr>
-    static auto collide_nuclei
+    //template<bool temp_bool, typename std::enable_if <temp_bool> :: type* = nullptr>
+    static auto collide_nuclei_snPDF
     (
         std::vector<nucleon> &pro, 
         std::vector<nucleon> &tar, 
@@ -919,6 +919,65 @@ public:
         if (verbose)
         {
             std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , momentum threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
+        }
+    }
+
+
+    static auto collide_nuclei
+    (
+        const bool is_snPDF,
+        std::vector<nucleon> &pro, 
+        std::vector<nucleon> &tar, 
+        std::vector<nn_coll> &binary_collisions, 
+        variant_sigma_jet &sigma_jets,
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng, 
+        const AA_collision_params &AA_params,
+        pqcd::sigma_jet_params dsigma_params,
+        const momentum &kt0,
+        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        const double &power_law,
+        variant_envelope_max &envelope_maximums,
+        const bool &verbose
+    ) noexcept -> void
+    {
+        if (is_snPDF)
+        {
+            collide_nuclei_snPDF
+            (
+                pro, 
+                tar, 
+                binary_collisions, 
+                sigma_jets,
+                unirand, 
+                eng, 
+                AA_params,
+                dsigma_params,
+                kt0,
+                p_p_pdf,
+                power_law,
+                envelope_maximums,
+                verbose
+            );
+        }
+        else
+        {
+            collide_nuclei_no_snPDF
+            (
+                pro, 
+                tar, 
+                binary_collisions, 
+                sigma_jets,
+                unirand, 
+                eng, 
+                AA_params,
+                dsigma_params,
+                kt0,
+                p_p_pdf,
+                power_law,
+                envelope_maximums,
+                verbose
+            );
         }
     }
 

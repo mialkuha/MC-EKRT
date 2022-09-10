@@ -87,6 +87,7 @@ coords&& nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> r
         }
         catch(const std::exception& e)
         {
+            std::cout<<std::endl<<"Threw: "<<e.what()<<std::endl;
             new_r=-1;
         }
     } while (new_r < 0);

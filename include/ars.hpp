@@ -156,10 +156,10 @@ public:
     ars(const std::function<double(const double&)> & pdf_, const double & min, const double & max) noexcept;
     ars(const std::function<double(const double&)> & pdf_, const std::function<double(const double&)> & pdf_derivative_, const std::initializer_list<double> & init_abscissae, const std::initializer_list<double> & init_intersections, const std::initializer_list<double> & init_uk, const std::map<double, double> & init_log_values, const std::map<double, double> & init_log_der_values) noexcept;
 
-    double throw_one_adaptive(std::mt19937 & random_generator) noexcept;
-    double throw_one_const(std::mt19937 & random_generator) noexcept;
+    double throw_one_adaptive(std::mt19937 & random_generator);
+    double throw_one_const(std::mt19937 & random_generator);
 
-    double throw_one(std::mt19937 & random_generator) noexcept
+    double throw_one(std::mt19937 & random_generator)
     {
         if (this->adaptive)
         {

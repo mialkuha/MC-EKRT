@@ -30,7 +30,7 @@ ars::ars(const std::function<double(const double&)> & pdf_, const std::function<
     this->sk = ars::piecewise_exponential_distribution(this->zk.cbegin(), this->zk.cend(), temp.cbegin());
 }
 
-double ars::throw_one_adaptive(std::mt19937 & random_generator) noexcept
+double ars::throw_one_adaptive(std::mt19937 & random_generator)
 {
     std::unique_lock lock{this->m};
 
@@ -117,7 +117,7 @@ double ars::throw_one_adaptive(std::mt19937 & random_generator) noexcept
     } while (true);
 }   
 
-double ars::throw_one_const(std::mt19937 & random_generator) noexcept
+double ars::throw_one_const(std::mt19937 & random_generator)
 {
     do
     {
