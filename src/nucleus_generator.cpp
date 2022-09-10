@@ -46,29 +46,6 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         generated_coords.push_back(std::move(new_coords));
 
     } while (generated_coords.size() < N);
-    
-    //std::cout<<"threw away "<<count<<" times\n";
-
-    coords com{0.0,0.0,0.0}; //center of mass
-
-    if (params.shift_cms)
-    {
-        for (const auto& co : generated_coords)
-        {
-            com += co;
-        }
-        com /= static_cast<double>(generated_coords.size());
-    }
-
-    for (auto& co : generated_coords)
-    {
-        if (params.shift_cms)
-        {
-            co -= com; //Shift all nucleons so that CoM is (0,0,0)
-        }
-        co.x += xshift;
-        generated_nucleus.emplace_back(co, mom);
-    }
 
     nucleus_generator::throw_neutrons(&generated_nucleus, (target) ? params.ZB : params.ZA, random_generator);
 

@@ -119,6 +119,7 @@ double ars::throw_one_adaptive(std::mt19937 & random_generator)
 
 double ars::throw_one_const(std::mt19937 & random_generator)
 {
+    bug_bag:
     do
     {
         try
@@ -130,7 +131,17 @@ double ars::throw_one_const(std::mt19937 & random_generator)
             uint k=0; 
             for (; k<this->zk.size()-1; k++)
             {
+                if (k >= 20)
+                {
+                    std::cout<<std::endl<<"6 bug here!"<<std::endl;
+                    goto bug_bag;
+                }
                 if (this->zk.at(k+1) > rand) break;
+            }
+            if (k >= 20)
+            {
+                std::cout<<std::endl<<"7 bug here!"<<std::endl;
+                goto bug_bag;
             }
             const double xk = this->abscissae.at(k);
             //Index of the lower bound of the xk interval where rand falls
@@ -150,10 +161,20 @@ double ars::throw_one_const(std::mt19937 & random_generator)
             if (j==k)
             {
                 lower_xj = xk; 
+                if (k >= 20)
+                {
+                    std::cout<<std::endl<<"8 bug here!"<<std::endl;
+                    goto bug_bag;
+                }
                 upper_xj = this->abscissae.at(k+1);
             }
             else
             {
+                if (k >= 20)
+                {
+                    std::cout<<std::endl<<"9 bug here!"<<std::endl;
+                    goto bug_bag;
+                }
                 lower_xj = this->abscissae.at(k-1); 
                 upper_xj = xk;
             }

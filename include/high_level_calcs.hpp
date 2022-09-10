@@ -1053,48 +1053,24 @@ public:
     ) noexcept
     {
         std::vector<nucleon> pro, tar;
-        if (read_nuclei_from_file)
-        {
-            if (verbose) std::cout<<"Reading nuclei..."<<std::flush;
-            auto [pro_coords, tar_coords] = calcs::read_nucleon_configs_from_file();
-            for (auto &co : *pro_coords)
-            {
-                pro.emplace_back(co, sqrt_s / 2.0);
-            }
-            for (auto &co : *tar_coords)
-            {
-                tar.emplace_back(co, sqrt_s / 2.0);
-            }
-            if (verbose) std::cout<<"Done!"<<std::endl;
-        }
-        else
-        {
-            if (verbose) std::cout<<"Generating nuclei..."<<std::flush;
-            pro = nucleus_generator::generate_nucleus
-                (
-                    nuc_params,
-                    false,
-                    sqrt_s/2.0, 
-                    -impact_parameter/2., 
-                    eng, 
-                    radial_sampler
-                );
-            tar = nucleus_generator::generate_nucleus
-                (
-                    nuc_params, 
-                    true,
-                    sqrt_s/2.0, 
-                    impact_parameter/2., 
-                    eng, 
-                    radial_sampler
-                );
-            if (verbose) std::cout<<"Done!"<<std::endl;
-        }
-
-        //if (verbose) std::cout<<"Shuffling nuclei..."<<std::flush;
-        //std::shuffle(pro.begin(), pro.end(), *eng);
-        //std::shuffle(tar.begin(), tar.end(), *eng);
-        //if (verbose) std::cout<<"Done!"<<std::endl;
+        pro = nucleus_generator::generate_nucleus
+            (
+                nuc_params,
+                false,
+                sqrt_s/2.0, 
+                -impact_parameter/2., 
+                eng, 
+                radial_sampler
+            );
+        tar = nucleus_generator::generate_nucleus
+            (
+                nuc_params, 
+                true,
+                sqrt_s/2.0, 
+                impact_parameter/2., 
+                eng, 
+                radial_sampler
+            );
 
         return std::make_tuple(pro, tar);
     }

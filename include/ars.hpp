@@ -77,6 +77,7 @@ public:
             template<class Generator>
             double operator()(Generator& g) const noexcept
             {
+                bug_back:
                 //std::unique_lock lock{this->m};
                 //rand is between 0 and normalization
                 double rand = static_cast<double>(g())*this->normalization/(static_cast<double>(g.max())-static_cast<double>(g.min()));
@@ -84,6 +85,11 @@ public:
                 uint i=0;
                 for (; i<this->cdf_weights.size()-1; i++)
                 {
+                    if (i >= 20)
+                    {
+                        std::cout<<std::endl<<"1 bug here!"<<std::endl;
+                        goto bug_back;
+                    }
                     if (rand < this->cdf_weights.at(i+1))
                     {
                         break;
@@ -91,14 +97,34 @@ public:
                 }
 
                 //std::cout<<" i:"<<i;
+                if (i >= 20)
+                {
+                    std::cout<<std::endl<<"2 bug here!"<<std::endl;
+                    goto bug_back;
+                }
                 auto ci = this->exp_factors.at(i);
+                if (i >= 20)
+                {
+                    std::cout<<std::endl<<"3 bug here!"<<std::endl;
+                    goto bug_back;
+                }
                 auto cdfi = this->cdf_weights.at(i);
+                if (i >= 20)
+                {
+                    std::cout<<std::endl<<"4 bug here!"<<std::endl;
+                    goto bug_back;
+                }
                 auto wi = this->weights.at(i);
 
                 //std::cout<<" ci:"<<ci<<" cdfi:"<<cdfi<<" wi:"<<wi<<std::endl;
+                if (i >= 20)
+                {
+                    std::cout<<std::endl<<"5 bug here!"<<std::endl;
+                    goto bug_back;
+                }
                 return log(1 + ci*(rand-cdfi)/wi )/ci + this->abscissae.at(i);
             }
-        private:
+        //private:
             void initialize_members() noexcept
             {
                 this->normalization=0.0;
