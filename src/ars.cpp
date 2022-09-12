@@ -173,7 +173,7 @@ double ars::throw_one_const(std::mt19937 & random_generator)
         }
         catch(const std::exception& e)
         {
-            std::cout << e.what() << std::endl << std::endl;
+            std::cout << e.what() << " in ars, trying again"<<std::endl;
         }
     } while (true);
 }   

@@ -8,18 +8,18 @@ from matplotlib.backends.backend_pdf import PdfPages
 y_binsize = 0.192756 - (-0.192756) # Indexes 19,20
 pt_points = [ 2.72832, 5.3985, 7.59385, 10.682, 15.0259, 21.1363, 29.7316, 41.8222, 58.8296, 82.7532, 116.406, 163.743, 230.33, 323.996, 455.753, 641.089, 901.793, 1268.52, 1784.37, 2510 ]
 
-obs_name = ['dNdpT_y=0']
+obs_name = ['dNdpT_1m']
 
 for name in obs_name:
-	infile_name1  = 'sigma1jet_sim_pA_100k_mb.dat'
-	infile_name2  = 'sigma1jet_sim_pA_100k_mb_nPDF.dat'
-	infile_name3  = 'sigma1jet_sim_pA_100k_mb_snPDF.dat'
-	infile_name4  = 'sigma1jet_sim_pA_100k_mb_MCD.dat'
-	infile_name5  = 'sigma1jet_sim_pA_100k_mb_nPDF_MCD.dat'
-	infile_name6  = 'sigma1jet_sim_pA_100k_mb_snPDF_MCD.dat'
-	infile_name7  = 'sigma1jet_sim_pA_100k_mb_ND.dat'
-	infile_name8  = 'sigma1jet_sim_pA_100k_mb_nPDF_ND.dat'
-	infile_name9  = 'sigma1jet_sim_pA_100k_mb_snPDF_ND.dat'
+	infile_name1  = 'sigma1jet_sim_pA_1m_mb_PDF.dat'
+	infile_name2  = 'sigma1jet_sim_pA_1m_mb_nPDF.dat'
+	infile_name3  = 'sigma1jet_sim_pA_1m_mb_snPDF.dat'
+	infile_name4  = 'sigma1jet_sim_pA_1m_mb_PDF_MC.dat'
+	infile_name5  = 'sigma1jet_sim_pA_1m_mb_nPDF_MC.dat'
+	infile_name6  = 'sigma1jet_sim_pA_1m_mb_snPDF_MC.dat'
+	infile_name7  = 'sigma1jet_sim_pA_1m_mb_PDF_MC_ND.dat'
+	infile_name8  = 'sigma1jet_sim_pA_1m_mb_nPDF_MC_ND.dat'
+	infile_name9  = 'sigma1jet_sim_pA_1m_mb_snPDF_MC_ND.dat'
 
 	pdf_name  = name+'.pdf'
 
@@ -75,39 +75,39 @@ for name in obs_name:
 	for line in lines1:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data1.append(float(line.split()[21]))
+		data1.append(sum(map(float,line.split()[2:])))
 	for line in lines2:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data2.append(float(line.split()[21]))
+		data2.append(sum(map(float,line.split()[2:])))
 	for line in lines3:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data3.append(float(line.split()[21]))
+		data3.append(sum(map(float,line.split()[2:])))
 	for line in lines4:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data4.append(float(line.split()[21]))
+		data4.append(sum(map(float,line.split()[2:])))
 	for line in lines5:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data5.append(float(line.split()[21]))
+		data5.append(sum(map(float,line.split()[2:])))
 	for line in lines6:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data6.append(float(line.split()[21]))
+		data6.append(sum(map(float,line.split()[2:])))
 	for line in lines7:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data7.append(float(line.split()[21]))
+		data7.append(sum(map(float,line.split()[2:])))
 	for line in lines8:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data8.append(float(line.split()[21]))
+		data8.append(sum(map(float,line.split()[2:])))
 	for line in lines9:
 		if line.startswith('///') or len(line) < 4 :
 			continue
-		data9.append(float(line.split()[21]))
+		data9.append(sum(map(float,line.split()[2:])))
 
 	data10 = [ (m*n4)/(d*n1) if d>0 else 1 for (m,d) in zip(data4, data1)]
 	data11 = [ (m*n5)/(d*n2) if d>0 else 1 for (m,d) in zip(data5, data2)]

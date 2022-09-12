@@ -1050,7 +1050,7 @@ public:
         std::shared_ptr<ars> radial_sampler,
         const bool &read_nuclei_from_file,
         const bool &verbose
-    ) noexcept
+    )
     {
         std::vector<nucleon> pro, tar;
         if (read_nuclei_from_file)
@@ -1070,24 +1070,38 @@ public:
         else
         {
             if (verbose) std::cout<<"Generating nuclei..."<<std::flush;
-            pro = nucleus_generator::generate_nucleus
-                (
-                    nuc_params,
-                    false,
-                    sqrt_s/2.0, 
-                    -impact_parameter/2., 
-                    eng, 
-                    radial_sampler
-                );
-            tar = nucleus_generator::generate_nucleus
-                (
-                    nuc_params, 
-                    true,
-                    sqrt_s/2.0, 
-                    impact_parameter/2., 
-                    eng, 
-                    radial_sampler
-                );
+            bool bugged;
+            do //while (!bugged)
+            {
+                bugged = false;
+                try
+                {
+                    pro = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            sqrt_s/2.0, 
+                            -impact_parameter/2., 
+                            eng, 
+                            radial_sampler
+                        );
+                    tar = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params, 
+                            true,
+                            sqrt_s/2.0, 
+                            impact_parameter/2., 
+                            eng, 
+                            radial_sampler
+                        );
+                }
+                catch(const std::exception& e)
+                {
+                    std::cout << e.what() << " in calcs, trying again"<<std::endl;
+                    bugged = true;
+                }
+            } while (bugged);
+
             if (verbose) std::cout<<"Done!"<<std::endl;
         }
 
@@ -2605,7 +2619,7 @@ private:
                     {
                         TA_grid_dummy[i][j] = calcs::calculate_tA(grid[i][j], pro, Tp);
                         TA_grid_dummy[i][j] += calcs::calculate_tA(grid[i][j], tar, Tp);
-                        TA_grid_dummy[i][j] /= num_nuclei;
+                        TA_grid_dummy[i][j] /= static_cast<double>(num_nuclei);
                     }
                 }
 

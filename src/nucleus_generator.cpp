@@ -5,7 +5,7 @@
 std::uniform_real_distribution<double> nucleus_generator::unif_dist = std::uniform_real_distribution<double>(0.0,1.0);
 
 std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const bool &target, const momentum & mom, 
-        const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
+        const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler)
 {
     std::vector<nucleon> generated_nucleus;
     std::vector<coords> generated_coords;
@@ -27,14 +27,21 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
     {
         do // while (!coords_do_fit);
         {
-            new_coords = nucleus_generator::throw_nucleon_coords(random_generator, radial_sampler);
-            coords_do_fit = nucleus_generator::coords_fit(new_coords, generated_coords, params.min_distance);
-            //std::cout<<"coords "<<new_coords.x<<' '<<new_coords.y<<' '<<new_coords.z<<" fit? "<<coords_do_fit<<std::endl;
-            if (params.correct_overlap_bias && !coords_do_fit)
+            try
             {
-                break;
+                new_coords = nucleus_generator::throw_nucleon_coords(random_generator, radial_sampler);
+                coords_do_fit = nucleus_generator::coords_fit(new_coords, generated_coords, params.min_distance);
+                //std::cout<<"coords "<<new_coords.x<<' '<<new_coords.y<<' '<<new_coords.z<<" fit? "<<coords_do_fit<<std::endl;
+                if (params.correct_overlap_bias && !coords_do_fit)
+                {
+                    break;
+                }
             }
-
+            catch(const std::exception& e)
+            {
+                std::cout << e.what() << " in nucleus_generator, trying again"<<std::endl;
+                coords_do_fit = false;
+            }
         } while (!coords_do_fit);
 
         if (params.correct_overlap_bias && !coords_do_fit)
