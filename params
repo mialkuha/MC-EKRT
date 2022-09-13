@@ -1,0 +1,12 @@
+name name
+is_pp false
+is_pa false
+is_aa true
+use_npdfs false
+use_snpdfs false
+is_mom_cons false
+is_mom_cons_new false
+are_ns_depleted false
+is_saturation false
+n_events 10000
+b_max 20

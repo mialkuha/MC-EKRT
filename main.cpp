@@ -310,7 +310,7 @@ void term_handler(int num)
 
 int main(int argc, char** argv)
 { 
-    bool g_is_pp;
+    /*bool g_is_pp;
     bool g_is_pa;
     bool g_is_aa;
     bool g_use_npdfs;
@@ -319,9 +319,25 @@ int main(int argc, char** argv)
     bool g_is_mom_cons_new;
     bool g_are_ns_depleted;
     bool g_is_saturation;
-    std::string name_postfix;
+    std::string name_postfix;*/
 
-    switch (argv[1][0])
+    auto 
+    [
+        name_postfix,
+        g_is_pp,
+        g_is_pa,
+        g_is_aa,
+        g_use_npdfs,
+        g_use_snpdfs,
+        g_is_mom_cons,
+        g_is_mom_cons_new,
+        g_are_ns_depleted,
+        g_is_saturation,
+        desired_N_events,
+        b_max
+    ] = io::read_conf(argv[1]);
+
+    /*switch (argv[1][0])
     {
     case '0':
         name_postfix = "_pA_2500k_mb_PDF";
@@ -433,7 +449,7 @@ int main(int argc, char** argv)
         break;
     default:
         break;
-    }
+    }*/
 
     //A lot of printing
     bool verbose = false;
@@ -447,11 +463,9 @@ int main(int argc, char** argv)
                   end_state_filtering      = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
-    std::string   event_file_name = "event_log"+name_postfix+".dat";
-    uint32_t      desired_N_events      = 2500000,
-                  AA_events             = 0;
-    const spatial b_min                 = 0,
-                  b_max                 = 20;
+    std::string   event_file_name = "event_log_"+name_postfix+".dat";
+    uint32_t      AA_events             = 0;
+    const spatial b_min                 = 0;
     std::mutex AA_events_mutex; 
     std::cout<<std::endl<<std::endl<<"Doing the run "<<name_postfix<<std::endl;
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
@@ -635,7 +649,7 @@ int main(int argc, char** argv)
     auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
     int64_t max_energy_broken = 0;
  
-    total_energy.open("total_energies"+name_postfix+".dat");
+    total_energy.open("total_energies_"+name_postfix+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
  
  
@@ -1197,14 +1211,14 @@ int main(int argc, char** argv)
     io::print_2d_histo
     (
         jets, 
-        "sigma1jet_sim"+name_postfix+".dat", 
+        "sigma1jet_sim_"+name_postfix+".dat", 
         2.0 * dijet_norm
     );
 
     io::print_2d_histo
     (
         jets, 
-        "dNdpTdy_sim"+name_postfix+".dat", 
+        "dNdpTdy_sim_"+name_postfix+".dat", 
         1.0,
         false
     );
@@ -1212,14 +1226,14 @@ int main(int argc, char** argv)
     io::print_2d_histo
     (
         dijets, 
-        "sigmadijet_sim"+name_postfix+".dat", 
+        "sigmadijet_sim_"+name_postfix+".dat", 
         dijet_norm
     );
 
     io::print_1d_histo
     (
         dETdy, 
-        "dETdy_sim"+name_postfix+".dat", 
+        "dETdy_sim_"+name_postfix+".dat", 
         1.0 / AA_events,
         false
     );
@@ -1227,7 +1241,7 @@ int main(int argc, char** argv)
     io::print_1d_histo
     (
         dEdy, 
-        "dEdy_sim"+name_postfix+".dat", 
+        "dEdy_sim_"+name_postfix+".dat", 
         1.0 / AA_events,
         false
     );
@@ -1235,7 +1249,7 @@ int main(int argc, char** argv)
     io::print_1d_histo
     (
         dNdy, 
-        "dNdy_sim"+name_postfix+".dat", 
+        "dNdy_sim_"+name_postfix+".dat", 
         1.0 / AA_events,
         false
     );
@@ -1243,7 +1257,7 @@ int main(int argc, char** argv)
     io::print_1d_histo
     (
         dETdeta, 
-        "dETdeta_sim"+name_postfix+".dat", 
+        "dETdeta_sim_"+name_postfix+".dat", 
         1.0 / AA_events,
         false
     );
@@ -1251,7 +1265,7 @@ int main(int argc, char** argv)
     io::print_1d_histo
     (
         dEdeta, 
-        "dEdeta_sim"+name_postfix+".dat", 
+        "dEdeta_sim_"+name_postfix+".dat", 
         1.0 / AA_events,
         false
     );
@@ -1259,7 +1273,7 @@ int main(int argc, char** argv)
     io::print_1d_histo
     (
         dETdb, 
-        "dETdb_sim"+name_postfix+".dat", 
+        "dETdb_sim_"+name_postfix+".dat", 
         1.0,
         true
     );
@@ -1267,7 +1281,7 @@ int main(int argc, char** argv)
     io::print_1d_histo
     (
         dEdb, 
-        "dEdb_sim"+name_postfix+".dat",  
+        "dEdb_sim_"+name_postfix+".dat",  
         1.0,
         true
     );

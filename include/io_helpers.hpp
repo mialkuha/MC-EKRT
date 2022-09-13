@@ -4,9 +4,11 @@
 #define IO_HELPERS_HPP
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <random>
+#include <string>
 #include <vector>
 
 #include "histo.hpp"
@@ -455,7 +457,109 @@ public:
         file.close();
     }
 
+    static auto read_conf
+    (
+        const std::string &filename
+    ) noexcept
+    {
+        std::ifstream input(filename);
+        std::string name;
+        bool is_pp              = false;
+        bool is_pa              = false;
+        bool is_aa              = true;
+        bool use_npdfs          = false;
+        bool use_snpdfs         = false;
+        bool is_mom_cons        = false;
+        bool is_mom_cons_new    = false;
+        bool are_ns_depleted    = false;
+        bool is_saturation      = false;
+        uint32_t n_events       = 10000;
+        spatial b_max           = 20;
 
+        if (input.is_open())
+        {
+            std::string line;
+                
+            std::getline(input, line);
+
+            for (; !line.empty(); std::getline(input, line))
+            {
+                std::istringstream line_stream(line);
+                std::string param_name;
+                line_stream >> param_name;
+
+                if (param_name == "name")
+                {
+                    line_stream >> name;
+                }
+                else if (param_name == "is_pp")
+                {
+                    line_stream >> std::boolalpha >> is_pp;
+                }
+                else if (param_name == "is_pa")
+                {
+                    line_stream >> std::boolalpha >> is_pa;
+                }
+                else if (param_name == "is_aa")
+                {
+                    line_stream >> std::boolalpha >> is_aa;
+                }
+                else if (param_name == "use_npdfs")
+                {
+                    line_stream >> std::boolalpha >> use_npdfs;
+                }
+                else if (param_name == "use_snpdfs")
+                {
+                    line_stream >> std::boolalpha >> use_snpdfs;
+                }
+                else if (param_name == "is_mom_cons")
+                {
+                    line_stream >> std::boolalpha >> is_mom_cons;
+                }
+                else if (param_name == "is_mom_cons_new")
+                {
+                    line_stream >> std::boolalpha >> is_mom_cons_new;
+                }
+                else if (param_name == "are_ns_depleted")
+                {
+                    line_stream >> std::boolalpha >> are_ns_depleted;
+                }
+                else if (param_name == "is_saturation")
+                {
+                    line_stream >> std::boolalpha >> is_saturation;
+                }
+                else if (param_name == "n_events")
+                {
+                    line_stream >> n_events;
+                }
+                else if (param_name == "b_max")
+                {
+                    line_stream >> b_max;
+                }
+            }
+        }
+        else
+        {
+            std::cout<<"Error opening the configuration file!!"<<std::endl;
+            std::terminate();
+        }
+
+        return std::make_tuple
+                (
+                    name,
+                    is_pp,
+                    is_pa,
+                    is_aa,
+                    use_npdfs,
+                    use_snpdfs,
+                    is_mom_cons,
+                    is_mom_cons_new,
+                    are_ns_depleted,
+                    is_saturation,
+                    n_events,
+                    b_max
+                );
+    }
 };
 
 #endif // IO_HELPERS_HPP
