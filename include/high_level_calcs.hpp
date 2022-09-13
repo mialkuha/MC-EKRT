@@ -762,8 +762,8 @@ public:
 
         uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
-        spatial tAA_0 = (AA_params.pA_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-        spatial tBB_0 = 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+        spatial tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+        spatial tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
         
         if (verbose)
         {

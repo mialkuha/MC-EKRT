@@ -310,6 +310,7 @@ void term_handler(int num)
 
 int main(int argc, char** argv)
 { 
+    bool g_is_pp;
     bool g_is_pa;
     bool g_is_aa;
     bool g_use_npdfs;
@@ -324,6 +325,7 @@ int main(int argc, char** argv)
     {
     case '0':
         name_postfix = "_pA_2500k_mb_PDF";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = false;
@@ -335,6 +337,7 @@ int main(int argc, char** argv)
         break;
     case '1':
         name_postfix = "_pA_2500k_mb_nPDF";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = true;
@@ -346,6 +349,7 @@ int main(int argc, char** argv)
         break;
     case '2':
         name_postfix = "_pA_2500k_mb_snPDF";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = true;
@@ -357,6 +361,7 @@ int main(int argc, char** argv)
         break;
     case '3':
         name_postfix = "_pA_2500k_mb_PDF_MC";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = false;
@@ -368,6 +373,7 @@ int main(int argc, char** argv)
         break;
     case '4':
         name_postfix = "_pA_2500k_mb_nPDF_MC";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = true;
@@ -379,6 +385,7 @@ int main(int argc, char** argv)
         break;
     case '5':
         name_postfix = "_pA_2500k_mb_snPDF_MC";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = true;
@@ -390,6 +397,7 @@ int main(int argc, char** argv)
         break;
     case '6':
         name_postfix = "_pA_2500k_mb_PDF_MC_ND";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = false;
@@ -401,6 +409,7 @@ int main(int argc, char** argv)
         break;
     case '7':
         name_postfix = "_pA_2500k_mb_nPDF_MC_ND";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = true;
@@ -412,6 +421,7 @@ int main(int argc, char** argv)
         break;
     case '8':
         name_postfix = "_pA_2500k_mb_snPDF_MC_ND";
+        g_is_pp = false;
         g_is_pa = true;
         g_is_aa = false;
         g_use_npdfs = true;
@@ -472,8 +482,8 @@ int main(int argc, char** argv)
     {
         /* .NA=                   */(g_is_aa)? 208u : 1u, //Pb 
         /* .ZA=                   */(g_is_aa)? 82u : 1u, //Pb 
-        /* .NB=                   */208, 
-        /* .ZB=                   */82, 
+        /* .NB=                   */(g_is_pp)? 1u : 208u, //Pb 
+        /* .ZB=                   */(g_is_pp)? 1u : 82u, //Pb 
         /* .min_distance=         */0.4, 
         /* .shift_cms=            */true, 
         /* .correct_overlap_bias= */true
@@ -495,6 +505,7 @@ int main(int argc, char** argv)
     const AA_collision_params coll_params
     {
     /*mc_glauber_mode=          */false,
+    /*pp_scattering=            */g_is_pp,
     /*pA_scattering=            */g_is_pa,
     /*spatial_pdfs=             */g_use_snpdfs,
     /*spatial_averaging=        */false,
@@ -520,15 +531,15 @@ int main(int argc, char** argv)
     /*const bool read_sigmajets_from_file = false;*/
     pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */(g_is_aa && g_use_npdfs),
-    /*target_with_npdfs=        */g_use_npdfs,
+    /*target_with_npdfs=        */(!g_is_pp && g_use_npdfs),
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */coll_params.spatial_pdfs,
     /*npdf_setnumber=           */1,
     /*A=                        */(g_is_aa)? 208 : 1, //Pb 
-    /*B=                        */208, //Pb
+    /*B=                        */(g_is_pp)? 1 : 208, //Pb
     /*ZA=                       */(g_is_aa)? 82 : 1,  //Pb
-    /*ZB=                       */82   //Pb
+    /*ZB=                       */(g_is_pp)? 1 : 82   //Pb
     /*p_n_pdf=                  */
     /*rA_spatial=               */
     /*rB_spatial=               */);
