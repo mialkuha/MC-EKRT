@@ -45,7 +45,8 @@ auto find_sigma_jet_cutoff
     
     return;
 }
-auto check_and_place_circle_among_others
+
+auto check_and_place_circle_among_others_with_overlaps
 (
     std::tuple<double, double, double, uint16_t> cand_circle, 
     std::vector<std::tuple<double, double, double, uint16_t> > &final_circles, 
@@ -98,6 +99,28 @@ auto check_and_place_circle_among_others
     return true;
 }
 
+auto check_and_place_circle_among_others_with_disks
+(
+    std::tuple<double, double, double, uint16_t> cand_circle, 
+    std::vector<std::tuple<double, double, double, uint16_t> > &final_circles
+) noexcept -> bool
+{
+    auto & [cand_x, cand_y, cand_r, cand_overlap] = cand_circle;
+    std::vector<uint16_t*> overlaps_with;
+    
+    for (auto & [circ_x, circ_y, circ_r, circ_overlap] : final_circles)
+    {
+        if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
+        {
+            return false;
+        }
+    }
+
+    final_circles.emplace_back(std::move(cand_circle));
+        
+    return true;
+}
+
 struct dijet_with_ns
 {
     dijet_specs dijet;
@@ -107,12 +130,22 @@ struct dijet_with_ns
         : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_) { }
 };
 
-auto throw_location_for_dijet //TODO
+auto throw_location_for_dijet
 (
-    const dijet_with_ns &cand
+    const dijet_with_ns &cand,
+    const spatial &proton_width,
+    std::normal_distribution<double> &normal_dist, 
+    std::shared_ptr<std::mt19937> random_generator
 ) noexcept -> std::tuple<double, double>
 {
-    return std::make_tuple(0, 0);
+    auto param = std::normal_distribution<>::param_type{0., proton_width};
+    auto dx = normal_dist(random_generator,param);
+    auto dy = normal_dist(random_generator,param);
+
+    auto retx = 0.5*(cand.pro_nucleon->co.x + cand.tar_nucleon->co.x + M_SQRT2*dx);
+    auto rety = 0.5*(cand.pro_nucleon->co.y + cand.tar_nucleon->co.y + M_SQRT2*dy);
+
+    return std::make_tuple(retx, rety);
 }
 
 //Checks whether the saturation criterium allows the candidate to be added TODO
@@ -120,27 +153,47 @@ auto filter_collisions_saturation
 (
     std::vector<dijet_with_ns> &candidates, 
     std::vector<dijet_specs> &final_candidates,
-    const double & maximum_overlap,
+    const double &maximum_overlap,
+    const spatial &proton_width,
     std::uniform_real_distribution<double> &unirand,
-    std::shared_ptr<std::mt19937> random_generator
+    std::shared_ptr<std::mt19937> random_generator,
+    const bool with_overlaps
 ) noexcept -> void
 {
     std::vector<std::tuple<double, double, double, uint16_t> > final_circles;
     final_circles.reserve(candidates.size());
     final_candidates.reserve(final_candidates.size()+candidates.size());
 
+    std::normal_distribution<double> normal_dist(0,0);
+
     std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the biggest kt is first
         [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.dijet.kt > s2.dijet.kt); });
 
-    for (auto & cand : candidates)
+    if (!with_overlaps)
     {
-        auto [cand_x, cand_y] = throw_location_for_dijet(cand);
-        auto cand_circle = std::make_tuple(cand_x, cand_y, 1/cand.dijet.kt, 1);
-        if (check_and_place_circle_among_others(std::move(cand_circle), final_circles, maximum_overlap, unirand, random_generator))
+        for (auto & cand : candidates)
         {
-            final_candidates.emplace_back(std::move(cand.dijet));
+            auto [cand_x, cand_y] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
+            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap), 1);
+            if (check_and_place_circle_among_others_with_disks(std::move(cand_circle), final_circles))
+            {
+                final_candidates.emplace_back(std::move(cand.dijet));
+            }
         }
     }
+    else
+    {
+        for (auto & cand : candidates)
+        {
+            auto [cand_x, cand_y] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
+            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/cand.dijet.kt, 1);
+            if (check_and_place_circle_among_others_with_overlaps(std::move(cand_circle), final_circles, maximum_overlap, unirand, random_generator))
+            {
+                final_candidates.emplace_back(std::move(cand.dijet));
+            }
+        }
+    }
+    
     final_candidates.shrink_to_fit();
 }
 
@@ -257,8 +310,10 @@ auto filter_end_state
     const bool mom_cons = false,
     const bool saturation = false,
     const bool deplete_nucleons = false,
+    const bool saturation_with_overlap = false,
     const momentum sqrt_s = 0,
-    const double & maximum_overlap = 2.0
+    const double &maximum_overlap = 2.0,
+    const spatial &proton_width = 1.0
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
@@ -284,7 +339,7 @@ auto filter_end_state
 
     if (saturation)
     {
-        filter_collisions_saturation(candidates, filtered_scatterings, maximum_overlap, unirand, random_generator);
+        filter_collisions_saturation(candidates, filtered_scatterings, maximum_overlap, proton_width, unirand, random_generator, saturation_with_overlap);
     }
     else
     {
@@ -333,6 +388,7 @@ int main(int argc, char** argv)
         g_is_mom_cons_new,
         g_are_ns_depleted,
         g_is_saturation,
+        g_is_sat_overlap,
         desired_N_events,
         b_max
     ] = io::read_conf(std::string(argv[1]));
@@ -504,6 +560,7 @@ int main(int argc, char** argv)
     };
     
     //Parameters for the hard collisions
+    const spatial proton_width = 0.573;
     const spatial proton_width_2 = pow(0.573, 2);
     const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared)
     {
@@ -718,6 +775,7 @@ int main(int argc, char** argv)
                  &g_use_snpdfs=g_use_snpdfs,
                  &g_is_mom_cons_new=g_is_mom_cons_new,
                  &g_is_saturation=g_is_saturation,
+                 &g_is_sat_overlap=g_is_sat_overlap,
                  &g_are_ns_depleted=g_are_ns_depleted,
                  &sigma_jet=sigma_jet,
                  &power_law=power_law,
@@ -842,7 +900,19 @@ int main(int argc, char** argv)
                         else if (end_state_filtering)
                         {
                             momentum ET=0, E=0;
-                            filter_end_state(binary_collisions, filtered_scatterings, unirand, eng, g_is_mom_cons_new, g_is_saturation, g_are_ns_depleted, sqrt_s);
+                            filter_end_state
+                            (
+                                binary_collisions, 
+                                filtered_scatterings, 
+                                unirand, 
+                                eng, 
+                                g_is_mom_cons_new, 
+                                g_is_saturation, 
+                                g_are_ns_depleted, 
+                                g_is_sat_overlap, 
+                                sqrt_s, 
+                                proton_width
+                            );
 
                             std::vector<std::tuple<double, double> > new_jets;
                             std::vector<std::tuple<double, double> > new_dijets;

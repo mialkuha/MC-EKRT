@@ -474,6 +474,7 @@ public:
         bool is_mom_cons_new    = false;
         bool are_ns_depleted    = false;
         bool is_saturation      = false;
+        bool is_sat_overlap     = false;
         uint32_t n_events       = 10000;
         spatial b_max           = 20;
 
@@ -529,6 +530,10 @@ public:
                 {
                     line_stream >> std::boolalpha >> is_saturation;
                 }
+                else if (param_name == "is_sat_overlap")
+                {
+                    line_stream >> std::boolalpha >> is_sat_overlap;
+                }
                 else if (param_name == "n_events")
                 {
                     line_stream >> n_events;
@@ -560,6 +565,7 @@ public:
                     is_mom_cons_new,
                     are_ns_depleted,
                     is_saturation,
+                    is_sat_overlap,
                     n_events,
                     b_max
                 );
