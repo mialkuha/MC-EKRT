@@ -459,10 +459,11 @@ public:
 
     static auto read_conf
     (
-        const std::string &filename
+        const std::string filename
     ) noexcept
     {
         std::ifstream input(filename);
+        
         std::string name;
         bool is_pp              = false;
         bool is_pa              = false;
@@ -476,13 +477,13 @@ public:
         uint32_t n_events       = 10000;
         spatial b_max           = 20;
 
+        uint16_t count = 0;
+
         if (input.is_open())
         {
             std::string line;
-                
-            std::getline(input, line);
 
-            for (; !line.empty(); std::getline(input, line))
+            for (; std::getline(input, line); )
             {
                 std::istringstream line_stream(line);
                 std::string param_name;
@@ -536,6 +537,7 @@ public:
                 {
                     line_stream >> b_max;
                 }
+                count++;
             }
         }
         else
@@ -543,6 +545,8 @@ public:
             std::cout<<"Error opening the configuration file!!"<<std::endl;
             std::terminate();
         }
+
+        std::cout<<"Read "<< count <<" parameters from a file "<< filename <<std::endl;
 
         return std::make_tuple
                 (

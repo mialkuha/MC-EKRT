@@ -6,20 +6,21 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 #y_walls = np.linspace(-7.25, 7.25, 30)
 y_binsize = 0.192756 - (-0.192756) # Indexes 19,20
-pt_points = [ 2.72832, 5.3985, 7.59385, 10.682, 15.0259, 21.1363, 29.7316, 41.8222, 58.8296, 82.7532, 116.406, 163.743, 230.33, 323.996, 455.753, 641.089, 901.793, 1268.52, 1784.37, 2510 ]
+pt_points = [ 2.72832, 3.46872, 4.41004, 5.60682, 7.12837, 9.06283, 11.5222, 14.6491, 18.6245, 23.6787, 30.1045, 38.2741, 48.6608, 61.8661, 78.655, 100, 200, 376.436, 708.52, 1333.56 ]
+#pt_points = [ 2.72832, 5.3985, 7.59385, 10.682, 15.0259, 21.1363, 29.7316, 41.8222, 58.8296, 82.7532, 116.406, 163.743, 230.33, 323.996, 455.753, 641.089, 901.793, 1268.52, 1784.37, 2510 ]
 
-obs_name = ['dNdpT_y=0_1m']
+obs_name = ['dNdpT_y=0_2.5m']
 
 for name in obs_name:
-	infile_names = [ 'sigma1jet_sim_pA_1m_mb_PDF.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_nPDF.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_snPDF.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_PDF_MC.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_nPDF_MC.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_snPDF_MC.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_PDF_MC_ND.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_nPDF_MC_ND.dat',
-			 	     'sigma1jet_sim_pA_1m_mb_snPDF_MC_ND.dat' ]
+	infile_names = [ 'sigma1jet_sim_pA_2500k_mb_PDF.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_nPDF.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_snPDF.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_PDF_MC.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_nPDF_MC.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_snPDF_MC.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_PDF_MC_ND.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_nPDF_MC_ND.dat',
+			 	     'sigma1jet_sim_pA_2500k_mb_snPDF_MC_ND.dat' ]
 
 	pdf_name  = name+'.pdf'
 

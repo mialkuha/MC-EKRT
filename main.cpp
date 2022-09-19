@@ -335,7 +335,7 @@ int main(int argc, char** argv)
         g_is_saturation,
         desired_N_events,
         b_max
-    ] = io::read_conf(argv[1]);
+    ] = io::read_conf(std::string(argv[1]));
 
     /*switch (argv[1][0])
     {
@@ -699,8 +699,8 @@ int main(int argc, char** argv)
         std::atomic<uint64_t> running_count{desired_N_events};
 
         std::signal(SIGINT, abort_handler);
-        std::signal(SIGTERM, term_handler);
-        std::signal(SIGSEGV, term_handler);
+        //std::signal(SIGTERM, term_handler);
+        //std::signal(SIGSEGV, term_handler);
 
         std::set_terminate([](){
             std::cout << std::endl << "Unhandled exception" << std::endl;
@@ -714,7 +714,15 @@ int main(int argc, char** argv)
                 std::execution::par, 
                 event_indexes.begin(), 
                 event_indexes.end(), 
-                [&,&sigma_jet=sigma_jet,&power_law=power_law,&envelope_maximum=envelope_maximum](const uint64_t index) 
+                [&,&b_max=b_max,
+                 &g_use_snpdfs=g_use_snpdfs,
+                 &g_is_mom_cons_new=g_is_mom_cons_new,
+                 &g_is_saturation=g_is_saturation,
+                 &g_are_ns_depleted=g_are_ns_depleted,
+                 &sigma_jet=sigma_jet,
+                 &power_law=power_law,
+                 &envelope_maximum=envelope_maximum
+                ](const uint64_t index) 
                 {
                     do //while (g_bug_bool)
                     {
@@ -956,7 +964,7 @@ int main(int argc, char** argv)
                         {
                             const std::lock_guard<std::mutex> lock(AA_events_mutex);
                             AA_events++;
-                            if (AA_events % 100 == 0 )
+                            if (AA_events % 5000 == 0 )
                             {
                                 std::cout <<"\rA+A collisions calculated: " << AA_events << std::flush;
                             }

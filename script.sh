@@ -1,11 +1,5 @@
 #! /bin/bash
 
-./bin/mcaa 0
-./bin/mcaa 1
-./bin/mcaa 2
-./bin/mcaa 3
-./bin/mcaa 4
-./bin/mcaa 5
-./bin/mcaa 6
-./bin/mcaa 7
-./bin/mcaa 8
+./bin/mcaa p_pp_10m_B\=0
+./bin/mcaa p_pp_10m_B\=0_MC
+./bin/mcaa p_pp_10m_B\=0_MC_ND
