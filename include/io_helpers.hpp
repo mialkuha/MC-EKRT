@@ -23,25 +23,39 @@ public:
 
         private:
         double b, x, nTwo, sumET;
-        ulong nColl, nPart;
+        ulong nColl, nPart, nEnd;
         bool alice = true;
 
         public:
-        Coll() { b = 0.; x = 0.; nTwo = 0.; nColl = 0; nPart = 0; sumET = 0.;}
-        Coll(ulong nCollIn, ulong nPartIn, double bIn, std::shared_ptr<std::mt19937> random_generator){
-            // ATLAS definitions.
+        Coll() { b = 0.; x = 0.; nTwo = 0.; nColl = 0; nPart = 0; nEnd = 0; sumET = 0.;}
+        Coll(ulong nColl_, ulong nPart_, ulong nEnd_, double b_, double sumET_){
+            b = b_; nColl = nColl_; nPart = nPart_; nEnd = nEnd_; sumET = sumET_;
+            // ATLAS definitions. 
             if (!alice) {
-            x = 0.09; b = bIn; nColl = nCollIn; nPart = nPartIn; sumET = 0.;
+            x = 0.09;
+            nTwo = 0.5 * (1. - x) * static_cast<double>(nPart) + x * static_cast<double>(nColl);
+            // ALICE definitions.
+        } else {
+            x = 0.801;
+            nTwo = x * static_cast<double>(nPart) + (1. - x) * static_cast<double>(nColl);
+        }
+        }
+        Coll(ulong nCollIn, ulong nPartIn, ulong nEndIn, double bIn, std::shared_ptr<std::mt19937> random_generator){
+            b = bIn; nColl = nCollIn; nPart = nPartIn; nEnd = nEndIn; sumET = 0.;
+            // ATLAS definitions. 
+            if (!alice) {
+            x = 0.09; 
             nTwo = 0.5 * (1. - x) * static_cast<double>(nPart) + x * static_cast<double>(nColl); sampleET(random_generator);
             // ALICE definitions.
         } else {
-            x = 0.801; b = bIn; nColl = nCollIn; nPart = nPartIn; sumET = 0.;
+            x = 0.801;
             nTwo = x * static_cast<double>(nPart) + (1. - x) * static_cast<double>(nColl); sampleET(random_generator);
         }
         }
         double getB() const {return b;}
         ulong getNcoll() const {return nColl;}
         ulong getNpart() const {return nPart;}
+        ulong getNend() const {return nEnd;}
         double getNtwo() const {return nTwo;}
         double getET() const {return sumET;}
         void sampleET(std::shared_ptr<std::mt19937> random_generator) {
@@ -66,6 +80,9 @@ public:
         }
     static bool compNcoll(Coll c1, Coll c2){
         return c1.getNcoll() < c2.getNcoll();
+        }
+    static bool compNend(Coll c1, Coll c2){
+        return c1.getNend() < c2.getNend();
         }
     static bool compNtwo(Coll c1, Coll c2){
         return c1.getNtwo() < c2.getNtwo();
@@ -92,14 +109,14 @@ public:
         const uint &nBins, 
         const double *const binsLow, 
         const double *const binsHigh,
-        std::ostream out_stream
+        std::ostream &out_stream
     ) noexcept -> void
     {
         // Make sure that no rounding downwards.
         double eps = 0.1/N_events;
         
         // int comp = 1;
-        for (uint8_t comp = 1; comp <= 4; ++comp) {
+        for (uint8_t comp = 1; comp <= 5; ++comp) {
             
             // Print out the header.
             out_stream << std::endl;
@@ -111,28 +128,35 @@ public:
                     std::sort(collisions.begin(), collisions.end(), compNpart);
                     out_stream << "Using Npart for centrality determination" 
                             << std::endl << std::endl
-                            << "# cent%\t nPmax\t nPmin\t <b>\t <nPart> <nColl> <T_AA>"
+                            << "#  cent     nPmax     nPmin       <b>   <nPart>   <nColl>    <nEnd>    <T_AA>     <E_T>"
                             << std::endl;
                     break;
                 case 2:
                     std::sort(collisions.begin(), collisions.end(), compNcoll);
                     out_stream << "Using Ncoll for centrality determination" 
                             << std::endl << std::endl
-                            << "# cent%\t nCmax\t nCmin\t <b>\t <nPart> <nColl> <T_AA>"
+                            << "#  cent     nCmax     nCmin       <b>   <nPart>   <nColl>    <nEnd>    <T_AA>     <E_T>"
                             << std::endl;
                     break;
                 case 3:
                     std::sort(collisions.begin(), collisions.end(), compNtwo);
                     out_stream << "Using two-component (ancestors) model for centrality determination"
                             << std::endl << std::endl
-                            << "# cent%\t nAmax\t nAmin\t <b>\t <nPart> <nColl> <T_AA>"
+                            << "#  cent     nAmax     nAmin       <b>   <nPart>   <nColl>    <nEnd>    <T_AA>     <E_T>"
                             << std::endl;
                     break;
-                default: //case 4
+                case 4:
                     std::sort(collisions.begin(), collisions.end(), compET);
                     out_stream << "Using sumET model for centrality determination" 
                             << std::endl << std::endl
-                            << "# cent%\t ETmax\t ETmin\t <b>\t <nPart> <nColl> <T_AA>"
+                            << "#  cent     ETmax     ETmin       <b>   <nPart>   <nColl>    <nEnd>    <T_AA>     <E_T>"
+                            << std::endl;
+                    break;
+                default: //case 5
+                    std::sort(collisions.begin(), collisions.end(), compET);
+                    out_stream << "Using the number of produced jets for centrality determination" 
+                            << std::endl << std::endl
+                            << "#  cent     nJmax     nJmin       <b>   <nPart>   <nColl>    <nEnd>    <T_AA>     <E_T>"
                             << std::endl;
             }
             std::reverse(collisions.begin(), collisions.end());
@@ -150,34 +174,39 @@ public:
                 }
                 
                 // Print the centrality selection.
-                out_stream << binsLow[i]*100 << " " << binsHigh[i]*100 << '\t';
+                out_stream << std::setw(2) << binsLow[i]*100 << " " << std::setw(4) << binsHigh[i]*100;
                 
                 switch (comp)
                 {
                     case 1:
-                        out_stream << centrality[0].getNpart() << '\t' 
-                                << centrality[centrality.size() - 1].getNpart() << '\t';
+                        out_stream << std::setw(10) << centrality[0].getNpart()
+                                   << std::setw(10) << centrality[centrality.size() - 1].getNpart();
                         break;
                     case 2:
-                        out_stream << centrality[0].getNcoll() << '\t' 
-                                << centrality[centrality.size() - 1].getNcoll() << '\t';
+                        out_stream << std::setw(10) << centrality[0].getNcoll() 
+                                   << std::setw(10) << centrality[centrality.size() - 1].getNcoll();
                         break;
                     case 3:
-                        out_stream << centrality[0].getNtwo() << '\t' 
-                                << centrality[centrality.size() - 1].getNtwo() << '\t';
+                        out_stream << std::setw(10) <<centrality[0].getNtwo()
+                                   << std::setw(10) << centrality[centrality.size() - 1].getNtwo();
                         break;
-                    default : //case 4
-                        out_stream << centrality[0].getET() << '\t' 
-                                << centrality[centrality.size() - 1].getET() << '\t';
+                    case 4:
+                        out_stream << std::setw(10) << centrality[0].getET() 
+                                   << std::setw(10) << centrality[centrality.size() - 1].getET();
+                        break;
+                    default : //case 5
+                        out_stream << std::setw(10) << centrality[0].getNend() 
+                                   << std::setw(10) << centrality[centrality.size() - 1].getNend();
                         break;
                 }
                 
-                out_stream << io::calc_ave<double>(centrality, &Coll::getB) << '\t' 
-                        << io::calc_ave<ulong>(centrality, &Coll::getNpart) << '\t' 
-                        << io::calc_ave<ulong>(centrality, &Coll::getNcoll) << '\t' 
-                        << io::calc_ave<ulong>(centrality, &Coll::getNcoll)/sigma_inel << '\t' 
-                        // << calc_ave<double>(centrality, &Coll::getET) << '\t' 
-                        << std::endl;      
+                out_stream << std::setw(10) << io::calc_ave<double>(centrality, &Coll::getB) 
+                           << std::setw(10) << io::calc_ave<ulong>(centrality, &Coll::getNpart) 
+                           << std::setw(10) << io::calc_ave<ulong>(centrality, &Coll::getNcoll)
+                           << std::setw(10) << io::calc_ave<ulong>(centrality, &Coll::getNend) 
+                           << std::setw(10) << io::calc_ave<ulong>(centrality, &Coll::getNcoll)/sigma_inel
+                           << std::setw(10) << calc_ave<double>(centrality, &Coll::getET)
+                           << std::endl;      
             }
         }
     }
@@ -569,6 +598,150 @@ public:
                     n_events,
                     b_max
                 );
+    }
+
+    static auto print_histos
+    (
+        const std::string &name_postfix,
+        const std::vector<histo_2d> &jets,
+        const std::vector<histo_2d> &dijets,
+        const std::vector<histo_1d> &dETdy,
+        const std::vector<histo_1d> &dEdy,
+        const std::vector<histo_1d> &dNdy,
+        const std::vector<histo_1d> &dNdET,
+        const std::vector<histo_1d> &dETdeta,
+        const std::vector<histo_1d> &dEdeta,
+        const std::vector<histo_1d> &dETdb,
+        const std::vector<histo_1d> &dEdb,
+        const xsectval &dijet_norm,
+        const uint32_t &AA_events
+    ) noexcept -> void
+    {
+        std::array<std::string, 6> true_postfixes{name_postfix+".dat",
+                                                  name_postfix+"_MC.dat",
+                                                  name_postfix+"_MC_ND.dat",
+                                                  name_postfix+"_SAT.dat",
+                                                  name_postfix+"_SAT_OL.dat",
+                                                  name_postfix+"_SAT_MC.dat"};
+        
+        for (size_t i=0; i<6; i++)
+        { //sigma1jet
+            print_2d_histo
+            (
+                jets[i], 
+                "sigma1jet_sim_"+true_postfixes[i], 
+                2.0 * dijet_norm
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dNdpTdy
+            print_2d_histo
+            (
+                jets[i],
+                "dNdpTdy_sim_"+true_postfixes[i], 
+                1.0,
+                false
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //sigmadijet
+            print_2d_histo
+            (
+                dijets[i],
+                "sigmadijet_sim_"+true_postfixes[i], 
+                dijet_norm
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dETdy
+            print_1d_histo
+            (
+                dETdy[i],
+                "dETdy_sim_"+true_postfixes[i], 
+                1.0/ AA_events,
+                false
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dEdy
+            print_1d_histo
+            (
+                dEdy[i], 
+                "dEdy_sim_"+name_postfix+true_postfixes[i], 
+                1.0/ AA_events,
+                false
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dNdy
+            print_1d_histo
+            (
+                dNdy[i], 
+                "dNdy_sim_"+true_postfixes[i], 
+                1.0/ AA_events,
+                false
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dNdET
+            print_1d_histo
+            (
+                dNdET[i], 
+                "dNdET_sim_"+true_postfixes[i], 
+                1.0,
+                false
+            );
+        }
+        
+        for (size_t i=0; i<6; i++)
+        { //dETdeta
+            print_1d_histo
+            (
+                dETdeta[i], 
+                "dETdeta_sim_"+true_postfixes[i], 
+                1.0 / AA_events,
+                false
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dEdeta
+            print_1d_histo
+            (
+                dEdeta[i], 
+                "dEdeta_sim_"+true_postfixes[i], 
+                1.0 / AA_events,
+                false
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dETdb
+            print_1d_histo
+            (
+                dETdb[i], 
+                "dETdb_sim_"+true_postfixes[i], 
+                1.0,
+                true
+            );
+        }
+
+        for (size_t i=0; i<6; i++)
+        { //dEdb
+            print_1d_histo
+            (
+                dEdb[i],
+                "dEdb_sim_"+true_postfixes[i], 
+                1.0,
+                true
+            );
+        }
     }
 };
 
