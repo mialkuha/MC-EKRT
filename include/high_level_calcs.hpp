@@ -285,7 +285,7 @@ public:
         const momentum &mand_s,
         const momentum &sqrt_s,
         const momentum &kt02, 
-        const momentum &kt0, 
+        const momentum &kt0,
         pqcd::sigma_jet_params jet_params
     ) ->
     std::tuple
@@ -1114,7 +1114,6 @@ public:
     }
 
     
-
 private:
 
     static auto calculate_sigma_1jet_analytical
@@ -2135,7 +2134,6 @@ private:
         return InterpMultilinear<5, xsectval>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
     }
 
-    
     static auto calculate_tA
     (
         const coords &b, 

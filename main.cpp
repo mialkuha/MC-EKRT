@@ -22,7 +22,7 @@
 #include "pqcd.hpp"
 #include "typedefs.hpp"
 
-auto find_sigma_jet_cutoff
+auto find_sigma_jet_cutoff_p0
 (
     momentum &kt02, 
     const momentum &mand_s, 
@@ -30,7 +30,7 @@ auto find_sigma_jet_cutoff
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
     const pqcd::sigma_jet_params &jet_params, 
     const bool &verbose=true
-) noexcept -> void
+) noexcept -> momentum
 {
     xsectval sigma_jet=0.0;
     kt02 = 2.0;
@@ -42,7 +42,39 @@ auto find_sigma_jet_cutoff
 
     helpers::secant_method(&kt02, difference_to_target, 1e-3, &sigma_jet);
 
-    if (verbose) std::cout<<kt02<<' '<<sigma_jet+target<<' '<<target<<std::endl;
+    if (verbose) std::cout<<sqrt(kt02)<<' '<<sigma_jet+target<<' '<<target<<std::endl;
+    
+    return kt02;
+}
+
+auto find_sigma_jet_cutoff_Q
+(
+    const momentum &kt02, 
+    const momentum &mand_s, 
+    const xsectval &target, 
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    pqcd::sigma_jet_params jet_params, 
+    const bool &verbose=true
+) noexcept -> void
+{
+    xsectval sigma_jet=0.0;
+    momentum scalar = 1.0;
+
+    auto difference_to_target = [&](const momentum &scalar_)
+    {
+        momentum kt02dummy = 4.0;
+        auto jet_params_ = pqcd::sigma_jet_params(
+        /*d_params=                 */jet_params.d_params,
+        /*scale_choice=             */jet_params.scale_c,
+        /*scalar=                   */scalar_,
+        /*use_ses=                  */jet_params.use_ses);
+        auto kt02_ = find_sigma_jet_cutoff_p0(kt02dummy, mand_s, target, p_p_pdf, jet_params_);
+        return kt02_ - kt02;
+    };
+
+    helpers::secant_method(&scalar, difference_to_target, 1e-3, &sigma_jet);
+
+    if (verbose) std::cout<<scalar<<' '<<sigma_jet+target<<' '<<target<<std::endl;
     
     return;
 }
@@ -562,6 +594,7 @@ int main(int argc, char** argv)
     
     //Parameters for the hard collisions
     const double K_sat = 10.0;
+    const double K_factor = 1.0;
     const spatial proton_width = 0.573;
     const spatial proton_width_2 = pow(0.573, 2);
     const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared)
@@ -569,9 +602,9 @@ int main(int argc, char** argv)
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }}; 
     const xsectval sigma_inel_for_glauber = 69.9613;//41.5;//mb
-    const momentum sqrt_s                 = 5020;//GeV
+    const momentum sqrt_s                 = 200;//5020;//GeV
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
-    momentum kt0                          = 2.728321;//GeV
+    momentum kt0                          = 2.0;//2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
     rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
@@ -612,6 +645,7 @@ int main(int argc, char** argv)
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */coll_params.spatial_pdfs,
     /*npdf_setnumber=           */1,
+    /*K_factor=                 */K_factor,
     /*A=                        */(g_is_aa)? 208 : 1, //Pb 
     /*B=                        */(g_is_pp)? 1 : 208, //Pb
     /*ZA=                       */(g_is_aa)? 82 : 1,  //Pb
@@ -634,7 +668,39 @@ int main(int argc, char** argv)
 //std::vector<double> inels = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
 //for (int i=0; i<11 ; i++) find_sigma_jet_cutoff(kt02ss[i], mands[i], 124.6635, p_pdf, jet_params, true);
 //std::cout<<kt02<<std::endl;
+//xsectval s_jet = 124.6635;
+//xsectval target_s_jet;
+//auto scalars = {1.0, 1/2.0, 1/3.0, 1/4.0};
+//auto kt02s = {pow(2.11167, 2), pow(3.45886, 2), pow(4.33213, 2), pow(5.38004, 2), pow(6.63009, 2)};
+//std::vector<double> kt02s{helpers::loglinspace(0.25, 100.0, 150)};
+//std::ofstream out_file;
+//out_file.open("p02_sjet.csv", std::ios::out);
+//
+//find_sigma_jet_cutoff_p0(kt02, mand_s, target_s_jet, p_pdf, jet_params);
+//
+//for (auto s : scalars)
+//{
+//    target_s_jet = s*s_jet;
+//    find_sigma_jet_cutoff_p0(kt02, mand_s, target_s_jet, p_pdf, jet_params);
+//    kt02s.push_back(find_sigma_jet_cutoff_p0(kt02, mand_s, target_s_jet, p_pdf, jet_params));
+//    std::cout<<std::endl;
+//}
+//
+//for (auto k : kt02s)
+//{
+//    auto res = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &k, jet_params);
+//    std::cout<<k<<','<<res<<std::endl;
+//    out_file<<k<<','<<res<<std::endl;
+//}
+//for (auto k : kt02s)
+//{
+//    find_sigma_jet_cutoff_Q(k, mand_s, s_jet, p_pdf, jet_params);
+//    std::cout<<std::endl;
+//}
+//
 //return 0;
+
+
     auto
     [
         dijet_norm,
@@ -654,10 +720,13 @@ int main(int argc, char** argv)
         mand_s,
         sqrt_s,
         kt02, 
-        kt0, 
+        kt0,
         jet_params
     );
     
+std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
+return 0;
+
     //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
     //std::cout<<kt02<<std::endl;
     
@@ -695,7 +764,6 @@ int main(int argc, char** argv)
     std::mutex dijets_mutex;
 
     std::vector<histo_1d> dETdy(6, histo_1d({y_bins}));
-    std::vector<histo_1d> dET_evdy(6, histo_1d({y_bins}));
     std::vector<histo_1d> dEdy(6, histo_1d({y_bins}));
     std::vector<histo_1d> dNdy(6, histo_1d({y_bins}));
     std::vector<histo_1d> dNdET(6, histo_1d({et_bins}));
@@ -1133,14 +1201,6 @@ int main(int argc, char** argv)
                             }
                             
                             {
-                                const std::lock_guard<std::mutex> lock(dET_ey_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dET_evdy[i].add(std::make_tuple(impact_parameter, sum_ET[i]));
-                                }
-                            }
-                            
-                            {
                                 const std::lock_guard<std::mutex> lock(dETdb_mutex);
                                 for (size_t i=0; i<6; i++)
                                 {
@@ -1455,9 +1515,9 @@ int main(int argc, char** argv)
 
     //log_file.close();
 
-    uint nBins = 17;
-    double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0};
-    double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.1, 0.8, 1.0};
+    uint nBins = 18;
+    double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
+    double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
     std::ofstream glauber_report_file;
     std::array<std::string, 6> namesss{"g_report_"+name_postfix+".dat",
                                        "g_report_"+name_postfix+"_MC.dat",

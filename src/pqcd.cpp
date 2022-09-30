@@ -324,6 +324,8 @@ auto pqcd::throw_0_truncated_poissonian
     return k;
 }
 
+std::mutex g_envelope_maximum_mutex;
+
 auto pqcd::generate_2_to_2_scatt
 (
     const momentum &sqrt_s,
@@ -334,8 +336,7 @@ auto pqcd::generate_2_to_2_scatt
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    const momentum &envelope_maximum
-
+    momentum &envelope_maximum
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -379,13 +380,20 @@ auto pqcd::generate_2_to_2_scatt
 
         if (ratio > 1)
         {
-            std::cout<<"Limiting function smaller than cross section!!"<<std::endl;
+            std::cout<<std::endl<<"Limiting function smaller than cross section!!"<<std::endl;
             std::cout<<"kT = "<<kt<<std::endl;
             std::cout<<"y1 = "<<y1<<std::endl;
             std::cout<<"y2 = "<<y2<<std::endl;
             std::cout<<"total_xsection = "<<total_xsection<<std::endl;
-            std::cout<<"limit = "<<(envelope_maximum * pow(kt, -power_law))<<std::endl;
-            std::cout<<"Check the power-law behaviour"<<std::endl;
+            std::cout<<"limit = "<<(envelope_maximum * pow(kt, -power_law))<<std::endl<<std::endl;
+            //std::cout<<"Check the power-law behaviour"<<std::endl;
+
+            std::cout<<"Changing the envelope_maximum from "<<envelope_maximum;
+            {
+                const std::lock_guard<std::mutex> lock(g_envelope_maximum_mutex);
+                envelope_maximum = total_xsection * pow(kt, power_law);
+            }
+            std::cout<<" to "<<envelope_maximum<<std::endl<<std::endl;
             continue;
         }
 
@@ -428,7 +436,7 @@ auto pqcd::generate_bin_NN_coll
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    const momentum &envelope_maximum
+    momentum &envelope_maximum
 ) noexcept -> void
 {
     //First generate the number of produced dijets from zero-truncated Poissonian distribution
@@ -1045,7 +1053,7 @@ auto pqcd::diff_cross_section_2jet
 
     //Units for dsigma/dktdy1dy2 as [mb/GeV]
     const momentum alpha_s = p_p_pdf->alphasQ2(q2);
-    const xsectval units = 2.0 * kt * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * 10 / pow(FMGEV, 2);
+    const xsectval units = diff_params.K_factor * 2.0 * kt * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * 10 / pow(FMGEV, 2);
 
     //Returns zero when outside the physical boundaries
     if ((x1 < 0) || (x1 > 1) || (x2 > 1) || (x2 < 0))
@@ -1401,7 +1409,7 @@ auto pqcd::diff_sigma::sigma_jet
               u_hat
           );
 
-    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
+    return params.K_factor * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
 }
 
 auto pqcd::diff_sigma::sigma_1jet
@@ -1454,7 +1462,7 @@ auto pqcd::diff_sigma::sigma_1jet
               u_hat
           );
 
-    return (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
+    return params.K_factor * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
 }
 
 auto pqcd::diff_sigma::spatial_sigma_jet_full

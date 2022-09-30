@@ -47,10 +47,11 @@ public:
         Arg_type *const x, 
         F f, 
         const Ret_type error_tolerance, 
-        Ret_type *const last_fx
+        Ret_type *const last_fx,
+        const Arg_type lambda=1.0 
     ) -> void
     {
-        Arg_type x_n = *x, x_np1 = 2.0*x_n, x_np2 = 0.0;
+        Arg_type x_n = *x, x_np1 = 1.2*x_n, x_np2 = 0.0;
         Ret_type fx_n = f(x_n);
 
         if (abs(fx_n) < error_tolerance)
@@ -63,7 +64,7 @@ public:
 
         while ( abs(fx_np1) > error_tolerance )
         {
-            x_np2 = (x_n*fx_np1 - x_np1*fx_n)/(fx_np1 - fx_n);
+            x_np2 = x_np1 - lambda*fx_np1*(x_np1 - x_n)/(fx_np1 - fx_n);
 
             if (x_np2 <= 0.0) x_np2=1.0/std::numeric_limits<Arg_type>::max();
 

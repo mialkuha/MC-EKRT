@@ -31,6 +31,7 @@ public:
             bool isoscalar_target{false};
             bool npdfs_spatial{false};
             int npdf_setnumber{1};
+            double K_factor{1};
             int A{1};
             int B{1};
             int ZA{1};
@@ -47,6 +48,7 @@ public:
               auto isoscalar_target_,      
               auto npdfs_spatial_,    
               auto npdf_setnumber_,        
+              auto K_factor_,
               auto A_,                     
               auto B_,                     
               auto ZA_,                    
@@ -61,6 +63,7 @@ public:
               isoscalar_target(isoscalar_target_), 
               npdfs_spatial(npdfs_spatial_), 
               npdf_setnumber(npdf_setnumber_),
+              K_factor(K_factor_), 
               A(A_),
               B(B_),
               ZA(ZA_),
@@ -77,7 +80,8 @@ public:
               auto isoscalar_projectile_,  
               auto isoscalar_target_,  
               auto npdfs_spatial_,      
-              auto npdf_setnumber_,        
+              auto npdf_setnumber_,  
+              auto K_factor_,      
               auto A_,                     
               auto B_,                     
               auto ZA_,                    
@@ -89,6 +93,7 @@ public:
               isoscalar_target(isoscalar_target_), 
               npdfs_spatial(npdfs_spatial_), 
               npdf_setnumber(npdf_setnumber_),
+              K_factor(K_factor_), 
               A(A_),
               B(B_),
               ZA(ZA_),
@@ -265,7 +270,7 @@ public:
           (
             diff_sigma::params d_params_, 
             scale_choice scale_c_    = scaled_from_kt, 
-            momentum scalar_         = 1.0, 
+            momentum scalar_         = 1.0,
             bool use_ses_            = false
           ) noexcept
           : scale_c(scale_c_), 
@@ -302,7 +307,7 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        const momentum &envelope_maximum
+        momentum &envelope_maximum
       ) noexcept -> dijet_specs;
 
     static auto generate_bin_NN_coll
@@ -316,7 +321,7 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        const momentum &envelope_maximum
+        momentum &envelope_maximum
       ) noexcept -> void;
 
     static auto sigma_jet_integrand
@@ -483,6 +488,7 @@ public:
 
 protected:
 private:
+  std::mutex envelope_maximum_mutex;
 };
 
 #endif // PQCD_HPP
