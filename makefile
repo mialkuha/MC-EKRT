@@ -4,7 +4,7 @@ ODIR =./obj
 LDIR =./lib
 BDIR =./bin
 DBDIR =./bin/Debug
-CC=/usr/bin/clang++
+CC=clang++
 
 CFLAGS=-I$(IDIR) -I$(SDIR) -I. \
 	   -I/usr/local/include -I/usr/local/include/boost \
@@ -15,10 +15,10 @@ WFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor \
 	   -Woverloaded-virtual -Wpedantic -Wconversion \
 	   -Wsign-conversion -Wdouble-promotion -Wformat=2 \
 	   -pedantic -Weffc++
-FLAGS=$(CFLAGS) $(WFLAGS)
+FLAGS=$(CFLAGS) $(WFLAGS) `lhapdf-config --cflags --ldflags`
 
 LIBS=-L/usr/local/lib -lgsl -lpthread\
-	   -lgslcblas -lm -lLHAPDF -ltbb
+	   -lgslcblas -lm -ltbb
 
 _SRCS_CPP = ars.cpp hcubature.cpp histo.cpp linear_interpolator.cpp nn_coll.cpp nucleus_generator.cpp pqcd.cpp
 SRCS_CPP = $(patsubst %,$(SDIR)/%,$(_SRCS_CPP))
@@ -30,20 +30,28 @@ SRCS = $(SRCS_CPP) $(SRCS_H)
 _OBJS = $(_SRCS_CPP:.cpp=.o)
 OBJS = $(patsubst %,$(ODIR)/%,$(_OBJS))
 
+dir_guard=@mkdir -p $(@D)
+
 build : $(ODIR)/main.o $(OBJS)
+	$(dir_guard)
+	@mkdir -p $(BDIR)
 	$(CC) $(OBJS) $(ODIR)/main.o $(FLAGS) $(LIBS) -o $(BDIR)/mcaa
 
 debug : $(ODIR)/main.o $(OBJS)
+	$(dir_guard)
 	$(CC) -g $(OBJS) $(ODIR)/main.o $(FLAGS) $(LIBS) -o $(DBDIR)/mcaa
 
 clean :
 	rm $(OBJS) $(ODIR)/main.o
 
 $(ODIR)/main.o : main.cpp $(OBJS)
+	$(dir_guard)
 	$(CC) -c $(FLAGS) $< -o $@
 
 $(ODIR)/hcubature.o: $(SDIR)/hcubature.cpp
+	$(dir_guard)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(ODIR)/%.o: $(SDIR)/%.cpp
+	$(dir_guard)
 	$(CC) -c $(FLAGS) $< -o $@
