@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <execution>
 #include <fstream>
@@ -398,6 +399,7 @@ void term_handler(int num)
 
 int main(int argc, char** argv)
 { 
+    auto start = std::chrono::high_resolution_clock::now();
     /*bool g_is_pp;
     bool g_is_pa;
     bool g_is_aa;
@@ -780,7 +782,7 @@ int main(int argc, char** argv)
     std::ofstream total_energy;
     std::mutex total_energy_mutex; 
     auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
-    int64_t max_energy_broken{0.0};
+    int64_t max_energy_broken{0};
  
     total_energy.open("total_energies_"+name_postfix+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
@@ -1408,6 +1410,10 @@ int main(int argc, char** argv)
     glauber_report_file.open(namesss_midrap, std::ios::out);
     io::mc_glauber_style_report(collisions_for_reporting_midrap, sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::minutes>(stop - start);
+    std::cout<<std::endl<<"Execution took "<<duration.count()<<" minutes, nevermind the"<<std::endl;
 
     return 0;
 }
