@@ -601,10 +601,10 @@ int main(int argc, char** argv)
     {
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }}; 
-    const xsectval sigma_inel_for_glauber = 69.9613;//41.5;//mb
-    const momentum sqrt_s                 = 200;//5020;//GeV
+    const xsectval sigma_inel_for_glauber = 41.5;//mb
+    const momentum sqrt_s                 = 5020;//GeV
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
-    momentum kt0                          = 2.0;//2.728321;//GeV
+    momentum kt0                          = 2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
     rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
@@ -623,8 +623,8 @@ int main(int argc, char** argv)
     /*sqrt_s=                   */sqrt_s,
     /*energy_threshold=         */kt0
     };
-    std::array<std::vector<io::Coll>, 6> collisions_for_reporting;
-    std::array<std::vector<io::Coll>, 6> collisions_for_reporting_midrap;
+    std::vector<io::Coll> collisions_for_reporting;
+    std::vector<io::Coll> collisions_for_reporting_midrap;
     std::mutex colls_mutex; 
     std::vector<double> kt_bins{helpers::loglinspace(kt0, 100, 16)};
     auto kt_v_dummy = helpers::loglinspace(200, sqrt_s/2.0, 5);
@@ -724,8 +724,8 @@ int main(int argc, char** argv)
         jet_params
     );
     
-std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
-return 0;
+//std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
+//return 0;
 
     //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
     //std::cout<<kt02<<std::endl;
@@ -758,43 +758,35 @@ return 0;
     //std::ofstream log_file;
     //log_file.open("log2.dat", std::ios::out);
 
-    std::vector<histo_2d> jets(6, histo_2d({kt_bins, y_bins}));
-    std::vector<histo_2d> dijets(6, histo_2d({kt_bins, y_bins}));
+    histo_2d jets{kt_bins, y_bins};
+    histo_2d dijets{kt_bins, y_bins};
     std::mutex jets_mutex; 
     std::mutex dijets_mutex;
 
-    std::vector<histo_1d> dETdy(6, histo_1d({y_bins}));
-    std::vector<histo_1d> dEdy(6, histo_1d({y_bins}));
-    std::vector<histo_1d> dNdy(6, histo_1d({y_bins}));
-    std::vector<histo_1d> dNdET(6, histo_1d({et_bins}));
+    histo_1d dETdy{y_bins};
+    histo_1d dEdy{y_bins};
+    histo_1d dNdy{y_bins};
+    histo_1d dNdET{et_bins};
     std::mutex dETdy_mutex; 
     std::mutex dEdy_mutex;
     std::mutex dNdy_mutex;
     std::mutex dNdET_mutex;
 
-    std::vector<histo_1d> dETdeta(6, histo_1d({y_bins}));
-    std::vector<histo_1d> dEdeta(6, histo_1d({y_bins}));
+    histo_1d dETdeta{y_bins};
+    histo_1d dEdeta{y_bins};
     std::mutex dETdeta_mutex; 
     std::mutex dEdeta_mutex;
 
-    std::array<std::ofstream, 6> total_energy;
+    std::ofstream total_energy;
     std::mutex total_energy_mutex; 
     auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
-    std::array<int64_t, 6> max_energy_broken{0,0,0,0,0,0};
+    int64_t max_energy_broken{0.0};
  
-    total_energy[0].open("total_energies_"+name_postfix+".dat");
-    total_energy[1].open("total_energies_"+name_postfix+"_MC.dat");
-    total_energy[2].open("total_energies_"+name_postfix+"_MC_ND.dat");
-    total_energy[3].open("total_energies_"+name_postfix+"_SAT.dat");
-    total_energy[4].open("total_energies_"+name_postfix+"_SAT_OL.dat");
-    total_energy[5].open("total_energies_"+name_postfix+"_SAT_MC.dat");
-    for (size_t i=0; i<6; i++)
-    {
-        total_energy[i] << "///Sum E_T Sum E" << std::endl;
-    }
+    total_energy.open("total_energies_"+name_postfix+".dat");
+    total_energy << "///Sum E_T Sum E" << std::endl;
  
-    std::vector<histo_1d> dETdb(6, histo_1d({b_bins}));
-    std::vector<histo_1d> dEdb(6, histo_1d({b_bins}));
+    histo_1d dETdb{b_bins};
+    histo_1d dEdb{b_bins};
     std::mutex dETdb_mutex; 
     std::mutex dEdb_mutex;
 
@@ -869,8 +861,8 @@ return 0;
                     do //while (g_bug_bool)
                     {
                         uint32_t NColl = 0;
-                        std::array<std::vector<nn_coll>, 6> binary_collisions;
-                        std::array<std::vector<dijet_specs>, 6> filtered_scatterings;
+                        std::vector<nn_coll> binary_collisions;
+                        std::vector<dijet_specs> filtered_scatterings;
 
                         //B^2 from a uniform distribution
                         spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
@@ -926,7 +918,7 @@ return 0;
                         
                         do
                         {
-                            binary_collisions[0].clear();
+                            binary_collisions.clear();
                             if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
                             calcs::collide_nuclei
@@ -934,7 +926,7 @@ return 0;
                                 g_use_snpdfs,
                                 pro, 
                                 tar, 
-                                binary_collisions[0], 
+                                binary_collisions, 
                                 sigma_jet,
                                 unirand, 
                                 eng, 
@@ -958,7 +950,7 @@ return 0;
                                 //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
                                 //log_file << std::endl;
                             }*/
-                            NColl = static_cast<uint32_t>(binary_collisions[0].size());
+                            NColl = static_cast<uint32_t>(binary_collisions.size());
                             if (NColl<1)
                             {
                                 impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
@@ -976,13 +968,8 @@ return 0;
                             }
                         } while (NColl<1);
 
-
-                        for (size_t i=1; i<6; i++)
-                        {
-                            binary_collisions[i].assign(binary_collisions[0].begin(), binary_collisions[0].end());
-                        }
-                        std::array<momentum, 6> sum_ET{0,0,0,0,0,0};
-                        std::array<momentum, 6> sum_ET_midrap{0,0,0,0,0,0};
+                        momentum sum_ET{0.0};
+                        momentum sum_ET_midrap{0.0};
 
                         if(!end_state_filtering && save_events)
                         {
@@ -991,234 +978,129 @@ return 0;
                         }
                         else if (end_state_filtering)
                         {
-                            std::array<momentum, 6> sum_E{0,0,0,0,0,0};
+                            momentum sum_E{0.0};
                             filter_end_state
                             (
-                                binary_collisions[0], 
-                                filtered_scatterings[0], 
+                                binary_collisions, 
+                                filtered_scatterings, 
                                 unirand, 
                                 eng, 
-                                false, 
-                                false, 
-                                false, 
-                                false, 
+                                g_is_mom_cons_new, 
+                                g_is_saturation, 
+                                g_are_ns_depleted, 
+                                g_is_sat_overlap, 
                                 sqrt_s,
                                 K_sat,
                                 proton_width
                             );
-                            filter_end_state
-                            (
-                                binary_collisions[1], 
-                                filtered_scatterings[1], 
-                                unirand, 
-                                eng, 
-                                true, 
-                                false, 
-                                true, 
-                                false, 
-                                sqrt_s, 
-                                K_sat,
-                                proton_width
-                            );
-                            filter_end_state
-                            (
-                                binary_collisions[2], 
-                                filtered_scatterings[2], 
-                                unirand, 
-                                eng, 
-                                true, 
-                                false, 
-                                false, 
-                                false, 
-                                sqrt_s, 
-                                K_sat,
-                                proton_width
-                            );
-                            filter_end_state
-                            (
-                                binary_collisions[3], 
-                                filtered_scatterings[3], 
-                                unirand, 
-                                eng, 
-                                false, 
-                                true, 
-                                false, 
-                                false, 
-                                sqrt_s, 
-                                K_sat,
-                                proton_width
-                            );
-                            filter_end_state
-                            (
-                                binary_collisions[4], 
-                                filtered_scatterings[4], 
-                                unirand, 
-                                eng, 
-                                false, 
-                                true, 
-                                false, 
-                                true, 
-                                sqrt_s, 
-                                K_sat,
-                                proton_width
-                            );
-                            filter_end_state
-                            (
-                                binary_collisions[5], 
-                                filtered_scatterings[5], 
-                                unirand, 
-                                eng, 
-                                true, 
-                                true, 
-                                true, 
-                                false, 
-                                sqrt_s, 
-                                K_sat,
-                                proton_width
-                            );
 
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_jets;
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_dijets;
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_ET_y;
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_E_y;
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_N_y;
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_ET_eta;
-                            std::array<std::vector<std::tuple<double, double> >, 6> new_E_eta;
+                            std::vector<std::tuple<double, double> > new_jets;
+                            std::vector<std::tuple<double, double> > new_dijets;
+                            std::vector<std::tuple<double, double> > new_ET_y;
+                            std::vector<std::tuple<double, double> > new_E_y;
+                            std::vector<std::tuple<double, double> > new_N_y;
+                            std::vector<std::tuple<double, double> > new_ET_eta;
+                            std::vector<std::tuple<double, double> > new_E_eta;
 
-                            for (size_t i=0; i<6; i++)
+                            for (auto e : filtered_scatterings)
                             {
-                                for (auto e : filtered_scatterings[i])
+                                new_jets.emplace_back(e.kt, e.y1);
+                                new_jets.emplace_back(e.kt, e.y2);
+                                
+                                new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+
+                                new_ET_y.emplace_back(e.y1, e.kt);
+                                new_ET_y.emplace_back(e.y2, e.kt);
+                                
+                                new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                                
+                                new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                                new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                                
+                                new_N_y.emplace_back(e.y1, 1);
+                                new_N_y.emplace_back(e.y2, 1);
+                                
+                                new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                                
+                                sum_ET += 2*e.kt;
+                                sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));
+
+                                if (e.y1 >= -0.5 && e.y1 <= 0.5)
                                 {
-                                    new_jets[i].emplace_back(e.kt, e.y1);
-                                    new_jets[i].emplace_back(e.kt, e.y2);
-                                    
-                                    new_dijets[i].emplace_back(e.kt, 0.5*(e.y1+e.y2));
-
-                                    new_ET_y[i].emplace_back(e.y1, e.kt);
-                                    new_ET_y[i].emplace_back(e.y2, e.kt);
-                                    
-                                    new_ET_eta[i].emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-                                    
-                                    new_E_y[i].emplace_back(e.y1, e.kt*cosh(e.y1));
-                                    new_E_y[i].emplace_back(e.y2, e.kt*cosh(e.y2));
-                                    
-                                    new_N_y[i].emplace_back(e.y1, 1);
-                                    new_N_y[i].emplace_back(e.y2, 1);
-                                    
-                                    new_E_eta[i].emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
-                                    
-                                    sum_ET[i] += 2*e.kt;
-                                    sum_E[i] += e.kt*(cosh(e.y1) + cosh(e.y2));
-
-                                    if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                                    {
-                                        sum_ET_midrap[i] += e.kt;
-                                    }
-                                    if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                                    {
-                                        sum_ET_midrap[i] += e.kt;
-                                    }
+                                    sum_ET_midrap += e.kt;
+                                }
+                                if (e.y2 >= -0.5 && e.y2 <= 0.5)
+                                {
+                                    sum_ET_midrap += e.kt;
                                 }
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(jets_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    jets[i].add(new_jets[i]);
-                                }
+                                jets.add(new_jets);
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dijets_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dijets[i].add(new_dijets[i]);
-                                }
+                                dijets.add(new_dijets);
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dETdy_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dETdy[i].add(new_ET_y[i]);
-                                }
+                                dETdy.add(new_ET_y);
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dEdy_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dEdy[i].add(new_E_y[i]);
-                                }
+                                dEdy.add(new_E_y);
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dNdy_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dNdy[i].add(new_N_y[i]);
-                                }
+                                dNdy.add(new_N_y);
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dETdeta_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dETdeta[i].add(new_ET_eta[i]);
-                                }
+                                dETdeta.add(new_ET_eta);
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dEdeta_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dEdeta[i].add(new_E_eta[i]);
-                                }
+                                dEdeta.add(new_E_eta);
                             }
-                            for (size_t i=0; i<6; i++)
+
                             {
-                                {
-                                    const std::lock_guard<std::mutex> lock(total_energy_mutex);
-                                    total_energy[i] << sum_ET[i] << ' ' << sum_E[i] << std::endl;
-                                }
-                                
-                                if (sum_E[i] > max_energy)
-                                {
-                                    std::cout << std::endl 
-                                            << "Energy conservation violated! Total "<< ++max_energy_broken[i]
-                                            << " times this far in branch "<< i << std::endl
-                                            << "E_T = " << sum_ET[i] << ", E = " << sum_E[i]  << std::endl;
-                                }
+                                const std::lock_guard<std::mutex> lock(total_energy_mutex);
+                                total_energy << sum_ET << ' ' << sum_E << std::endl;
+                            }
+                            
+                            if (sum_E > max_energy)
+                            {
+                                std::cout << std::endl 
+                                        << "Energy conservation violated! Total "<< ++max_energy_broken
+                                        << std::endl
+                                        << "E_T = " << sum_ET << ", E = " << sum_E  << std::endl;
                             }
 
                             {
                                 const std::lock_guard<std::mutex> lock(dNdET_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dNdET[i].add(std::make_tuple(sum_ET[i], 1));
-                                }
+                                dNdET.add(std::make_tuple(sum_ET, 1));
                             }
                             
                             {
                                 const std::lock_guard<std::mutex> lock(dETdb_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dETdb[i].add(std::make_tuple(impact_parameter, sum_ET[i]));
-                                }
+                                dETdb.add(std::make_tuple(impact_parameter, sum_ET));
                             }
                             {
                                 const std::lock_guard<std::mutex> lock(dEdb_mutex);
-                                for (size_t i=0; i<6; i++)
-                                {
-                                    dEdb[i].add(std::make_tuple(impact_parameter, sum_E[i]));
-                                }
+                                dEdb.add(std::make_tuple(impact_parameter, sum_E));
                             }
 
                             if (save_events)
                             {
                                 const std::lock_guard<std::mutex> lock(event_file_mutex);
-                                io::save_event(event_file, pro, tar, impact_parameter, filtered_scatterings[0]);
+                                io::save_event(event_file, pro, tar, impact_parameter, filtered_scatterings);
                             }
 
                             //filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
@@ -1261,13 +1143,11 @@ return 0;
 
                         {
                             const std::lock_guard<std::mutex> lock(colls_mutex);
-                            for (size_t i=0; i<6; i++)
-                            {
-                                io::Coll coll(NColl, Npart, 2*filtered_scatterings[i].size(), impact_parameter, sum_ET[i]);
-                                io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings[i].size(), impact_parameter, sum_ET_midrap[i]);
-                                collisions_for_reporting[i].push_back(coll);
-                                collisions_for_reporting_midrap[i].push_back(coll_midrap);
-                            }
+
+                            io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
+                            io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
+                            collisions_for_reporting.push_back(coll);
+                            collisions_for_reporting_midrap.push_back(coll_midrap);
                         }
                         
                         //filtered_scatterings.clear();
@@ -1519,27 +1399,15 @@ return 0;
     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
     double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
     std::ofstream glauber_report_file;
-    std::array<std::string, 6> namesss{"g_report_"+name_postfix+".dat",
-                                       "g_report_"+name_postfix+"_MC.dat",
-                                       "g_report_"+name_postfix+"_MC_ND.dat",
-                                       "g_report_"+name_postfix+"_SAT.dat",
-                                       "g_report_"+name_postfix+"_SAT_OL.dat",
-                                       "g_report_"+name_postfix+"_SAT_MC.dat"};
-    std::array<std::string, 6> namesss_midrap{"g_report_midrap_"+name_postfix+".dat",
-                                              "g_report_midrap_"+name_postfix+"_MC.dat",
-                                              "g_report_midrap_"+name_postfix+"_MC_ND.dat",
-                                              "g_report_midrap_"+name_postfix+"_SAT.dat",
-                                              "g_report_midrap_"+name_postfix+"_SAT_OL.dat",
-                                              "g_report_midrap_"+name_postfix+"_SAT_MC.dat"};
-    for (size_t i=0; i<6; i++)
-    {
-        glauber_report_file.open(namesss[i], std::ios::out);
-        io::mc_glauber_style_report(collisions_for_reporting[i], sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
-        glauber_report_file.close();
-        glauber_report_file.open(namesss_midrap[i], std::ios::out);
-        io::mc_glauber_style_report(collisions_for_reporting_midrap[i], sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
-        glauber_report_file.close();
-    }
+    std::string namesss{"g_report_"+name_postfix+".dat"};
+    std::string namesss_midrap{"g_report_midrap_"+name_postfix+".dat"};
+                                              
+    glauber_report_file.open(namesss, std::ios::out);
+    io::mc_glauber_style_report(collisions_for_reporting, sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
+    glauber_report_file.close();
+    glauber_report_file.open(namesss_midrap, std::ios::out);
+    io::mc_glauber_style_report(collisions_for_reporting_midrap, sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
+    glauber_report_file.close();
 
     return 0;
 }

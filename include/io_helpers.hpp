@@ -743,6 +743,113 @@ public:
             );
         }
     }
+
+    static auto print_histos
+    (
+        const std::string &name_postfix,
+        const histo_2d &jets,
+        const histo_2d &dijets,
+        const histo_1d &dETdy,
+        const histo_1d &dEdy,
+        const histo_1d &dNdy,
+        const histo_1d &dNdET,
+        const histo_1d &dETdeta,
+        const histo_1d &dEdeta,
+        const histo_1d &dETdb,
+        const histo_1d &dEdb,
+        const xsectval &dijet_norm,
+        const uint32_t &AA_events
+    ) noexcept -> void
+    {
+        std::string true_postfixes{name_postfix+".dat"};
+        
+        print_2d_histo
+        (
+            jets, 
+            "sigma1jet_sim_"+true_postfixes, 
+            2.0 * dijet_norm
+        );
+        
+        print_2d_histo
+        (
+            jets,
+            "dNdpTdy_sim_"+true_postfixes, 
+            1.0,
+            false
+        );
+        
+        print_2d_histo
+        (
+            dijets,
+            "sigmadijet_sim_"+true_postfixes, 
+            dijet_norm
+        );
+        
+        print_1d_histo
+        (
+            dETdy,
+            "dETdy_sim_"+true_postfixes, 
+            1.0/ AA_events,
+            false
+        );
+        
+        print_1d_histo
+        (
+            dEdy, 
+            "dEdy_sim_"+name_postfix+true_postfixes, 
+            1.0/ AA_events,
+            false
+        );
+        
+        print_1d_histo
+        (
+            dNdy, 
+            "dNdy_sim_"+true_postfixes, 
+            1.0/ AA_events,
+            false
+        );
+        
+        print_1d_histo
+        (
+            dNdET, 
+            "dNdET_sim_"+true_postfixes, 
+            1.0,
+            false
+        );
+        
+        print_1d_histo
+        (
+            dETdeta, 
+            "dETdeta_sim_"+true_postfixes, 
+            1.0 / AA_events,
+            false
+        );
+        
+        print_1d_histo
+        (
+            dEdeta, 
+            "dEdeta_sim_"+true_postfixes, 
+            1.0 / AA_events,
+            false
+        );
+        
+        print_1d_histo
+        (
+            dETdb, 
+            "dETdb_sim_"+true_postfixes, 
+            1.0,
+            true
+        );
+        
+        print_1d_histo
+        (
+            dEdb,
+            "dEdb_sim_"+true_postfixes, 
+            1.0,
+            true
+        );
+        
+    }
 };
 
 #endif // IO_HELPERS_HPP
