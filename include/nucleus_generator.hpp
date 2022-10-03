@@ -31,7 +31,7 @@ public:
     static std::vector<nucleon> generate_nucleus(const nucleus_params & params, const bool &target, const momentum & mom, 
         const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler);
 protected:
-    static coords&& throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept;
+    static coords throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept;
     static double throw_radial(const double & random_number) noexcept;
     static void throw_neutrons(std::vector<nucleon> *const nucleus, const uint & Z, std::shared_ptr<std::mt19937> random_generator) noexcept;
     static bool coords_fit(const coords& co, const std::vector<coords>& other_coords, const spatial& min_distance) noexcept;

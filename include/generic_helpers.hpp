@@ -54,7 +54,7 @@ public:
         Arg_type x_n = *x, x_np1 = 1.2*x_n, x_np2 = 0.0;
         Ret_type fx_n = f(x_n);
 
-        if (abs(fx_n) < error_tolerance)
+        if (std::abs(fx_n) < error_tolerance)
         {
             *last_fx = fx_n;
             return;
@@ -62,7 +62,7 @@ public:
 
         Ret_type fx_np1 = f(x_np1);
 
-        while ( abs(fx_np1) > error_tolerance )
+        while ( std::abs(fx_np1) > error_tolerance )
         {
             x_np2 = x_np1 - lambda*fx_np1*(x_np1 - x_n)/(fx_np1 - fx_n);
 

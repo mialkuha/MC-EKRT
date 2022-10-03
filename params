@@ -3,7 +3,7 @@ is_pp false
 is_pa false
 is_aa true
 use_npdfs true
-use_snpdfs true
+use_snpdfs false
 is_mom_cons false
 is_mom_cons_new true
 are_ns_depleted false

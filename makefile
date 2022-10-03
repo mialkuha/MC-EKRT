@@ -9,16 +9,18 @@ CC=clang++
 CFLAGS=-I$(IDIR) -I$(SDIR) -I. \
 	   -I/usr/local/include -I/usr/local/include/boost \
 	   -I/home/mikko/vcpkg/installed/x64-linux/include \
-	   -march=corei7 -O1 -std=c++20 -m64 -pthread
+	   -I/home/mikko/src/lhapdf/include \
+	   -O1 -std=c++20 -m64 -pthread
 WFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor \
 	   -Wold-style-cast -Wcast-align -Wunused \
 	   -Woverloaded-virtual -Wpedantic -Wconversion \
 	   -Wsign-conversion -Wdouble-promotion -Wformat=2 \
 	   -pedantic -Weffc++
-FLAGS=$(CFLAGS) $(WFLAGS) `lhapdf-config --cflags --ldflags`
+FLAGS=$(CFLAGS) $(WFLAGS) 
 
 LIBS=-L/usr/local/lib -lgsl -lpthread\
-	   -lgslcblas -lm -ltbb
+	   -lgslcblas -lm -ltbb -lLHAPDF\
+	   -L/home/mikko/src/lhapdf/lib
 
 _SRCS_CPP = ars.cpp hcubature.cpp histo.cpp linear_interpolator.cpp nn_coll.cpp nucleus_generator.cpp pqcd.cpp
 SRCS_CPP = $(patsubst %,$(SDIR)/%,$(_SRCS_CPP))
