@@ -505,7 +505,8 @@ public:
         bool is_saturation      = false;
         bool is_sat_overlap     = false;
         uint32_t n_events       = 10000;
-        spatial b_max           = 20;
+        spatial b_max           = 20;//fm
+        momentum pt0            = 2.728321;//GeV
 
         uint16_t count = 0;
 
@@ -571,6 +572,10 @@ public:
                 {
                     line_stream >> b_max;
                 }
+                else if (param_name == "pt0")
+                {
+                    line_stream >> pt0;
+                }
                 count++;
             }
         }
@@ -596,7 +601,8 @@ public:
                     is_saturation,
                     is_sat_overlap,
                     n_events,
-                    b_max
+                    b_max,
+                    pt0
                 );
     }
 

@@ -425,7 +425,8 @@ int main(int argc, char** argv)
         g_is_saturation,
         g_is_sat_overlap,
         desired_N_events,
-        b_max
+        b_max,
+        pt0
     ] = io::read_conf(std::string(argv[1]));
 
     /*switch (argv[1][0])
@@ -606,7 +607,7 @@ int main(int argc, char** argv)
     const xsectval sigma_inel_for_glauber = 41.5;//mb
     const momentum sqrt_s                 = 5020;//GeV
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
-    momentum kt0                          = 2.728321;//GeV
+    momentum kt0                          = pt0;//2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
     rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
@@ -1412,7 +1413,7 @@ int main(int argc, char** argv)
     glauber_report_file.close();
 
     auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::minutes>(stop - start);
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
     std::cout<<std::endl<<"Execution took "<<duration.count()<<" minutes, nevermind the"<<std::endl;
 
     return 0;
