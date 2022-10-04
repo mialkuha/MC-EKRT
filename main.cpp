@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <csignal>
 #include <execution>
 #include <fstream>
@@ -423,7 +424,8 @@ int main(int argc, char** argv)
         g_is_saturation,
         g_is_sat_overlap,
         desired_N_events,
-        b_max
+        b_max,
+        pt0
     ] = io::read_conf(std::string(argv[1]));
 
     /*switch (argv[1][0])
@@ -601,10 +603,10 @@ int main(int argc, char** argv)
     {
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }}; 
-    const xsectval sigma_inel_for_glauber = 69.9613;//41.5;//mb
-    const momentum sqrt_s                 = 200;//5020;//GeV
+    const xsectval sigma_inel_for_glauber = 41.5;//mb
+    const momentum sqrt_s                 = 5020;//GeV
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
-    momentum kt0                          = 2.0;//2.728321;//GeV
+    momentum kt0                          = pt0;//2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
     rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
@@ -724,8 +726,8 @@ int main(int argc, char** argv)
         jet_params
     );
     
-std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
-return 0;
+//std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
+//return 0;
 
     //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
     //std::cout<<kt02<<std::endl;

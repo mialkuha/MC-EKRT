@@ -13,6 +13,9 @@
         {
             "name": "Linux",
             "includePath": [
+                "/home/mikko/src/lhapdf",
+                "/home/mikko/src/lhapdf/include",
+                "/usr/local/lib",
                 "/usr/local/include",
                 "/usr/local/include/boost",
                 "/usr/local/include/boost/boost",
@@ -25,6 +28,9 @@
                 "limitSymbolsToIncludedHeaders": true,
                 "databaseFilename": "${default}",
                 "path": [
+                    "/home/mikko/src/lhapdf",
+                    "/home/mikko/src/lhapdf/lib",
+                    "/usr/local/lib",
                     "/usr/local/include",
                     "/usr/local/include/boost",
                     "/usr/local/include/boost/boost",
@@ -35,7 +41,8 @@
             },
             "intelliSenseMode": "clang-x64",
             "cppStandard": "c++20",
-            "compilerPath": "/usr/bin/clang++"
+            "compilerPath": "/usr/bin/clang++",
+            "configurationProvider": "ms-vscode.makefile-tools"
         }
     ],
     "version": 4

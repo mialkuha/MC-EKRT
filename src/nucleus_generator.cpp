@@ -82,7 +82,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
     return generated_nucleus;
 }
 
-coords&& nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
+coords nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
 {
     double new_r=-1, new_phi, new_cos_theta, new_sin_theta, rand1,rand2;
 
@@ -105,14 +105,17 @@ coords&& nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> r
     new_cos_theta = 2*rand2-1.;
     new_sin_theta = sqrt(1 - pow(new_cos_theta,2));
 
-    coords ret = coords({new_r * new_sin_theta * cos(new_phi),
-                         new_r * new_sin_theta * sin(new_phi),
-                         new_r * new_cos_theta});
+    //coords ret = coords({new_r * new_sin_theta * cos(new_phi),
+    //                     new_r * new_sin_theta * sin(new_phi),
+    //                     new_r * new_cos_theta});
 
     //std::cout<<"threw: "<<ret.x<<' '<<ret.y<<' '<<ret.z<<' '<<std::endl;
     //std::cout<<"threw: "<<new_r<<' '<<rand1<<' '<<rand2<<' '<<std::endl;
 
-    return std::move(ret);
+    //return std::move(ret);
+    return coords({new_r * new_sin_theta * cos(new_phi),
+                   new_r * new_sin_theta * sin(new_phi),
+                   new_r * new_cos_theta});
 }
 
 void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, const uint & Z, std::shared_ptr<std::mt19937> random_generator) noexcept

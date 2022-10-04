@@ -1,4 +1,7 @@
 #! /bin/bash
 
-./bin/mcaa testAA_mb_p0=1
-./bin/mcaa testAA_p0=1
+./bin/mcaa varying_p0_1
+./bin/mcaa varying_p0_2
+./bin/mcaa varying_p0_3
+./bin/mcaa varying_p0_4
+./bin/mcaa varying_p0_5
