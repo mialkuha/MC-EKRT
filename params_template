@@ -1,0 +1,17 @@
+name {}
+is_pp {}
+is_pa {}
+is_aa {}
+use_npdfs {}
+use_snpdfs {}
+is_mom_cons {}
+is_mom_cons_new {}
+are_ns_depleted {}
+is_saturation {}
+is_sat_overlap {}
+is_mc_glauber {}
+n_events {}
+b_max {}
+pt0 {}
+K_factor {}
+K_sat {}

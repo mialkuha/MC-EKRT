@@ -309,7 +309,7 @@ public:
         {
             if (!reduce_nucleon_energies) //Only one sigma_jet
             {
-                power_law = 3.1;
+                power_law = 2.5;
 
                 std::cout<<"Calculating sigma_jet..."<<std::flush;
                 xsectval sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
@@ -319,7 +319,7 @@ public:
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                xsectval envelope_maximum = (max_dsigma + fabs(err))*pow(kt0,power_law);
+                xsectval envelope_maximum = 2*(max_dsigma + fabs(err))*pow(kt0,power_law);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -371,7 +371,7 @@ public:
         {
             if (!reduce_nucleon_energies) //Only one sigma_jet
             {
-                power_law = 2.5;
+                power_law = 2.2;
 
                 std::cout<<"Calculating sigma_jet..."<<std::flush;
                 xsectval sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
@@ -381,7 +381,7 @@ public:
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                xsectval envelope_maximum = (max_dsigma + fabs(err))*pow(kt0,power_law);
+                xsectval envelope_maximum = 2.5*(max_dsigma + fabs(err))*pow(kt0,power_law);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple

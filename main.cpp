@@ -1,4 +1,5 @@
 //Copyright (c) 2022 Mikko Kuha 
+//TODO implement M-tree (https://github.com/erdavila/M-Tree ? Boost::Graph?)
 
 #include <algorithm>
 #include <atomic>
@@ -6,6 +7,7 @@
 #include <csignal>
 #include <execution>
 #include <fstream>
+#include <gsl/gsl_sf_expint.h>
 #include <iostream>
 #include <mutex>
 #include <random>
@@ -208,7 +210,7 @@ auto filter_collisions_saturation
         for (auto & cand : candidates)
         {
             auto [cand_x, cand_y] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
-            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap), 1);
+            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap*FMGEV), 1);
             if (check_and_place_circle_among_others_with_disks(std::move(cand_circle), final_circles))
             {
                 final_candidates.emplace_back(std::move(cand.dijet));
@@ -335,6 +337,100 @@ auto filter_collisions_MC
     //}
 }
 
+
+//Empties all of the binary_collisions TODO
+auto filter_collisions_local_MC 
+(
+    std::vector<nn_coll> &binary_collisions,
+    std::vector<dijet_with_ns> &final_candidates,
+    const momentum &sqrt_s,
+    const xsectval &sigma_inel
+) noexcept -> void
+{
+    /*std::unordered_map<nucleon*, double> x1s;
+    std::unordered_map<nucleon*, double> x2s;
+    std::unordered_set<nucleon*> depleted_pro;
+    std::unordered_set<nucleon*> depleted_tar;
+
+    std::vector<colls_with_ns> collision_candidates;
+    collision_candidates.reserve(binary_collisions.size()*10);
+
+    for (auto &col : binary_collisions)
+    {
+        for (auto &dij : col.dijets)
+        {
+            collision_candidates.emplace_back(dij.kt, dij.y1, dij.y2, col.projectile, col.target, &dij);
+        }
+    }
+    collision_candidates.shrink_to_fit();
+
+    std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
+              [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
+
+    for (auto & cand : collision_candidates)
+    {
+        if (deplete_nucleons && (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon)))
+        {
+            continue;
+        }
+
+        bool discard = false;
+        auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
+        auto x2 = (cand.kt / sqrt_s) * (exp(-cand.y1) + exp(-cand.y2));
+
+        auto i_x1_sum = x1s.find(cand.pro_nucleon);
+        if (i_x1_sum != x1s.end())
+        {
+            i_x1_sum->second += x1;
+
+            if (i_x1_sum->second > 1.0)
+            {
+                discard = true;
+                if (deplete_nucleons)
+                {
+                    depleted_pro.insert(cand.pro_nucleon);
+                }
+            }
+        }
+        else
+        {
+            x1s.insert({cand.pro_nucleon, x1});
+        }
+
+        auto i_x2_sum = x2s.find(cand.tar_nucleon);
+        if (i_x2_sum != x2s.end())
+        {
+            i_x2_sum->second += x2;
+
+            if (i_x2_sum->second > 1.0)
+            {
+                discard = true;
+                if (deplete_nucleons)
+                {
+                    depleted_tar.insert(cand.tar_nucleon);
+                }
+            }
+        }
+        else
+        {
+            x2s.insert({cand.tar_nucleon, x2});
+        }
+
+        if (!discard)
+        {
+            final_candidates.emplace_back(std::move(*(cand.dijet)), cand.pro_nucleon, cand.tar_nucleon);
+        }
+    }
+
+    //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
+
+    binary_collisions.clear();*/
+    //for (auto &col : binary_collisions)
+    //{
+    //    col.dijets.erase(col.dijets.begin(), col.dijets.end());
+    //}
+}
+
 auto filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
@@ -342,12 +438,14 @@ auto filter_end_state
     std::uniform_real_distribution<double> &unirand,
     std::shared_ptr<std::mt19937> random_generator,
     const bool mom_cons = false,
+    const bool local_mom_cons = false,
     const bool saturation = false,
     const bool deplete_nucleons = false,
     const bool saturation_with_overlap = false,
     const momentum sqrt_s = 0,
     const double &maximum_overlap = 2.0,
-    const spatial &proton_width = 1.0
+    const spatial &proton_width = 1.0,
+    const xsectval &sigma_inel = 1.0
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
@@ -355,7 +453,14 @@ auto filter_end_state
     
     if (mom_cons) 
     {
-        filter_collisions_MC(binary_collisions, candidates, sqrt_s, deplete_nucleons);
+        if (local_mom_cons)
+        {
+            filter_collisions_local_MC(binary_collisions, candidates, sqrt_s, sigma_inel);
+        }
+        else
+        {
+            filter_collisions_MC(binary_collisions, candidates, sqrt_s, deplete_nucleons);
+        }
     }
     else
     {
@@ -423,9 +528,12 @@ int main(int argc, char** argv)
         g_are_ns_depleted,
         g_is_saturation,
         g_is_sat_overlap,
+        g_is_mc_glauber,
         desired_N_events,
         b_max,
-        pt0
+        pt0,
+        K_factor,
+        K_sat
     ] = io::read_conf(std::string(argv[1]));
 
     /*switch (argv[1][0])
@@ -552,6 +660,7 @@ int main(int argc, char** argv)
                   read_events_from_file    = false,
                   read_sigmajets_from_file = true,
                   end_state_filtering      = true, 
+                  varying_inel             = true, 
                   save_events              = false/*, 
                   average_spatial_taas     = false*/;
     std::string   event_file_name = "event_log_"+name_postfix+".dat";
@@ -595,36 +704,20 @@ int main(int argc, char** argv)
     };
     
     //Parameters for the hard collisions
-    const double K_sat = 10.0;
-    const double K_factor = 1.0;
     const spatial proton_width = 0.573;
     const spatial proton_width_2 = pow(0.573, 2);
     const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared)
     {
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }}; 
-    const xsectval sigma_inel_for_glauber = 41.5;//mb
+    xsectval sigma_inel_for_glauber       = 70;//mb
     const momentum sqrt_s                 = 5020;//GeV
     const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
     momentum kt0                          = pt0;//2.728321;//GeV
     momentum kt02                         = pow(kt0, 2);//GeV^2
     rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
-    const AA_collision_params coll_params
-    {
-    /*mc_glauber_mode=          */false,
-    /*pp_scattering=            */g_is_pp,
-    /*pA_scattering=            */g_is_pa,
-    /*spatial_pdfs=             */g_use_snpdfs,
-    /*spatial_averaging=        */false,
-    /*calculate_end_state=      */true,
-    /*reduce_nucleon_energies=  */g_is_mom_cons,
-    /*sigma_inel_for_glauber=   */sigma_inel_for_glauber,
-    /*Tpp=                      */Tpp,
-    /*normalize_to=             */B2_normalization_mode::inelastic,
-    /*sqrt_s=                   */sqrt_s,
-    /*energy_threshold=         */kt0
-    };
+
     std::array<std::vector<io::Coll>, 6> collisions_for_reporting;
     std::array<std::vector<io::Coll>, 6> collisions_for_reporting_midrap;
     std::mutex colls_mutex; 
@@ -645,7 +738,7 @@ int main(int argc, char** argv)
     /*target_with_npdfs=        */(!g_is_pp && g_use_npdfs),
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
-    /*npdfs_spatial=            */coll_params.spatial_pdfs,
+    /*npdfs_spatial=            */g_use_snpdfs,
     /*npdf_setnumber=           */1,
     /*K_factor=                 */K_factor,
     /*A=                        */(g_is_aa)? 208 : 1, //Pb 
@@ -702,7 +795,6 @@ int main(int argc, char** argv)
 //
 //return 0;
 
-
     auto
     [
         dijet_norm,
@@ -715,8 +807,8 @@ int main(int argc, char** argv)
     calcs::prepare_sigma_jets
     (
         (diff_params.projectile_with_npdfs || diff_params.target_with_npdfs),
-        coll_params.spatial_pdfs,
-        coll_params.reduce_nucleon_energies,
+        g_use_snpdfs,
+        g_is_mom_cons,
         read_sigmajets_from_file,
         p_pdf, 
         mand_s,
@@ -726,6 +818,31 @@ int main(int argc, char** argv)
         jet_params
     );
     
+    if (varying_inel)
+    {
+        auto dummy = std::get<xsectval>(sigma_jet) / (4 * M_PI * proton_width_2);
+        dummy = dummy / 10; //mb -> fm²
+
+        sigma_inel_for_glauber = (4 * M_PI * proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
+        std::cout<<std::endl<<sigma_inel_for_glauber<<std::endl;
+    }
+
+    AA_collision_params coll_params
+    {
+    /*mc_glauber_mode=          */g_is_mc_glauber,
+    /*pp_scattering=            */g_is_pp,
+    /*pA_scattering=            */g_is_pa,
+    /*spatial_pdfs=             */g_use_snpdfs,
+    /*spatial_averaging=        */false,
+    /*calculate_end_state=      */true,
+    /*reduce_nucleon_energies=  */g_is_mom_cons,
+    /*sigma_inel_for_glauber=   */sigma_inel_for_glauber,
+    /*Tpp=                      */Tpp,
+    /*normalize_to=             */B2_normalization_mode::inelastic,
+    /*sqrt_s=                   */sqrt_s,
+    /*energy_threshold=         */kt0
+    };
+
 //std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
 //return 0;
 
@@ -759,6 +876,11 @@ int main(int argc, char** argv)
     
     //std::ofstream log_file;
     //log_file.open("log2.dat", std::ios::out);
+
+
+
+    auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
+    std::vector<std::map<io::Coll, std::vector<dijet_specs>, decltype(cmpLambda)> > colls_scatterings(6, std::map<io::Coll, std::vector<dijet_specs>, decltype(cmpLambda)>(cmpLambda));
 
     std::vector<histo_2d> jets(6, histo_2d({kt_bins, y_bins}));
     std::vector<histo_2d> dijets(6, histo_2d({kt_bins, y_bins}));
@@ -865,7 +987,8 @@ int main(int argc, char** argv)
                  &sigma_jet=sigma_jet,
                  &power_law=power_law,
                  &envelope_maximum=envelope_maximum,
-                 &K_sat=K_sat
+                 &K_sat=K_sat,
+                 &colls_scatterings=colls_scatterings
                 ](const uint64_t index) 
                 {
                     do //while (g_bug_bool)
@@ -900,10 +1023,13 @@ int main(int argc, char** argv)
                         //auto radial_sampler = sampler_pointers[0];
                         std::vector<nucleon> pro, tar;
 
-                        bool bugged;
-                        do //while (!bugged)
+                        bool bugged, collided;
+                        // "ball" diameter = distance at which two nucleons interact
+                        const spatial d2 = 70.0/(M_PI*10.0); // in fm^2
+                        do //while (!collided || bugged)
                         {
                             bugged = false;
+                            collided = false;
                             try
                             {
                                 auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
@@ -924,9 +1050,29 @@ int main(int argc, char** argv)
                                 std::cout << e.what() << " in main, trying again"<<std::endl;
                                 bugged = true;
                             }
-                        } while (bugged);
+                            
+                            for (auto A : pro)
+                            {
+                                for (auto B : tar)
+                                {
+                                    // "ball" diameter = distance at which two nucleons interact
+                                    const spatial dij2 = A.calculate_bsquared(B);
+                                    
+                                    if (dij2 <= d2) //at least one collision
+                                    {
+                                        collided = true;
+                                        continue;
+                                    }
+                                }
+                                if (collided)
+                                {
+                                    continue;
+                                }
+                            }
+
+                        } while (!collided || bugged);
                         
-                        do
+                        do //while (NColl<1)
                         {
                             binary_collisions[0].clear();
                             if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
@@ -993,6 +1139,7 @@ int main(int argc, char** argv)
                         }
                         else if (end_state_filtering)
                         {
+                            double max_overlap = K_sat;
                             std::array<momentum, 6> sum_E{0,0,0,0,0,0};
                             filter_end_state
                             (
@@ -1001,11 +1148,12 @@ int main(int argc, char** argv)
                                 unirand, 
                                 eng, 
                                 false, 
+                                false,
                                 false, 
                                 false, 
                                 false, 
                                 sqrt_s,
-                                K_sat,
+                                max_overlap,
                                 proton_width
                             );
                             filter_end_state
@@ -1015,11 +1163,12 @@ int main(int argc, char** argv)
                                 unirand, 
                                 eng, 
                                 true, 
+                                false,
                                 false, 
                                 true, 
                                 false, 
                                 sqrt_s, 
-                                K_sat,
+                                max_overlap,
                                 proton_width
                             );
                             filter_end_state
@@ -1029,11 +1178,12 @@ int main(int argc, char** argv)
                                 unirand, 
                                 eng, 
                                 true, 
+                                false,
                                 false, 
                                 false, 
                                 false, 
                                 sqrt_s, 
-                                K_sat,
+                                max_overlap,
                                 proton_width
                             );
                             filter_end_state
@@ -1043,11 +1193,12 @@ int main(int argc, char** argv)
                                 unirand, 
                                 eng, 
                                 false, 
+                                false,
                                 true, 
                                 false, 
                                 false, 
                                 sqrt_s, 
-                                K_sat,
+                                max_overlap,
                                 proton_width
                             );
                             filter_end_state
@@ -1057,11 +1208,12 @@ int main(int argc, char** argv)
                                 unirand, 
                                 eng, 
                                 false, 
+                                false,
                                 true, 
                                 false, 
                                 true, 
                                 sqrt_s, 
-                                K_sat,
+                                max_overlap,
                                 proton_width
                             );
                             filter_end_state
@@ -1070,12 +1222,13 @@ int main(int argc, char** argv)
                                 filtered_scatterings[5], 
                                 unirand, 
                                 eng, 
-                                true, 
+                                true,
+                                false, 
                                 true, 
                                 true, 
                                 false, 
                                 sqrt_s, 
-                                K_sat,
+                                max_overlap,
                                 proton_width
                             );
 
@@ -1185,13 +1338,13 @@ int main(int argc, char** argv)
                                     total_energy[i] << sum_ET[i] << ' ' << sum_E[i] << std::endl;
                                 }
                                 
-                                if (sum_E[i] > max_energy)
-                                {
-                                    std::cout << std::endl 
-                                            << "Energy conservation violated! Total "<< ++max_energy_broken[i]
-                                            << " times this far in branch "<< i << std::endl
-                                            << "E_T = " << sum_ET[i] << ", E = " << sum_E[i]  << std::endl;
-                                }
+//                                if (sum_E[i] > max_energy)
+//                                {
+//                                    std::cout << std::endl 
+//                                            << "Energy conservation violated! Total "<< ++max_energy_broken[i]
+//                                            << " times this far in branch "<< i << std::endl
+//                                            << "E_T = " << sum_ET[i] << ", E = " << sum_E[i]  << std::endl;
+//                                }
                             }
 
                             {
@@ -1269,6 +1422,8 @@ int main(int argc, char** argv)
                                 io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings[i].size(), impact_parameter, sum_ET_midrap[i]);
                                 collisions_for_reporting[i].push_back(coll);
                                 collisions_for_reporting_midrap[i].push_back(coll_midrap);
+
+                                colls_scatterings[i].insert({coll, filtered_scatterings[i]});
                             }
                         }
                         
@@ -1541,6 +1696,60 @@ int main(int argc, char** argv)
         glauber_report_file.open(namesss_midrap[i], std::ios::out);
         io::mc_glauber_style_report(collisions_for_reporting_midrap[i], sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
         glauber_report_file.close();
+    }
+
+    
+    double centLow = 0.0;
+    double centHigh = 0.05;
+    std::array<std::string, 6> names_pfs{name_postfix+".dat",
+                                         name_postfix+"_MC.dat",
+                                         name_postfix+"_MC_ND.dat",
+                                         name_postfix+"_SAT.dat",
+                                         name_postfix+"_SAT_OL.dat",
+                                         name_postfix+"_SAT_MC.dat"};
+    for (size_t i=0; i<6; i++)
+    {
+        histo_1d dETdy_by_cent{y_bins};
+        histo_1d dEdy_by_cent{y_bins};
+        std::vector<std::tuple<double, double> > new_ET_y;
+        std::vector<std::tuple<double, double> > new_E_y;
+
+        size_t N_evts_tot = colls_scatterings[i].size();
+        // Make sure that no rounding downwards.
+        double eps = 0.1/N_evts_tot;
+
+        size_t lower_ind = static_cast<size_t>(centLow*N_evts_tot+eps);
+        size_t upper_ind = static_cast<size_t>(centHigh*N_evts_tot+eps);
+
+        for (auto it = colls_scatterings[i].crbegin(); lower_ind<upper_ind; ++it, lower_ind++)
+        {
+            for (auto e : it->second)
+            {
+                new_ET_y.emplace_back(e.y1, e.kt);
+                new_ET_y.emplace_back(e.y2, e.kt);
+                
+                new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+            }
+        }
+
+        dETdy_by_cent.add(new_ET_y);
+        dEdy_by_cent.add(new_E_y);
+
+        io::print_1d_histo
+        (
+            dETdy_by_cent,
+            "dETdy_0_5_"+names_pfs[i], 
+            1.0/ (N_evts_tot*(centHigh-centLow)),
+            false
+        );
+        io::print_1d_histo
+        (
+            dEdy_by_cent, 
+            "dEdy_0_5_"+names_pfs[i], 
+            1.0/ (N_evts_tot*(centHigh-centLow)),
+            false
+        );
     }
 
     return 0;

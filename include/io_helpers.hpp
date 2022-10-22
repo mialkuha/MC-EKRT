@@ -504,9 +504,12 @@ public:
         bool are_ns_depleted    = false;
         bool is_saturation      = false;
         bool is_sat_overlap     = false;
+        bool is_mc_glauber      = false;
         uint32_t n_events       = 10000;
         spatial b_max           = 20;//fm
         momentum pt0            = 2.728321;//GeV
+        double K_factor         = 1.0;
+        double K_sat            = 1.0;
 
         uint16_t count = 0;
 
@@ -564,6 +567,10 @@ public:
                 {
                     line_stream >> std::boolalpha >> is_sat_overlap;
                 }
+                else if (param_name == "is_mc_glauber")
+                {
+                    line_stream >> std::boolalpha >> is_mc_glauber;
+                }
                 else if (param_name == "n_events")
                 {
                     line_stream >> n_events;
@@ -575,6 +582,14 @@ public:
                 else if (param_name == "pt0")
                 {
                     line_stream >> pt0;
+                }
+                else if (param_name == "K_factor")
+                {
+                    line_stream >> K_factor;
+                }
+                else if (param_name == "K_sat")
+                {
+                    line_stream >> K_sat;
                 }
                 count++;
             }
@@ -600,9 +615,12 @@ public:
                     are_ns_depleted,
                     is_saturation,
                     is_sat_overlap,
+                    is_mc_glauber,
                     n_events,
                     b_max,
-                    pt0
+                    pt0,
+                    K_factor,
+                    K_sat
                 );
     }
 
@@ -677,7 +695,7 @@ public:
             print_1d_histo
             (
                 dEdy[i], 
-                "dEdy_sim_"+name_postfix+true_postfixes[i], 
+                "dEdy_sim_"+true_postfixes[i], 
                 1.0/ AA_events,
                 false
             );
