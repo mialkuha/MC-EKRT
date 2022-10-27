@@ -24,7 +24,7 @@ for name in obs_names:
 			 	     name + '_0_5_ekrt_like_K=2_M=2.4_SAT_MC.dat',
 			 	     name + '_0_5_ekrt_like_K=2_M=4_nPDF_SAT_MC.dat']
 
-	pdf_name  = name+'_tau_order_comparison+MC.pdf'
+	pdf_name  = name+'_tau_order_comparison+MC_fixd.pdf'
 
 	infiles = [ open(n,'r') for n in infile_names ]
 
@@ -64,7 +64,7 @@ for name in obs_names:
 	#ax.set_yticks((0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8))
 	#ax.set_yticklabels(('$0$', '$0.2$', '$0.4$', '$0.6$', '$0.8$', '$1.0$', '$1.2$', '$1.4$', '$1.6$', '$1.8$'), size='xx-large')
 	ax.tick_params(axis='both', which='both', direction='in', top=True, right=True)
-	plt.legend(loc='upper right', ncol=1, fontsize='x-large')
+	plt.legend(loc='lower right', ncol=1, fontsize='large')
 	pp = PdfPages(pdf_name)
 	plt.savefig(pp, format='pdf')
 	pp.close()

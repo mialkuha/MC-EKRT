@@ -463,7 +463,7 @@ auto filter_end_state
     std::uniform_real_distribution<double> &unirand,
     std::shared_ptr<std::mt19937> random_generator,
     const bool mom_cons = false,
-    const bool local_mom_cons = false,
+    const bool mom_cons_local = false,
     const bool saturation = false,
     const bool deplete_nucleons = false,
     const bool saturation_with_overlap = false,
@@ -480,11 +480,126 @@ auto filter_end_state
     std::vector<dijet_with_ns> candidates;
     candidates.reserve(binary_collisions.size()*10); //10 events on average is just an overhead guess
 
-    std::vector<dijet_specs> placeholder_filtered;
+    std::unordered_map<nucleon*, double> x1s;
+    std::unordered_map<nucleon*, double> x2s;
+    std::unordered_set<nucleon*> depleted_pro;
+    std::unordered_set<nucleon*> depleted_tar;
     
+
+    std::normal_distribution<double> normal_dist(0,0);
+
+    for (auto &col : binary_collisions)
+    {
+        for (auto &dij : col.dijets)
+        {
+            candidates.emplace_back(std::move(dij), col.projectile, col.target);
+        }
+    }
+    candidates.shrink_to_fit();
+    
+    std::vector<std::tuple<double, double, double, uint16_t> > final_circles;
+    final_circles.reserve(candidates.size());
+    filtered_scatterings.reserve(filtered_scatterings.size()+candidates.size());
+
+    //std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
+    //          [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
+    std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the smallest tau is first
+              [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.tau < s2.tau); });
+    
+    momentum kt;
+    rapidity y1, y2;
+    double i_x1_sum_to_be, i_x2_sum_to_be;
+    double tata = 0.0;
+
+    for (auto & cand : candidates)
+    {
+        kt = cand.dijet.kt;
+        y1 = cand.dijet.y1;
+        y2 = cand.dijet.y2;
+
+        if (mom_cons)
+        {
+            //MOMENTUM CONSERVATION
+
+            if (deplete_nucleons && (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon)))
+            {
+                continue;
+            }
+
+            auto x1 = (kt / sqrt_s) * (exp(y1) + exp(y2));
+            auto x2 = (kt / sqrt_s) * (exp(-y1) + exp(-y2));
+
+            i_x1_sum_to_be = x1;
+            i_x2_sum_to_be = x2;
+
+            auto i_x1_sum = x1s.find(cand.pro_nucleon);
+            if (i_x1_sum != x1s.end())
+            {
+                i_x1_sum_to_be = i_x1_sum->second + x1;
+
+                if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
+                {
+                    if (deplete_nucleons)
+                    {
+                        depleted_pro.insert(cand.pro_nucleon);
+                    }
+                    continue;
+                }
+            }
+
+            auto i_x2_sum = x2s.find(cand.tar_nucleon);
+            if (i_x2_sum != x2s.end())
+            {
+                i_x2_sum_to_be = i_x2_sum->second + x2;
+
+                if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
+                {
+                    if (deplete_nucleons)
+                    {
+                        depleted_tar.insert(cand.tar_nucleon);
+                    }
+                    continue;
+                }
+            }
+        }
+        
+        auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
+
+        if (saturation)
+        {
+            //SATURATION
+
+            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap*FMGEV), 1);
+
+            if (!check_and_place_circle_among_others_with_disks(std::move(cand_circle), final_circles))
+            {
+                continue; //Did not fit into saturated PS --> discard
+            }
+
+            if (include_tata)
+            {
+                nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+                tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
+            }
+        }
+
+        if (mom_cons)
+        {
+            x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
+            x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
+        }
+        filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.tau, tata});
+    }
+
+    //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
+
+    binary_collisions.clear();
+
+/*
+
     if (mom_cons) 
     {
-        if (local_mom_cons)
+        if (mom_cons_local)
         {
             filter_collisions_local_MC(binary_collisions, candidates, sqrt_s, sigma_inel);
         }
@@ -526,7 +641,7 @@ auto filter_end_state
             filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.tau, tata});
             //filtered_scatterings.push_back(candidate.dijet);
         }
-    }
+    }*/
     
     //std::cout << "filtered_scatterings.size() =  " << filtered_scatterings.size() << std::endl;
 }
@@ -1291,7 +1406,7 @@ int main(int argc, char** argv)
                                 true,
                                 false, 
                                 true, 
-                                true, 
+                                false, 
                                 false, 
                                 sqrt_s, 
                                 max_overlap,
