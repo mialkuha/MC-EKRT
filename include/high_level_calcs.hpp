@@ -1113,6 +1113,29 @@ public:
 
         return std::make_tuple(pro, tar);
     }
+    
+
+    static auto calculate_sum_tpp
+    (
+        const nucleon &nuc, 
+        const std::vector<nucleon> &nucleus, 
+        const std::function<spatial(const spatial&)> Tpp
+    ) noexcept -> spatial
+    {
+        spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
+        uint16_t A=static_cast<uint16_t>(nucleus.size());
+
+        auto [x1, y1, z1] = nuc.co;
+
+        for (uint16_t i=0; i<A; i++)
+        {
+            //sum_tpp += Tpp((nuc.co - nucleus.at(i).co).magt2());
+            auto [x2, y2, z2] = nucleus.at(i).co;
+            sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
+        }
+        //std::cout<<sum_tpp1<<' '<<sum_tpp2<<std::endl;
+        return sum_tpp;
+    }
 
     
 private:
@@ -2181,28 +2204,6 @@ private:
             }   
         }
         return tAB;
-    }
-
-    static auto calculate_sum_tpp
-    (
-        const nucleon &nuc, 
-        const std::vector<nucleon> &nucleus, 
-        const std::function<spatial(const spatial&)> Tpp
-    ) noexcept -> spatial
-    {
-        spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
-        uint16_t A=static_cast<uint16_t>(nucleus.size());
-
-        auto [x1, y1, z1] = nuc.co;
-
-        for (uint16_t i=0; i<A; i++)
-        {
-            //sum_tpp += Tpp((nuc.co - nucleus.at(i).co).magt2());
-            auto [x2, y2, z2] = nucleus.at(i).co;
-            sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
-        }
-        //std::cout<<sum_tpp1<<' '<<sum_tpp2<<std::endl;
-        return sum_tpp;
     }
 
     static void calculate_and_save_nuclei_TAs_TAAs

@@ -162,8 +162,10 @@ struct dijet_with_ns
     dijet_specs dijet;
     nucleon * pro_nucleon;
     nucleon * tar_nucleon;
+    double tau;
     dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_)
-        : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_) { }
+        : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
+    { tau = std::cosh(std::max(std::abs(dijet.y1),std::abs(dijet.y2)))/(dijet.kt*(1+std::exp(-std::abs(dijet.y1-dijet.y2))));}
 };
 
 auto throw_location_for_dijet
@@ -172,28 +174,33 @@ auto throw_location_for_dijet
     const spatial &proton_width,
     std::normal_distribution<double> &normal_dist, 
     std::shared_ptr<std::mt19937> random_generator
-) noexcept -> std::tuple<double, double>
+) noexcept -> std::tuple<double, double, double>
 {
     auto param = std::normal_distribution<double>::param_type{0., proton_width};
     auto dx = normal_dist(*random_generator,param);
     auto dy = normal_dist(*random_generator,param);
+    auto dz = 0.0;
 
     auto retx = 0.5*(cand.pro_nucleon->co.x + cand.tar_nucleon->co.x + M_SQRT2*dx);
     auto rety = 0.5*(cand.pro_nucleon->co.y + cand.tar_nucleon->co.y + M_SQRT2*dy);
 
-    return std::make_tuple(retx, rety);
+    return std::make_tuple(retx, rety, dz);
 }
 
 //Checks whether the saturation criterium allows the candidate to be added TODO
 auto filter_collisions_saturation
 (
     std::vector<dijet_with_ns> &candidates, 
-    std::vector<dijet_specs> &final_candidates,
+    std::vector<dijet_with_coords> &final_candidates,
     const double &maximum_overlap,
     const spatial &proton_width,
     std::uniform_real_distribution<double> &unirand,
     std::shared_ptr<std::mt19937> random_generator,
-    const bool with_overlaps
+    const bool with_overlaps,
+    const bool include_tata = false,
+    const std::vector<nucleon> &pro = {}, 
+    const std::vector<nucleon> &tar = {}, 
+    const std::function<spatial(const spatial&)> Tpp = nullptr
 ) noexcept -> void
 {
     std::vector<std::tuple<double, double, double, uint16_t> > final_circles;
@@ -202,18 +209,26 @@ auto filter_collisions_saturation
 
     std::normal_distribution<double> normal_dist(0,0);
 
-    std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the biggest kt is first
-        [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.dijet.kt > s2.dijet.kt); });
+    //std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the biggest kt is first
+    //    [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.dijet.kt > s2.dijet.kt); });
+    std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the smallest tau is first
+        [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.tau < s2.tau); });
 
     if (!with_overlaps)
     {
         for (auto & cand : candidates)
         {
-            auto [cand_x, cand_y] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
+            auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
             auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap*FMGEV), 1);
             if (check_and_place_circle_among_others_with_disks(std::move(cand_circle), final_circles))
             {
-                final_candidates.emplace_back(std::move(cand.dijet));
+                double tata = 0.0;
+                if (include_tata)
+                {
+                    nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+                    tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
+                }
+                final_candidates.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.tau, tata});
             }
         }
     }
@@ -221,11 +236,17 @@ auto filter_collisions_saturation
     {
         for (auto & cand : candidates)
         {
-            auto [cand_x, cand_y] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
+            auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
             auto cand_circle = std::make_tuple(cand_x, cand_y, 1/cand.dijet.kt, 1);
             if (check_and_place_circle_among_others_with_overlaps(std::move(cand_circle), final_circles, maximum_overlap, unirand, random_generator))
             {
-                final_candidates.emplace_back(std::move(cand.dijet));
+                double tata = 0.0;
+                if (include_tata)
+                {
+                    nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+                    tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
+                }
+                final_candidates.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.tau, tata});
             }
         }
     }
@@ -241,8 +262,10 @@ struct colls_with_ns
     nucleon * pro_nucleon;
     nucleon * tar_nucleon;
     dijet_specs * dijet;
+    double tau;
     colls_with_ns(momentum kt_, rapidity y1_, rapidity y2_, nucleon * pro_nucleon_, nucleon * tar_nucleon_, dijet_specs * dijet_)
-        : kt(kt_), y1(y1_), y2(y2_), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_), dijet(dijet_) { }
+        : kt(kt_), y1(y1_), y2(y2_), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_), dijet(dijet_)
+    { tau = std::cosh(std::max(std::abs(y1),std::abs(y2)))/(kt*(1+std::exp(-std::abs(y1-y2))));}
 };
 //Empties all of the binary_collisions
 auto filter_collisions_MC 
@@ -270,8 +293,10 @@ auto filter_collisions_MC
     }
     collision_candidates.shrink_to_fit();
 
-    std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
-              [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
+    //std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
+    //          [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
+    std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidate events so that the one with the smallest tau is first
+              [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.tau < s2.tau); });
 
     for (auto & cand : collision_candidates)
     {
@@ -434,7 +459,7 @@ auto filter_collisions_local_MC
 auto filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
-    std::vector<dijet_specs> &filtered_scatterings,
+    std::vector<dijet_with_coords> &filtered_scatterings,
     std::uniform_real_distribution<double> &unirand,
     std::shared_ptr<std::mt19937> random_generator,
     const bool mom_cons = false,
@@ -445,11 +470,17 @@ auto filter_end_state
     const momentum sqrt_s = 0,
     const double &maximum_overlap = 2.0,
     const spatial &proton_width = 1.0,
-    const xsectval &sigma_inel = 1.0
+    const xsectval &sigma_inel = 1.0,
+    const bool include_tata = false,
+    const std::vector<nucleon> &pro = {}, 
+    const std::vector<nucleon> &tar = {}, 
+    const std::function<spatial(const spatial&)> Tpp = nullptr
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
     candidates.reserve(binary_collisions.size()*10); //10 events on average is just an overhead guess
+
+    std::vector<dijet_specs> placeholder_filtered;
     
     if (mom_cons) 
     {
@@ -478,13 +509,22 @@ auto filter_end_state
 
     if (saturation)
     {
-        filter_collisions_saturation(candidates, filtered_scatterings, maximum_overlap, proton_width, unirand, random_generator, saturation_with_overlap);
+        filter_collisions_saturation(candidates, filtered_scatterings, maximum_overlap, proton_width, unirand, random_generator, saturation_with_overlap, include_tata, pro, tar, Tpp);
     }
     else
     {
-        for (auto &candidate : candidates) //all of the candidates are passed to filtered
+        for (auto &cand : candidates) //all of the candidates are passed to filtered
         {
-            filtered_scatterings.push_back(candidate.dijet);
+            std::normal_distribution<double> normal_dist(0,0);
+            double tata = 0.0;
+            auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
+            if (include_tata)
+            {
+                nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+                tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
+            }
+            filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.tau, tata});
+            //filtered_scatterings.push_back(candidate.dijet);
         }
     }
     
@@ -661,7 +701,8 @@ int main(int argc, char** argv)
                   read_sigmajets_from_file = true,
                   end_state_filtering      = true, 
                   varying_inel             = true, 
-                  save_events              = false/*, 
+                  save_events              = false, 
+                  include_tata             = true/*, 
                   average_spatial_taas     = false*/;
     std::string   event_file_name = "event_log_"+name_postfix+".dat";
     uint32_t      AA_events             = 0;
@@ -880,7 +921,7 @@ int main(int argc, char** argv)
 
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
-    std::vector<std::map<io::Coll, std::vector<dijet_specs>, decltype(cmpLambda)> > colls_scatterings(6, std::map<io::Coll, std::vector<dijet_specs>, decltype(cmpLambda)>(cmpLambda));
+    std::vector<std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> > colls_scatterings(6, std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)>(cmpLambda));
 
     std::vector<histo_2d> jets(6, histo_2d({kt_bins, y_bins}));
     std::vector<histo_2d> dijets(6, histo_2d({kt_bins, y_bins}));
@@ -995,10 +1036,10 @@ int main(int argc, char** argv)
                     {
                         uint32_t NColl = 0;
                         std::array<std::vector<nn_coll>, 6> binary_collisions;
-                        std::array<std::vector<dijet_specs>, 6> filtered_scatterings;
+                        std::array<std::vector<dijet_with_coords>, 6> filtered_scatterings;
 
                         //B^2 from a uniform distribution
-                        spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
+                        spatial impact_parameter = 0;//sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
 
                         //std::shared_ptr<ars> radial_sampler;
                         //bool sampler_found = false;
@@ -1109,7 +1150,7 @@ int main(int argc, char** argv)
                             NColl = static_cast<uint32_t>(binary_collisions[0].size());
                             if (NColl<1)
                             {
-                                impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
+                                impact_parameter = 0;//sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
                                 //const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
                                 std::tie(pro, tar) = calcs::generate_nuclei
                                 (
@@ -1154,7 +1195,12 @@ int main(int argc, char** argv)
                                 false, 
                                 sqrt_s,
                                 max_overlap,
-                                proton_width
+                                proton_width,
+                                sigma_inel_for_glauber,
+                                include_tata,
+                                pro,
+                                tar,
+                                coll_params.Tpp
                             );
                             filter_end_state
                             (
@@ -1169,7 +1215,12 @@ int main(int argc, char** argv)
                                 false, 
                                 sqrt_s, 
                                 max_overlap,
-                                proton_width
+                                proton_width,
+                                sigma_inel_for_glauber,
+                                include_tata,
+                                pro,
+                                tar,
+                                coll_params.Tpp
                             );
                             filter_end_state
                             (
@@ -1184,7 +1235,12 @@ int main(int argc, char** argv)
                                 false, 
                                 sqrt_s, 
                                 max_overlap,
-                                proton_width
+                                proton_width,
+                                sigma_inel_for_glauber,
+                                include_tata,
+                                pro,
+                                tar,
+                                coll_params.Tpp
                             );
                             filter_end_state
                             (
@@ -1199,7 +1255,12 @@ int main(int argc, char** argv)
                                 false, 
                                 sqrt_s, 
                                 max_overlap,
-                                proton_width
+                                proton_width,
+                                sigma_inel_for_glauber,
+                                include_tata,
+                                pro,
+                                tar,
+                                coll_params.Tpp
                             );
                             filter_end_state
                             (
@@ -1214,7 +1275,12 @@ int main(int argc, char** argv)
                                 true, 
                                 sqrt_s, 
                                 max_overlap,
-                                proton_width
+                                proton_width,
+                                sigma_inel_for_glauber,
+                                include_tata,
+                                pro,
+                                tar,
+                                coll_params.Tpp
                             );
                             filter_end_state
                             (
@@ -1229,7 +1295,12 @@ int main(int argc, char** argv)
                                 false, 
                                 sqrt_s, 
                                 max_overlap,
-                                proton_width
+                                proton_width,
+                                sigma_inel_for_glauber,
+                                include_tata,
+                                pro,
+                                tar,
+                                coll_params.Tpp
                             );
 
                             std::array<std::vector<std::tuple<double, double> >, 6> new_jets;
@@ -1242,8 +1313,10 @@ int main(int argc, char** argv)
 
                             for (size_t i=0; i<6; i++)
                             {
-                                for (auto e : filtered_scatterings[i])
+                                for (auto e_co : filtered_scatterings[i])
                                 {
+                                    auto e = e_co.dijet;
+
                                     new_jets[i].emplace_back(e.kt, e.y1);
                                     new_jets[i].emplace_back(e.kt, e.y2);
                                     
@@ -1425,6 +1498,8 @@ int main(int argc, char** argv)
 
                                 colls_scatterings[i].insert({coll, filtered_scatterings[i]});
                             }
+                            
+                            //io::save_single_coll(filtered_scatterings,unirand,eng,include_tata);
                         }
                         
                         //filtered_scatterings.clear();
@@ -1441,7 +1516,8 @@ int main(int argc, char** argv)
             std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
         }
         std::cout<<" ...done!"<<std::endl;
-    }/*
+    }
+    /*
     else
     {
         std::ifstream event_file;
@@ -1653,6 +1729,7 @@ int main(int argc, char** argv)
         }
     }*/
 
+
     io::print_histos
     (
         name_postfix,
@@ -1723,8 +1800,10 @@ int main(int argc, char** argv)
 
         for (auto it = colls_scatterings[i].crbegin(); lower_ind<upper_ind; ++it, lower_ind++)
         {
-            for (auto e : it->second)
+            for (auto e_co : it->second)
             {
+                auto e = e_co.dijet;
+
                 new_ET_y.emplace_back(e.y1, e.kt);
                 new_ET_y.emplace_back(e.y2, e.kt);
                 

@@ -154,4 +154,12 @@ struct coords {
   }
 };
 
+struct dijet_with_coords
+{
+    dijet_specs dijet;
+    coords co;
+    double tau;
+    double tata;
+};
+
 #endif // TYPEDEFS_HPP

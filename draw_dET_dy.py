@@ -17,12 +17,14 @@ for name in obs_names:
 	#		 	     name + '_0_5_ekrt_like_variant_K=6_nPDF_SAT.dat',
     #                 name + '_0_5_ekrt_like_variant_K=6_SAT_MC.dat',
     #                 name + '_0_5_ekrt_like_variant_K=6_nPDF_SAT_MC.dat']
-	infile_names = [ name + '_0_5_ekrt_like_variant_K=6_MC.dat',
-			 	     name + '_0_5_ekrt_like_variant_K=6_nPDF_MC.dat',
-			 	     name + '_0_5_ekrt_like_variant_K=6_MC_ND.dat',
-			 	     name + '_0_5_ekrt_like_variant_K=6_nPDF_MC_ND.dat']
+	infile_names = [ name + '_0_5_ekrt_like_K=1_M=5.8_SAT.dat',
+			 	     name + '_0_5_ekrt_like_K=2_M=2.4_SAT.dat',
+			 	     name + '_0_5_ekrt_like_K=2_M=4_nPDF_SAT.dat',
+                     name + '_0_5_ekrt_like_K=1_M=5.8_SAT_MC.dat',
+			 	     name + '_0_5_ekrt_like_K=2_M=2.4_SAT_MC.dat',
+			 	     name + '_0_5_ekrt_like_K=2_M=4_nPDF_SAT_MC.dat']
 
-	pdf_name  = name+'_TEST.pdf'
+	pdf_name  = name+'_tau_order_comparison+MC.pdf'
 
 	infiles = [ open(n,'r') for n in infile_names ]
 
@@ -50,10 +52,12 @@ for name in obs_names:
 	#ax.plot(y_points, np.transpose(datas[3]), 'r-', label='nPDF SAT', linewidth=1)
 	#ax.plot(y_points, np.transpose(datas[4]), 'b--', label='PDF SAT+MC', linewidth=1)
 	#ax.plot(y_points, np.transpose(datas[5]), 'r--', label='nPDF SAT+MC', linewidth=1)
-	ax.plot(y_points, np.transpose(datas[0]), 'b-', label='PDF MC', linewidth=1)
-	ax.plot(y_points, np.transpose(datas[1]), 'r-', label='nPDF MC', linewidth=1)
-	ax.plot(y_points, np.transpose(datas[2]), 'b--', label='PDF MC ND', linewidth=1)
-	ax.plot(y_points, np.transpose(datas[3]), 'r--', label='nPDF MC ND', linewidth=1)
+	ax.plot(y_points, np.transpose(datas[0]), 'b-', label='K=1 M=5.8 PDF', linewidth=1)
+	ax.plot(y_points, np.transpose(datas[1]), 'r-', label='K=2 M=2.4 PDF', linewidth=1)
+	ax.plot(y_points, np.transpose(datas[2]), 'g-', label='K=2 M=4 nPDF', linewidth=1)
+	ax.plot(y_points, np.transpose(datas[3]), 'b--', label='MC K=1 M=5.8 PDF', linewidth=1)
+	ax.plot(y_points, np.transpose(datas[4]), 'r--', label='MC K=2 M=2.4 PDF', linewidth=1)
+	ax.plot(y_points, np.transpose(datas[5]), 'g--', label='MC K=2 M=4 nPDF', linewidth=1)
 	ax.minorticks_on()
 	#ax.set_xticks((0.0001, 0.001, 0.01, 0.1, 1.0))
 	#ax.set_xticklabels(('$1e-4$', '$1e-3$', '$1e-2$', '$0.1$', '$1.0$'), size='xx-large')

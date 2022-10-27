@@ -384,7 +384,7 @@ public:
         const std::vector<nucleon> &pro, 
         const std::vector<nucleon> &tar, 
         const spatial &impact_parameter,
-        const std::vector<dijet_specs> &filtered_scatterings
+        const std::vector<dijet_with_coords> &filtered_scatterings
     ) noexcept -> void
     {
         event_file << "{"<<std::endl;
@@ -426,8 +426,10 @@ public:
         }
         event_file << "    },"<<std::endl;
         event_file << "    {"<<std::endl;
-        for (const auto & sc : filtered_scatterings)
+        for (const auto & scc : filtered_scatterings)
         {
+            const auto sc = scc.dijet;
+
             event_file << "        {"<<std::endl;
             event_file << "            "<<sc.kt<<','<<std::endl;
             event_file << "            "<<sc.y1<<','<<std::endl;
@@ -436,7 +438,7 @@ public:
             event_file << "            "<<sc.init2<<','<<std::endl;
             event_file << "            "<<sc.final1<<','<<std::endl;
             event_file << "            "<<sc.final2<<std::endl;
-            if (&sc != &filtered_scatterings.back())
+            if (&scc != &filtered_scatterings.back())
             {
                 event_file << "        },"<<std::endl;
             }
@@ -447,6 +449,107 @@ public:
         }
         event_file << "    }"<<std::endl;
         event_file << "},"<<std::endl;
+    }
+
+    static auto save_single_coll
+    (
+        const std::array<std::vector<dijet_with_coords>, 6> &filtered_scatterings,
+        std::uniform_real_distribution<double> &unirand,
+        std::shared_ptr<std::mt19937> random_generator,
+        bool include_TATA = false
+    ) noexcept -> void
+    {
+        std::ofstream event_file, pt_file;
+        std::string name = "jets";
+        std::string separator = ",";
+        std::array<std::string, 6> names{name+".csv",
+                                         name+"_MC.csv",
+                                         name+"_MC_ND.csv",
+                                         name+"_SAT.csv",
+                                         name+"_SAT_OL.csv",
+                                         name+"_SAT_MC.csv"};
+        
+        momentum pt, energy, px, py, pz;
+        rapidity y1, y2;
+        double theta;
+
+        for (size_t i=0; i<6; i++)
+        {
+            event_file.open(names[i]);
+            //Output header
+            event_file << "tau" << separator;
+            event_file << "x"   << separator;
+            event_file << "y"   << separator;
+            event_file << "z"   << separator;
+            event_file << "E"   << separator;
+            event_file << "p_x" << separator;
+            event_file << "p_y" << separator;
+            event_file << "p_z";
+            if(include_TATA)
+            { 
+                event_file << separator;
+                event_file << "p_T" << separator;
+                event_file << "T_AT_A" << std::endl;
+            }
+            else
+            {
+                event_file << std::endl;
+            }
+
+            for (auto e_co : filtered_scatterings[i])
+            {
+                pt = e_co.dijet.kt;
+                y1 = e_co.dijet.y1;
+                y2 = e_co.dijet.y2;
+                // jet 1
+                energy = pt*std::cosh(y1);
+                theta = 2*M_PI*unirand(*random_generator);
+                px = pt*std::cos(theta);
+                py = pt*std::sin(theta);
+                pz = pt*std::sinh(y1);
+                event_file << e_co.tau  << separator; //tau
+                event_file << e_co.co.x << separator; //x
+                event_file << e_co.co.y << separator; //y
+                event_file << e_co.co.z << separator; //z
+                event_file << energy    << separator; //E
+                event_file << px        << separator; //p_x
+                event_file << py        << separator; //p_y
+                event_file << pz                    ; //p_z
+                if(include_TATA)
+                { 
+                    event_file << separator;
+                    event_file << pt << separator;        //p_T
+                    event_file << e_co.tata << std::endl; //T_A * T_A
+                }
+                else
+                {
+                    event_file << std::endl;
+                }
+
+                // jet 2
+                energy = pt*std::cosh(y2);
+                pz = pt*std::sinh(y2);
+                event_file << e_co.tau  << separator; //tau
+                event_file << e_co.co.x << separator; //x
+                event_file << e_co.co.y << separator; //y
+                event_file << e_co.co.z << separator; //z
+                event_file << energy    << separator; //E
+                event_file << -px       << separator; //p_x
+                event_file << -py       << separator; //p_y
+                event_file << pz                    ; //p_z
+                if(include_TATA)
+                { 
+                    event_file << separator;
+                    event_file << pt << separator;        //p_T
+                    event_file << e_co.tata << std::endl; //T_A * T_A
+                }
+                else
+                {
+                    event_file << std::endl;
+                }
+            }
+            event_file.close();
+        }
     }
 
     static auto print_1d_histo
