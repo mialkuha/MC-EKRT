@@ -1039,7 +1039,7 @@ int main(int argc, char** argv)
                         std::array<std::vector<dijet_with_coords>, 6> filtered_scatterings;
 
                         //B^2 from a uniform distribution
-                        spatial impact_parameter = 0;//sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
+                        spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
 
                         //std::shared_ptr<ars> radial_sampler;
                         //bool sampler_found = false;
@@ -1150,7 +1150,7 @@ int main(int argc, char** argv)
                             NColl = static_cast<uint32_t>(binary_collisions[0].size());
                             if (NColl<1)
                             {
-                                impact_parameter = 0;//sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
+                                impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
                                 //const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
                                 std::tie(pro, tar) = calcs::generate_nuclei
                                 (
