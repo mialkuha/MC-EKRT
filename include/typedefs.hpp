@@ -158,7 +158,7 @@ struct dijet_with_coords
 {
     dijet_specs dijet;
     coords co;
-    double tau;
+    double t0;
     double tata;
 };
 

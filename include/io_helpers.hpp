@@ -451,33 +451,31 @@ public:
         event_file << "},"<<std::endl;
     }
 
-    static auto save_single_coll
+    static auto save_single_coll_csv
     (
-        const std::array<std::vector<dijet_with_coords>, 6> &filtered_scatterings,
+        const std::array<std::vector<dijet_with_coords>, 4> &filtered_scatterings,
         std::uniform_real_distribution<double> &unirand,
         std::shared_ptr<std::mt19937> random_generator,
         bool include_TATA = false
     ) noexcept -> void
     {
-        std::ofstream event_file, pt_file;
+        std::ofstream event_file;
         std::string name = "jets";
         std::string separator = ",";
-        std::array<std::string, 6> names{name+".csv",
+        std::array<std::string, 4> names{name+".csv",
                                          name+"_MC.csv",
-                                         name+"_MC_ND.csv",
                                          name+"_SAT.csv",
-                                         name+"_SAT_OL.csv",
                                          name+"_SAT_MC.csv"};
         
         momentum pt, energy, px, py, pz;
         rapidity y1, y2;
         double theta;
 
-        for (size_t i=0; i<6; i++)
+        for (size_t i=0; i<4; i++)
         {
             event_file.open(names[i]);
             //Output header
-            event_file << "tau" << separator;
+            event_file << "t0" << separator;
             event_file << "x"   << separator;
             event_file << "y"   << separator;
             event_file << "z"   << separator;
@@ -495,6 +493,7 @@ public:
             {
                 event_file << std::endl;
             }
+            event_file << std::setprecision(std::numeric_limits<double>::digits10 + 1);
 
             for (auto e_co : filtered_scatterings[i])
             {
@@ -507,7 +506,7 @@ public:
                 px = pt*std::cos(theta);
                 py = pt*std::sin(theta);
                 pz = pt*std::sinh(y1);
-                event_file << e_co.tau  << separator; //tau
+                event_file << e_co.t0  << separator; //t0
                 event_file << e_co.co.x << separator; //x
                 event_file << e_co.co.y << separator; //y
                 event_file << e_co.co.z << separator; //z
@@ -525,11 +524,17 @@ public:
                 {
                     event_file << std::endl;
                 }
+                auto m = energy*energy-(px*px+py*py+pz*pz);
+		        if (m >= 0.0001)
+                {
+                    std::cout<<"1: "<<m<<std::endl;
+                }
+		
 
                 // jet 2
                 energy = pt*std::cosh(y2);
                 pz = pt*std::sinh(y2);
-                event_file << e_co.tau  << separator; //tau
+                event_file << e_co.t0  << separator; //t0
                 event_file << e_co.co.x << separator; //x
                 event_file << e_co.co.y << separator; //y
                 event_file << e_co.co.z << separator; //z
@@ -547,8 +552,140 @@ public:
                 {
                     event_file << std::endl;
                 }
+                m = energy*energy-(px*px+py*py+pz*pz);
+		        if (m >= 0.0001)
+                {
+                    std::cout<<"2: "<<m<<std::endl;
+                }
             }
             event_file.close();
+        }
+    }
+
+    static auto save_single_coll_binary
+    (
+        const std::array<std::vector<dijet_with_coords>, 4> &filtered_scatterings,
+        std::uniform_real_distribution<double> &unirand,
+        std::shared_ptr<std::mt19937> random_generator
+    ) noexcept -> void
+    {
+        std::ofstream jet_file;
+        std::string name = "jets";
+        std::array<std::string, 4> names{name+".dat",
+                                         name+"_MC.dat",
+                                         name+"_SAT.dat",
+                                         name+"_SAT_MC.dat"};
+        
+        double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, theta;
+        uint64_t n_jets;
+
+        for (uint8_t i=0; i<4; i++)
+        {
+            n_jets = filtered_scatterings[i].size()*2;
+
+            jet_file.open(names[i], std::ios::out | std::ios::binary);
+            jet_file.write(reinterpret_cast<char*>(&n_jets), sizeof n_jets); //total number of jets
+
+            for (auto e_co : filtered_scatterings[i])
+            {
+                pt = e_co.dijet.kt;
+                y1 = e_co.dijet.y1;
+                y2 = e_co.dijet.y2;
+                t0 = e_co.t0;
+                x = e_co.co.x;
+                y = e_co.co.y;
+                z = e_co.co.z;
+                tata = e_co.tata;
+                
+                // jet 1
+                energy = pt*std::cosh(y1);
+                theta = 2*M_PI*unirand(*random_generator);
+                px = pt*std::cos(theta);
+                py = pt*std::sin(theta);
+                pz = pt*std::sinh(y1);
+                jet_file.write(reinterpret_cast<char*>(&t0)     , sizeof t0);     //t0
+                jet_file.write(reinterpret_cast<char*>(&x)      , sizeof x);      //x
+                jet_file.write(reinterpret_cast<char*>(&y)      , sizeof y);      //y
+                jet_file.write(reinterpret_cast<char*>(&z)      , sizeof z);      //z
+                jet_file.write(reinterpret_cast<char*>(&energy) , sizeof energy); //E
+                jet_file.write(reinterpret_cast<char*>(&px)     , sizeof px);     //p_x
+                jet_file.write(reinterpret_cast<char*>(&py)     , sizeof py);     //p_y
+                jet_file.write(reinterpret_cast<char*>(&pz)     , sizeof pz);     //p_z
+                jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+
+                // jet 2
+                energy = pt*std::cosh(y2);
+                px = -px;
+                py = -py;
+                pz = pt*std::sinh(y2);
+                jet_file.write(reinterpret_cast<char*>(&t0)     , sizeof t0);     //t0
+                jet_file.write(reinterpret_cast<char*>(&x)      , sizeof x);      //x
+                jet_file.write(reinterpret_cast<char*>(&y)      , sizeof y);      //y
+                jet_file.write(reinterpret_cast<char*>(&z)      , sizeof z);      //z
+                jet_file.write(reinterpret_cast<char*>(&energy) , sizeof energy); //E
+                jet_file.write(reinterpret_cast<char*>(&px)     , sizeof px);     //p_x
+                jet_file.write(reinterpret_cast<char*>(&py)     , sizeof py);     //p_y
+                jet_file.write(reinterpret_cast<char*>(&pz)     , sizeof pz);     //p_z
+                jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+            }
+            jet_file.close();
+        }
+    }
+
+    static auto append_single_coll_binary
+    (
+        std::ofstream &jet_file,
+        const std::vector<dijet_with_coords> &filtered_scatterings,
+        std::uniform_real_distribution<double> &unirand,
+        std::shared_ptr<std::mt19937> random_generator
+    ) noexcept -> void
+    {        
+        double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, theta;
+        uint64_t n_jets;
+        n_jets = filtered_scatterings.size()*2;
+        jet_file.write(reinterpret_cast<char*>(&n_jets), sizeof n_jets); //total number of jets
+
+        for (auto e_co : filtered_scatterings)
+        {
+            pt = e_co.dijet.kt;
+            y1 = e_co.dijet.y1;
+            y2 = e_co.dijet.y2;
+            t0 = e_co.t0;
+            x = e_co.co.x;
+            y = e_co.co.y;
+            z = e_co.co.z;
+            tata = e_co.tata;
+            
+            // jet 1
+            energy = pt*std::cosh(y1);
+            theta = 2*M_PI*unirand(*random_generator);
+            px = pt*std::cos(theta);
+            py = pt*std::sin(theta);
+            pz = pt*std::sinh(y1);
+            jet_file.write(reinterpret_cast<char*>(&t0)     , sizeof t0);     //t0
+            jet_file.write(reinterpret_cast<char*>(&x)      , sizeof x);      //x
+            jet_file.write(reinterpret_cast<char*>(&y)      , sizeof y);      //y
+            jet_file.write(reinterpret_cast<char*>(&z)      , sizeof z);      //z
+            jet_file.write(reinterpret_cast<char*>(&energy) , sizeof energy); //E
+            jet_file.write(reinterpret_cast<char*>(&px)     , sizeof px);     //p_x
+            jet_file.write(reinterpret_cast<char*>(&py)     , sizeof py);     //p_y
+            jet_file.write(reinterpret_cast<char*>(&pz)     , sizeof pz);     //p_z
+            jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+
+            // jet 2
+            energy = pt*std::cosh(y2);
+            px = -px;
+            py = -py;
+            pz = pt*std::sinh(y2);
+            jet_file.write(reinterpret_cast<char*>(&t0)     , sizeof t0);     //t0
+            jet_file.write(reinterpret_cast<char*>(&x)      , sizeof x);      //x
+            jet_file.write(reinterpret_cast<char*>(&y)      , sizeof y);      //y
+            jet_file.write(reinterpret_cast<char*>(&z)      , sizeof z);      //z
+            jet_file.write(reinterpret_cast<char*>(&energy) , sizeof energy); //E
+            jet_file.write(reinterpret_cast<char*>(&px)     , sizeof px);     //p_x
+            jet_file.write(reinterpret_cast<char*>(&py)     , sizeof py);     //p_y
+            jet_file.write(reinterpret_cast<char*>(&pz)     , sizeof pz);     //p_z
+            jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
         }
     }
 
@@ -744,25 +881,22 @@ public:
         const uint32_t &AA_events
     ) noexcept -> void
     {
-        std::array<std::string, 6> true_postfixes{name_postfix+".dat",
+        std::array<std::string, 4> true_postfixes{name_postfix+".dat",
                                                   name_postfix+"_MC.dat",
-                                                  name_postfix+"_MC_ND.dat",
                                                   name_postfix+"_SAT.dat",
-                                                  name_postfix+"_SAT_OL.dat",
                                                   name_postfix+"_SAT_MC.dat"};
         
-        for (size_t i=0; i<6; i++)
-        { //sigma1jet
+        for (uint8_t i=0; i<4; i++)
+        { 
+            //sigma1jet
             print_2d_histo
             (
                 jets[i], 
                 "sigma1jet_sim_"+true_postfixes[i], 
                 2.0 * dijet_norm
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dNdpTdy
+            //dNdpTdy
             print_2d_histo
             (
                 jets[i],
@@ -770,20 +904,16 @@ public:
                 1.0,
                 false
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //sigmadijet
+            //sigmadijet
             print_2d_histo
             (
                 dijets[i],
                 "sigmadijet_sim_"+true_postfixes[i], 
                 dijet_norm
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dETdy
+            //dETdy
             print_1d_histo
             (
                 dETdy[i],
@@ -791,10 +921,8 @@ public:
                 1.0/ AA_events,
                 false
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dEdy
+            //dEdy
             print_1d_histo
             (
                 dEdy[i], 
@@ -802,10 +930,8 @@ public:
                 1.0/ AA_events,
                 false
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dNdy
+            //dNdy
             print_1d_histo
             (
                 dNdy[i], 
@@ -813,10 +939,8 @@ public:
                 1.0/ AA_events,
                 false
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dNdET
+            //dNdET
             print_1d_histo
             (
                 dNdET[i], 
@@ -824,10 +948,8 @@ public:
                 1.0,
                 false
             );
-        }
-        
-        for (size_t i=0; i<6; i++)
-        { //dETdeta
+
+            //dETdeta
             print_1d_histo
             (
                 dETdeta[i], 
@@ -835,10 +957,8 @@ public:
                 1.0 / AA_events,
                 false
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dEdeta
+            //dEdeta
             print_1d_histo
             (
                 dEdeta[i], 
@@ -846,10 +966,8 @@ public:
                 1.0 / AA_events,
                 false
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dETdb
+            //dETdb
             print_1d_histo
             (
                 dETdb[i], 
@@ -857,10 +975,8 @@ public:
                 1.0,
                 true
             );
-        }
 
-        for (size_t i=0; i<6; i++)
-        { //dEdb
+            //dEdb
             print_1d_histo
             (
                 dEdb[i],
