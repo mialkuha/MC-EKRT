@@ -748,7 +748,6 @@ public:
         bool is_mom_cons_new    = false;
         bool are_ns_depleted    = false;
         bool is_saturation      = false;
-        bool is_sat_overlap     = false;
         bool is_mc_glauber      = false;
         uint32_t n_events       = 10000;
         spatial b_max           = 20;//fm
@@ -808,10 +807,6 @@ public:
                 {
                     line_stream >> std::boolalpha >> is_saturation;
                 }
-                else if (param_name == "is_sat_overlap")
-                {
-                    line_stream >> std::boolalpha >> is_sat_overlap;
-                }
                 else if (param_name == "is_mc_glauber")
                 {
                     line_stream >> std::boolalpha >> is_mc_glauber;
@@ -859,7 +854,6 @@ public:
                     is_mom_cons_new,
                     are_ns_depleted,
                     is_saturation,
-                    is_sat_overlap,
                     is_mc_glauber,
                     n_events,
                     b_max,

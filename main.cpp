@@ -82,60 +82,27 @@ auto find_sigma_jet_cutoff_Q
     return;
 }
 
-auto check_and_place_circle_among_others_with_overlaps
-(
-    std::tuple<double, double, double, uint16_t> cand_circle, 
-    std::vector<std::tuple<double, double, double, uint16_t> > &final_circles, 
-    const double &maximum_overlap,
-    std::uniform_real_distribution<double> &unirand,
-    std::shared_ptr<std::mt19937> random_generator
-) noexcept -> bool
+struct dijet_with_ns
 {
-    auto & [cand_x, cand_y, cand_r, cand_overlap] = cand_circle;
-    std::vector<uint16_t*> overlaps_with;
-    
-    for (auto & [circ_x, circ_y, circ_r, circ_overlap] : final_circles)
+    dijet_specs dijet;
+    nucleon * pro_nucleon;
+    nucleon * tar_nucleon;
+    double t01;
+    double t02;
+    double t0;
+    dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_)
+        : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
     {
-        if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
-        {
-            cand_overlap += 1;
-            if (cand_overlap > maximum_overlap)
-            {
-                if
-                (
-                    ((cand_overlap - maximum_overlap) >= 1) || 
-                    ((cand_overlap - maximum_overlap) > unirand(*random_generator))
-                )
-                {
-                    return false;
-                }
-            }
-            if ((circ_overlap + 1) > maximum_overlap)
-            {
-                if 
-                (
-                    (circ_overlap >= maximum_overlap) || 
-                    ((circ_overlap + 1 - maximum_overlap) > unirand(*random_generator))
-                )
-                {
-                    return false;
-                }
-            }
-            overlaps_with.push_back(&circ_overlap);
-        }
+        auto y1 = dijet.y1;
+        auto y2 = dijet.y2;
+        auto max_t_u = dijet.kt*(1+std::exp(-std::abs(y1-y2)));
+        t01 = std::cosh(std::abs(y1))/max_t_u;
+        t02 = std::cosh(std::abs(y2))/max_t_u;
+        t0 = std::max(t01, t02);
     }
-    
-    for (auto & c : overlaps_with)
-    {
-        (*c)++;
-    }
+};
 
-    final_circles.emplace_back(std::move(cand_circle));
-        
-    return true;
-}
-
-auto check_and_place_circle_among_others_with_disks
+auto check_and_place_circle_among_others
 (
     std::tuple<double, double, double, uint16_t> cand_circle, 
     std::vector<std::tuple<double, double, double, uint16_t> > &final_circles
@@ -157,26 +124,6 @@ auto check_and_place_circle_among_others_with_disks
     return true;
 }
 
-struct dijet_with_ns
-{
-    dijet_specs dijet;
-    nucleon * pro_nucleon;
-    nucleon * tar_nucleon;
-    double t01;
-    double t02;
-    double t0;
-    dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_)
-        : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
-    {
-        auto y1 = dijet.y1;
-        auto y2 = dijet.y2;
-        auto max_t_u = dijet.kt*(1+std::exp(-std::abs(y1-y2)));
-        t01 = std::cosh(std::abs(y1))/max_t_u;
-        t02 = std::cosh(std::abs(y2))/max_t_u;
-        t0 = std::max(t01, t02);
-    }
-};
-
 auto throw_location_for_dijet
 (
     const dijet_with_ns &cand,
@@ -196,275 +143,6 @@ auto throw_location_for_dijet
     return std::make_tuple(retx, rety, dz);
 }
 
-//Checks whether the saturation criterium allows the candidate to be added TODO
-auto filter_collisions_saturation
-(
-    std::vector<dijet_with_ns> &candidates, 
-    std::vector<dijet_with_coords> &final_candidates,
-    const double &maximum_overlap,
-    const spatial &proton_width,
-    std::uniform_real_distribution<double> &unirand,
-    std::shared_ptr<std::mt19937> random_generator,
-    const bool with_overlaps,
-    const bool include_tata = false,
-    const std::vector<nucleon> &pro = {}, 
-    const std::vector<nucleon> &tar = {}, 
-    const std::function<spatial(const spatial&)> Tpp = nullptr
-) noexcept -> void
-{
-    std::vector<std::tuple<double, double, double, uint16_t> > final_circles;
-    final_circles.reserve(candidates.size());
-    final_candidates.reserve(final_candidates.size()+candidates.size());
-
-    std::normal_distribution<double> normal_dist(0,0);
-
-    //std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the biggest kt is first
-    //    [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.dijet.kt > s2.dijet.kt); });
-    std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the smallest t0 is first
-        [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.t0 < s2.t0); });
-
-    if (!with_overlaps)
-    {
-        for (auto & cand : candidates)
-        {
-            auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
-            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap*FMGEV), 1);
-            if (check_and_place_circle_among_others_with_disks(std::move(cand_circle), final_circles))
-            {
-                double tata = 0.0;
-                if (include_tata)
-                {
-                    nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
-                    tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
-                }
-                final_candidates.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            }
-        }
-    }
-    else
-    {
-        for (auto & cand : candidates)
-        {
-            auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
-            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/cand.dijet.kt, 1);
-            if (check_and_place_circle_among_others_with_overlaps(std::move(cand_circle), final_circles, maximum_overlap, unirand, random_generator))
-            {
-                double tata = 0.0;
-                if (include_tata)
-                {
-                    nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
-                    tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
-                }
-                final_candidates.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            }
-        }
-    }
-    
-    final_candidates.shrink_to_fit();
-}
-
-struct colls_with_ns
-{
-    momentum kt;
-    rapidity y1;
-    rapidity y2;
-    nucleon * pro_nucleon;
-    nucleon * tar_nucleon;
-    dijet_specs * dijet;
-    double t0;
-    colls_with_ns(momentum kt_, rapidity y1_, rapidity y2_, nucleon * pro_nucleon_, nucleon * tar_nucleon_, dijet_specs * dijet_)
-        : kt(kt_), y1(y1_), y2(y2_), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_), dijet(dijet_)
-    { t0 = std::cosh(std::max(std::abs(y1),std::abs(y2)))/(kt*(1+std::exp(-std::abs(y1-y2))));}
-};
-//Empties all of the binary_collisions
-auto filter_collisions_MC 
-(
-    std::vector<nn_coll> &binary_collisions,
-    std::vector<dijet_with_ns> &final_candidates,
-    const momentum sqrt_s,
-    const bool deplete_nucleons
-) noexcept -> void
-{
-    std::unordered_map<nucleon*, double> x1s;
-    std::unordered_map<nucleon*, double> x2s;
-    std::unordered_set<nucleon*> depleted_pro;
-    std::unordered_set<nucleon*> depleted_tar;
-
-    std::vector<colls_with_ns> collision_candidates;
-    collision_candidates.reserve(binary_collisions.size()*10);
-
-    for (auto &col : binary_collisions)
-    {
-        for (auto &dij : col.dijets)
-        {
-            collision_candidates.emplace_back(dij.kt, dij.y1, dij.y2, col.projectile, col.target, &dij);
-        }
-    }
-    collision_candidates.shrink_to_fit();
-
-    //std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
-    //          [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
-    std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidate events so that the one with the smallest t0 is first
-              [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.t0 < s2.t0); });
-
-    for (auto & cand : collision_candidates)
-    {
-        if (deplete_nucleons && (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon)))
-        {
-            continue;
-        }
-
-        bool discard = false;
-        auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
-        auto x2 = (cand.kt / sqrt_s) * (exp(-cand.y1) + exp(-cand.y2));
-
-        auto i_x1_sum = x1s.find(cand.pro_nucleon);
-        if (i_x1_sum != x1s.end())
-        {
-            i_x1_sum->second += x1;
-
-            if (i_x1_sum->second > 1.0)
-            {
-                discard = true;
-                if (deplete_nucleons)
-                {
-                    depleted_pro.insert(cand.pro_nucleon);
-                }
-            }
-        }
-        else
-        {
-            x1s.insert({cand.pro_nucleon, x1});
-        }
-
-        auto i_x2_sum = x2s.find(cand.tar_nucleon);
-        if (i_x2_sum != x2s.end())
-        {
-            i_x2_sum->second += x2;
-
-            if (i_x2_sum->second > 1.0)
-            {
-                discard = true;
-                if (deplete_nucleons)
-                {
-                    depleted_tar.insert(cand.tar_nucleon);
-                }
-            }
-        }
-        else
-        {
-            x2s.insert({cand.tar_nucleon, x2});
-        }
-
-        if (!discard)
-        {
-            final_candidates.emplace_back(std::move(*(cand.dijet)), cand.pro_nucleon, cand.tar_nucleon);
-        }
-    }
-
-    //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
-
-    binary_collisions.clear();
-    //for (auto &col : binary_collisions)
-    //{
-    //    col.dijets.erase(col.dijets.begin(), col.dijets.end());
-    //}
-}
-
-
-//Empties all of the binary_collisions TODO
-auto filter_collisions_local_MC 
-(
-    std::vector<nn_coll> &binary_collisions,
-    std::vector<dijet_with_ns> &final_candidates,
-    const momentum &sqrt_s,
-    const xsectval &sigma_inel
-) noexcept -> void
-{
-    /*std::unordered_map<nucleon*, double> x1s;
-    std::unordered_map<nucleon*, double> x2s;
-    std::unordered_set<nucleon*> depleted_pro;
-    std::unordered_set<nucleon*> depleted_tar;
-
-    std::vector<colls_with_ns> collision_candidates;
-    collision_candidates.reserve(binary_collisions.size()*10);
-
-    for (auto &col : binary_collisions)
-    {
-        for (auto &dij : col.dijets)
-        {
-            collision_candidates.emplace_back(dij.kt, dij.y1, dij.y2, col.projectile, col.target, &dij);
-        }
-    }
-    collision_candidates.shrink_to_fit();
-
-    std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
-              [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
-
-    for (auto & cand : collision_candidates)
-    {
-        if (deplete_nucleons && (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon)))
-        {
-            continue;
-        }
-
-        bool discard = false;
-        auto x1 = (cand.kt / sqrt_s) * (exp(cand.y1) + exp(cand.y2));
-        auto x2 = (cand.kt / sqrt_s) * (exp(-cand.y1) + exp(-cand.y2));
-
-        auto i_x1_sum = x1s.find(cand.pro_nucleon);
-        if (i_x1_sum != x1s.end())
-        {
-            i_x1_sum->second += x1;
-
-            if (i_x1_sum->second > 1.0)
-            {
-                discard = true;
-                if (deplete_nucleons)
-                {
-                    depleted_pro.insert(cand.pro_nucleon);
-                }
-            }
-        }
-        else
-        {
-            x1s.insert({cand.pro_nucleon, x1});
-        }
-
-        auto i_x2_sum = x2s.find(cand.tar_nucleon);
-        if (i_x2_sum != x2s.end())
-        {
-            i_x2_sum->second += x2;
-
-            if (i_x2_sum->second > 1.0)
-            {
-                discard = true;
-                if (deplete_nucleons)
-                {
-                    depleted_tar.insert(cand.tar_nucleon);
-                }
-            }
-        }
-        else
-        {
-            x2s.insert({cand.tar_nucleon, x2});
-        }
-
-        if (!discard)
-        {
-            final_candidates.emplace_back(std::move(*(cand.dijet)), cand.pro_nucleon, cand.tar_nucleon);
-        }
-    }
-
-    //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
-
-    binary_collisions.clear();*/
-    //for (auto &col : binary_collisions)
-    //{
-    //    col.dijets.erase(col.dijets.begin(), col.dijets.end());
-    //}
-}
-
 auto filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
@@ -475,7 +153,6 @@ auto filter_end_state
     const bool mom_cons_local = false,
     const bool saturation = false,
     const bool deplete_nucleons = false,
-    const bool saturation_with_overlap = false,
     const momentum sqrt_s = 0,
     const double &maximum_overlap = 2.0,
     const spatial &proton_width = 1.0,
@@ -580,7 +257,7 @@ auto filter_end_state
 
             auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*maximum_overlap*FMGEV), 1);
 
-            if (!check_and_place_circle_among_others_with_disks(std::move(cand_circle), final_circles))
+            if (!check_and_place_circle_among_others(std::move(cand_circle), final_circles))
             {
                 continue; //Did not fit into saturated PS --> discard
             }
@@ -603,56 +280,6 @@ auto filter_end_state
     //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
 
     binary_collisions.clear();
-
-/*
-
-    if (mom_cons) 
-    {
-        if (mom_cons_local)
-        {
-            filter_collisions_local_MC(binary_collisions, candidates, sqrt_s, sigma_inel);
-        }
-        else
-        {
-            filter_collisions_MC(binary_collisions, candidates, sqrt_s, deplete_nucleons);
-        }
-    }
-    else
-    {
-        for (auto &col : binary_collisions) //all of the end states of the binary events are now candidate events
-        {
-            for (auto & dij : col.dijets)
-            {
-                candidates.emplace_back(std::move(dij), col.projectile, col.target);
-            }
-        }
-        binary_collisions.clear();
-    }
-    candidates.shrink_to_fit();
-    
-
-    if (saturation)
-    {
-        filter_collisions_saturation(candidates, filtered_scatterings, maximum_overlap, proton_width, unirand, random_generator, saturation_with_overlap, include_tata, pro, tar, Tpp);
-    }
-    else
-    {
-        for (auto &cand : candidates) //all of the candidates are passed to filtered
-        {
-            std::normal_distribution<double> normal_dist(0,0);
-            double tata = 0.0;
-            auto [cand_x, cand_y, cand_z] = throw_location_for_dijet(cand, proton_width, normal_dist, random_generator);
-            if (include_tata)
-            {
-                nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
-                tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
-            }
-            filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t0, tata});
-            //filtered_scatterings.push_back(candidate.dijet);
-        }
-    }*/
-    
-    //std::cout << "filtered_scatterings.size() =  " << filtered_scatterings.size() << std::endl;
 }
 
 volatile std::atomic_bool user_aborted = false;
@@ -667,17 +294,12 @@ void term_handler(int num)
 }
 
 int main(int argc, char** argv)
-{ 
-    /*bool g_is_pp;
-    bool g_is_pa;
-    bool g_is_aa;
-    bool g_use_npdfs;
-    bool g_use_snpdfs;
-    bool g_is_mom_cons;
-    bool g_is_mom_cons_new;
-    bool g_are_ns_depleted;
-    bool g_is_saturation;
-    std::string name_postfix;*/
+{
+    if (argc != 2)
+    {
+        std::cout<<"Provide parameter file name as a parameter, see params_template"<<std::endl;
+        return 1;
+    }
 
     auto 
     [
@@ -691,7 +313,6 @@ int main(int argc, char** argv)
         g_is_mom_cons_new,
         g_are_ns_depleted,
         g_is_saturation,
-        g_is_sat_overlap,
         g_is_mc_glauber,
         desired_N_events,
         b_max,
@@ -699,120 +320,6 @@ int main(int argc, char** argv)
         K_factor,
         K_sat
     ] = io::read_conf(std::string(argv[1]));
-
-    /*switch (argv[1][0])
-    {
-    case '0':
-        name_postfix = "_pA_2500k_mb_PDF";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = false;
-        g_use_snpdfs = false;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = false;
-        g_are_ns_depleted = false;
-        g_is_saturation = false;
-        break;
-    case '1':
-        name_postfix = "_pA_2500k_mb_nPDF";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = true;
-        g_use_snpdfs = false;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = false;
-        g_are_ns_depleted = false;
-        g_is_saturation = false;
-        break;
-    case '2':
-        name_postfix = "_pA_2500k_mb_snPDF";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = true;
-        g_use_snpdfs = true;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = false;
-        g_are_ns_depleted = false;
-        g_is_saturation = false;
-        break;
-    case '3':
-        name_postfix = "_pA_2500k_mb_PDF_MC";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = false;
-        g_use_snpdfs = false;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = true;
-        g_are_ns_depleted = false;
-        g_is_saturation = false;
-        break;
-    case '4':
-        name_postfix = "_pA_2500k_mb_nPDF_MC";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = true;
-        g_use_snpdfs = false;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = true;
-        g_are_ns_depleted = false;
-        g_is_saturation = false;
-        break;
-    case '5':
-        name_postfix = "_pA_2500k_mb_snPDF_MC";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = true;
-        g_use_snpdfs = true;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = true;
-        g_are_ns_depleted = false;
-        g_is_saturation = false;
-        break;
-    case '6':
-        name_postfix = "_pA_2500k_mb_PDF_MC_ND";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = false;
-        g_use_snpdfs = false;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = true;
-        g_are_ns_depleted = true;
-        g_is_saturation = false;
-        break;
-    case '7':
-        name_postfix = "_pA_2500k_mb_nPDF_MC_ND";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = true;
-        g_use_snpdfs = false;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = true;
-        g_are_ns_depleted = true;
-        g_is_saturation = false;
-        break;
-    case '8':
-        name_postfix = "_pA_2500k_mb_snPDF_MC_ND";
-        g_is_pp = false;
-        g_is_pa = true;
-        g_is_aa = false;
-        g_use_npdfs = true;
-        g_use_snpdfs = true;
-        g_is_mom_cons = false;
-        g_is_mom_cons_new = true;
-        g_are_ns_depleted = true;
-        g_is_saturation = false;
-        break;
-    default:
-        break;
-    }*/
 
     //A lot of printing
     bool verbose = false;
@@ -1140,7 +647,6 @@ int main(int argc, char** argv)
                  &g_use_snpdfs=g_use_snpdfs,
                  &g_is_mom_cons_new=g_is_mom_cons_new,
                  &g_is_saturation=g_is_saturation,
-                 &g_is_sat_overlap=g_is_sat_overlap,
                  &g_are_ns_depleted=g_are_ns_depleted,
                  &sigma_jet=sigma_jet,
                  &power_law=power_law,
@@ -1305,7 +811,6 @@ int main(int argc, char** argv)
                                 false,
                                 g_is_saturation, 
                                 g_are_ns_depleted, 
-                                g_is_sat_overlap, 
                                 sqrt_s,
                                 max_overlap,
                                 proton_width,
