@@ -3,27 +3,27 @@
 #include <iostream>
 #include <vector>
 
-struct minijet
+struct dijet
 {
-    double t0;
+    double t01;
+    double t02;
     double x;
     double y;
-    double z;
-    double energy;
-    double px;
-    double py;
-    double pz;
+    double pt;
+    double y1;
+    double y2;
+    double phi;
     double tata;
-    minijet(const double &t0_, const double &x_, const double &y_, const double &z_, 
-            const double &energy_, const double &px_, const double &py_, const double &pz_, 
+    dijet(const double &t01_, const double &t02_, const double &x_, const double &y_, 
+            const double &pt_, const double &y1_, const double &y2_, const double &phi_, 
             const double &tata_)
-    : t0(t0_), x(x_), y(y_), z(z_), energy(energy_), px(px_), py(py_), pz(pz_) , tata(tata_) { }
+    : t01(t01_), t02(t02_), x(x_), y(y_), pt(pt_), y1(y1_), y2(y2_), phi(phi_) , tata(tata_) { }
 };
 
  
 int main()
 {
-    std::string filename = "jets_0_5.dat";
+    std::string filename = "jets_60_80_B_SAT_MC.dat";
     std::ifstream jet_file(filename, std::ios::in | std::ios::binary);
 
     if (!jet_file.is_open())
@@ -33,10 +33,10 @@ int main()
     }
 
     uint64_t n_events, n_jets;
-    double t0, x, y, z, energy, px, py, pz, tata;
-    std::vector<std::vector<minijet> > events_jets;
+    double t01, t02, x, y, pt, y1, y2, phi, tata;
+    std::vector<std::vector<dijet> > events_jets;
     
-    if (sizeof n_jets != 8 || sizeof t0 != 8 )
+    if (sizeof n_jets != 8 || sizeof t01 != 8 )
     {
         std::cout << "Change the types! n_jets should be 64 bit unsigned integer"
                   << " and the coordinates should all be 64 bit float numbers" << std::endl;
@@ -48,43 +48,46 @@ int main()
               << filename << " ..." << std::endl;
     events_jets.reserve(n_events);
 
-    uint64_t n_jet_total = 0;
+    uint64_t n_dijet_total = 0;
     for (uint64_t i=0; i<n_events; i++)
     {
         jet_file.read(reinterpret_cast<char*>(&n_jets), sizeof n_jets);
 
-        events_jets[i].reserve(n_jets);
+        std::vector<dijet> jets;
+        jets.reserve(n_jets);
 
-        for (uint64_t i=0; i<n_jets; i++, n_jet_total++)
+        for (uint64_t ii=0; ii<n_jets; ii++, n_dijet_total++)
         {
-            jet_file.read(reinterpret_cast<char*>(&t0)     , sizeof t0);     //t0
-            jet_file.read(reinterpret_cast<char*>(&x)      , sizeof x);      //x
-            jet_file.read(reinterpret_cast<char*>(&y)      , sizeof y);      //y
-            jet_file.read(reinterpret_cast<char*>(&z)      , sizeof z);      //z
-            jet_file.read(reinterpret_cast<char*>(&energy) , sizeof energy); //E
-            jet_file.read(reinterpret_cast<char*>(&px)     , sizeof px);     //p_x
-            jet_file.read(reinterpret_cast<char*>(&py)     , sizeof py);     //p_y
-            jet_file.read(reinterpret_cast<char*>(&pz)     , sizeof pz);     //p_z
-            jet_file.read(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+            jet_file.read(reinterpret_cast<char*>(&t01)  , sizeof t01);  //t01
+            jet_file.read(reinterpret_cast<char*>(&t02)  , sizeof t02);  //t02
+            jet_file.read(reinterpret_cast<char*>(&x)    , sizeof x);    //x
+            jet_file.read(reinterpret_cast<char*>(&y)    , sizeof y);    //y
+            jet_file.read(reinterpret_cast<char*>(&pt)   , sizeof pt);   //pT
+            jet_file.read(reinterpret_cast<char*>(&y1)   , sizeof y1);   //y1
+            jet_file.read(reinterpret_cast<char*>(&y2)   , sizeof y2);   //y2
+            jet_file.read(reinterpret_cast<char*>(&phi)  , sizeof phi);  //phi_1
+            jet_file.read(reinterpret_cast<char*>(&tata) , sizeof tata); //T_A * T_A
 
-            events_jets[i].emplace_back(t0, x, y, z, energy, px, py, pz, tata);
+            jets.emplace_back(t01, t02, x, y, pt, y1, y2, phi, tata);
+			//std::cout<<t01<<' '<<t02<<' '<<x<<' '<<y<<' '<<pt<<' '<<y1<<' '<<y2<<' '<<phi<<' '<<tata<<std::endl;
         }
-        jet_file.close();
+        events_jets.emplace_back(std::move(jets));
     }
+    jet_file.close();
 
     std::cout << "Done! Read " << events_jets.size() << " events totaling "
-              << n_jet_total << " jets, the last one had "
-              << energy << " GeV energy"<<std::endl;
+              << n_dijet_total << " dijets, the last one had "
+              << pt << " GeV pT"<<std::endl;
 
     double pt_cumulant = 0;
     for (auto event : events_jets)
     {
-        for (auto jet : event)
+        for (auto dijet : event)
         {
-            pt_cumulant += std::sqrt(jet.px*jet.px + jet.py*jet.py);
+            pt_cumulant += dijet.pt;
         }
     }
     std::cout << "In all of the events, average jet had pT=" 
-              << pt_cumulant / n_jet_total << " GeV"<<std::endl;
+              << pt_cumulant / n_dijet_total << " GeV"<<std::endl;
 }
 
