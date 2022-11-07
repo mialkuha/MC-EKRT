@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2022 Mikko Kuha
 
 #ifndef PQCD_HPP
 #define PQCD_HPP
@@ -10,8 +10,17 @@
 #include <random>
 #include <tuple>
 
-#include "cubature.h"
+
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wextra"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include "LHAPDF/GridPDF.h"
+#pragma GCC diagnostic pop
+
+#include "cubature.h"
 #include "nn_coll.hpp"
 #include "typedefs.hpp"
 
@@ -32,10 +41,10 @@ public:
             bool npdfs_spatial{false};
             int npdf_setnumber{1};
             double K_factor{1};
-            int A{1};
-            int B{1};
-            int ZA{1};
-            int ZB{1};
+            uint_fast16_t A{1};
+            uint_fast16_t B{1};
+            uint_fast16_t ZA{1};
+            uint_fast16_t ZB{1};
             std::shared_ptr<LHAPDF::GridPDF> p_n_pdf{nullptr};
             std::function<double(double const&)> rA_spatial{nullptr};
             std::function<double(double const&)> rB_spatial{nullptr};
@@ -114,10 +123,10 @@ public:
           const bool &isoscalar_target,
           const bool &npdfs_spatial,
           const int &npdf_setnumber,
-          const int &A,
-          const int &B,
-          const int &ZA,
-          const int &ZB,
+          const uint_fast16_t &A,
+          const uint_fast16_t &B,
+          const uint_fast16_t &ZA,
+          const uint_fast16_t &ZB,
           const std::function<double (const double &)> &rA_spatial,
           const std::function<double (const double &)> &rB_spatial
         ) noexcept -> std::tuple
@@ -134,7 +143,7 @@ public:
             const std::array<double, 7> &f_i_x2,
             const std::array<double, 7> &f_ai_x1,
             const std::array<double, 7> &f_ai_x2,
-            const uint8_t &num_flavors,
+            const uint_fast8_t &num_flavors,
             const momentum &s_hat,
             const momentum &t_hat, 
             const momentum &u_hat
@@ -147,7 +156,7 @@ public:
             const std::array<double, 7> &f_i_x2,
             const std::array<double, 7> &f_ai_x1,
             const std::array<double, 7> &f_ai_x2,
-            const uint8_t &num_flavors,
+            const uint_fast8_t &num_flavors,
             const momentum &s_hat,
             const momentum &t_hat, 
             const momentum &u_hat
@@ -295,7 +304,7 @@ public:
         const double &lambda, 
         std::uniform_real_distribution<double> unirand, 
         std::shared_ptr<std::mt19937> eng
-      ) noexcept -> uint8_t;
+      ) noexcept -> uint_fast8_t;
 
     static auto generate_2_to_2_scatt
       (

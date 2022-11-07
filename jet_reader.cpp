@@ -32,7 +32,7 @@ int main()
         exit(1);
     }
 
-    uint64_t n_events, n_jets;
+    uint_fast64_t n_events, n_jets;
     double t01, t02, x, y, pt, y1, y2, phi, tata;
     std::vector<std::vector<dijet> > events_jets;
     
@@ -48,15 +48,15 @@ int main()
               << filename << " ..." << std::endl;
     events_jets.reserve(n_events);
 
-    uint64_t n_dijet_total = 0;
-    for (uint64_t i=0; i<n_events; i++)
+    uint_fast64_t n_dijet_total = 0;
+    for (uint_fast64_t i=0; i<n_events; i++)
     {
         jet_file.read(reinterpret_cast<char*>(&n_jets), sizeof n_jets);
 
         std::vector<dijet> jets;
         jets.reserve(n_jets);
 
-        for (uint64_t ii=0; ii<n_jets; ii++, n_dijet_total++)
+        for (uint_fast64_t ii=0; ii<n_jets; ii++, n_dijet_total++)
         {
             jet_file.read(reinterpret_cast<char*>(&t01)  , sizeof t01);  //t01
             jet_file.read(reinterpret_cast<char*>(&t02)  , sizeof t02);  //t02

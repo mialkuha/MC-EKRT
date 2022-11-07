@@ -17,7 +17,7 @@ typedef double momentum;
 typedef double rapidity;
 typedef double xsectval;
 typedef double spatial;
-typedef int particle_id;
+typedef int_fast8_t particle_id;
 
 struct dijet_specs
 {

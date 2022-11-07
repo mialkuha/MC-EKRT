@@ -116,14 +116,14 @@ public:
      *          double,                = Underflow
      *          double,                = Overflow
      *          std::vector<double>,   = Bin edge coords
-     *          uint64_t>              = Total # of points
+     *          uint_fast64_t>              = Total # of points
      */
     auto get_histo() const noexcept -> std::tuple
     <   std::vector<double>, 
         double, 
         double, 
         std::vector<double>, 
-        uint64_t >;
+        uint_fast64_t >;
 
     /**
      * @brief Checks whether the binning coords in the histograms
@@ -144,7 +144,7 @@ protected:
 private:
     const std::vector<double> xs;
     std::vector<double> counts;
-    uint64_t total_counts{0};
+    uint_fast64_t total_counts{0};
     double underf{0.0};
     double overf{0.0};
 };
@@ -227,14 +227,14 @@ public:
      *     std::tuple<double, double>,          = Overflow (both dims)
      *     std::tuple<std::vector<double>,      
      *                std::vector<double> >,    = Bin edge coords (both dims)
-     *     uint64_t >                           = Total # of points
+     *     uint_fast64_t >                           = Total # of points
      */
     auto get_histo() const noexcept -> std::tuple
     <   std::vector<std::vector<double> >, 
         std::tuple<double, double>, 
         std::tuple<double, double>, 
         std::tuple<std::vector<double>, std::vector<double> >,
-        uint64_t >;
+        uint_fast64_t >;
 
     /**
      * @brief Integrate over one of the dimensions. The returned
@@ -250,14 +250,14 @@ public:
      *          double,                = #of all underflow
      *          double,                = #of all overflow
      *          std::vector<double>&&, = Bin edge coords
-     *          uint64_t>              = Total # of points 
+     *          uint_fast64_t>              = Total # of points 
      */
     auto project_1d(const bool project_ys) const noexcept -> std::tuple
     <   std::vector<double>&&, 
         double, 
         double, 
         std::vector<double>&&, 
-        uint64_t >;
+        uint_fast64_t >;
 
     /**
      * @brief Checks whether the binning coords in the histograms
@@ -279,7 +279,7 @@ private:
     const std::vector<double> xs;
     const std::vector<double> ys;
     std::vector<std::vector<double> > counts;
-    uint64_t total_counts{0};
+    uint_fast64_t total_counts{0};
     std::tuple<double, double> underf{0.0, 0.0};
     std::tuple<double, double> overf{0.0, 0.0};
 };
@@ -370,14 +370,14 @@ public:
      *     std::tuple<std::vector<double>, 
      *                std::vector<double>, 
      *                std::vector<double> >,                = Bin edge coords (all dims)
-     *     uint64_t >                                       = Total # of points
+     *     uint_fast64_t >                                       = Total # of points
      */
     auto get_histo() const noexcept -> std::tuple
     <   std::vector<std::vector<std::vector<double> > >, 
         std::tuple<double, double, double>, 
         std::tuple<double, double, double>, 
         std::tuple<std::vector<double>, std::vector<double>, std::vector<double> >,
-        uint64_t >;
+        uint_fast64_t >;
 
     /**
      * @brief Integrate over two of the dimensions. The returned
@@ -392,14 +392,14 @@ public:
      *          double,                = #of all underflow
      *          double,                = #of all overflow
      *          std::vector<double>&&, = Bin edge coords
-     *          uint64_t>              = Total # of points 
+     *          uint_fast64_t>              = Total # of points 
      */
-    auto project_1d(const uint8_t dim_left) const noexcept -> std::tuple
+    auto project_1d(const uint_fast8_t dim_left) const noexcept -> std::tuple
     <   std::vector<double>&&, 
         double, 
         double, 
         std::vector<double>&&, 
-        uint64_t >;
+        uint_fast64_t >;
 
     /**
      * @brief Integrate over one of the dimensions. The returned
@@ -415,15 +415,15 @@ public:
      *     double,                              = #of all overflow
      *     std::tuple<std::vector<double>,      
      *                std::vector<double> >,    = Bin edge coords (both dims)
-     *     uint64_t>                            = Total # of points 
+     *     uint_fast64_t>                            = Total # of points 
      */
-    auto project_2d(const uint8_t dim_integrated) const noexcept 
+    auto project_2d(const uint_fast8_t dim_integrated) const noexcept 
     -> std::tuple
     <   std::vector<std::vector<double> >, 
         double, 
         double, 
         std::tuple<std::vector<double>, std::vector<double> >,
-        uint64_t >;
+        uint_fast64_t >;
 
     /**
      * @brief Checks whether the binning coords in the histograms
@@ -446,7 +446,7 @@ private:
     const std::vector<double> ys;
     const std::vector<double> zs;
     std::vector<std::vector<std::vector<double> > > counts;
-    uint64_t total_counts{0};
+    uint_fast64_t total_counts{0};
     std::tuple<double, double, double> underf{0.0, 0.0, 0.0};
     std::tuple<double, double, double> overf{0.0, 0.0, 0.0};
 };

@@ -118,9 +118,9 @@ coords nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> ran
                    new_r * new_cos_theta});
 }
 
-void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, const uint & Z, std::shared_ptr<std::mt19937> random_generator) noexcept
+void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, const uint_fast16_t & Z, std::shared_ptr<std::mt19937> random_generator) noexcept
 {
-    for (uint i=0,iz=0; i<nucleus->size(); ++i)
+    for (uint_fast16_t i=0,iz=0; i<nucleus->size(); ++i)
     {
         double frac = static_cast<double>(Z-iz) / static_cast<double>(nucleus->size()-i);
         double rn = nucleus_generator::unif_dist(*random_generator);

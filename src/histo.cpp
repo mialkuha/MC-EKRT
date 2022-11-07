@@ -14,7 +14,7 @@ auto histo_1d::add
         return;
     }
     
-    uint16_t y_index = 0;
+    uint_fast16_t y_index = 0;
 
     for 
     (
@@ -50,7 +50,7 @@ auto histo_1d::add
         return;
     }
     
-    uint16_t y_index = 0;
+    uint_fast16_t y_index = 0;
 
     for 
     (
@@ -77,7 +77,7 @@ auto histo_1d::add
     const std::vector<double> &news
 ) noexcept -> void
 {
-    uint64_t news_tot = news.size();
+    uint_fast64_t news_tot = news.size();
 
     if (news_tot <= 0)
     {
@@ -89,7 +89,7 @@ auto histo_1d::add
         return;
     }
 
-    uint64_t news_index = 0;
+    uint_fast64_t news_index = 0;
     std::vector<double> to_add{news};
     std::sort(to_add.begin(), to_add.end());
 
@@ -104,7 +104,7 @@ auto histo_1d::add
         }
     }
     
-    uint16_t counts_index = 0;
+    uint_fast16_t counts_index = 0;
     for 
     (
         auto x_it = ++this->xs.begin();
@@ -138,7 +138,7 @@ auto histo_1d::add
     const std::vector<std::tuple<double, double> > &news
 ) noexcept -> void
 {
-    uint64_t news_tot = news.size();
+    uint_fast64_t news_tot = news.size();
 
     if (news_tot <= 0)
     {
@@ -150,7 +150,7 @@ auto histo_1d::add
         return;
     }
 
-    uint64_t news_index = 0;
+    uint_fast64_t news_index = 0;
     std::vector<std::tuple<double, double> > to_add{news};
     std::sort
     (
@@ -175,7 +175,7 @@ auto histo_1d::add
         }
     }
     
-    uint16_t counts_index = 0;
+    uint_fast16_t counts_index = 0;
     for 
     (
         auto x_it = ++this->xs.begin();
@@ -216,7 +216,7 @@ auto histo_1d::add
     }
     this->underf += other.underf;
     this->overf += other.overf;
-    for (uint16_t i = 0; i<this->counts.size(); i++)
+    for (uint_fast16_t i = 0; i<this->counts.size(); i++)
     {
         this->counts[i] += other.counts[i];
     }
@@ -257,7 +257,7 @@ auto histo_2d::add
         }
     }
     
-    uint16_t x_index = 0, y_index = 0;
+    uint_fast16_t x_index = 0, y_index = 0;
     for 
     (
         auto x_it = ++this->xs.begin();
@@ -333,7 +333,7 @@ auto histo_2d::add
     //    news.end()
     //);
 
-    uint64_t news_tot = news.size();
+    uint_fast64_t news_tot = news.size();
 
     if (news_tot <= 0)
     {
@@ -345,7 +345,7 @@ auto histo_2d::add
         return;
     }
 
-    uint64_t news_index = 0;
+    uint_fast64_t news_index = 0;
     std::vector<std::tuple<double, double> > to_add{news};
     std::vector<double> to_add_1bin{};
     to_add_1bin.reserve(to_add.size());
@@ -363,8 +363,8 @@ auto histo_2d::add
             }
     );
     
-    uint16_t x_index = 0, y_index = 0;
-    uint64_t x_bin_tot = 0, to_add_index = 0;
+    uint_fast16_t x_index = 0, y_index = 0;
+    uint_fast64_t x_bin_tot = 0, to_add_index = 0;
     
     //Go through all the x-bins
     for 
@@ -447,9 +447,9 @@ auto histo_2d::add
     std::get<0>(this->overf) += std::get<0>(other.overf);
     std::get<1>(this->overf) += std::get<1>(other.overf);
 
-    for (uint16_t i = 0; i<this->counts.size(); i++)
+    for (uint_fast16_t i = 0; i<this->counts.size(); i++)
     {
-        for (uint16_t j = 0; j<this->counts[0].size(); j++)
+        for (uint_fast16_t j = 0; j<this->counts[0].size(); j++)
         {
             this->counts[i][j] += other.counts[i][j];
         }
@@ -504,7 +504,7 @@ auto histo_3d::add
         }
     }
     
-    uint16_t x_index = 0, y_index = 0, z_index = 0;
+    uint_fast16_t x_index = 0, y_index = 0, z_index = 0;
     for 
     (
         auto x_it = ++this->xs.begin();
@@ -605,7 +605,7 @@ auto histo_3d::add
     //    news.end()
     //);
 
-    uint64_t news_tot = news.size();
+    uint_fast64_t news_tot = news.size();
 
     if (news_tot <= 0)
     {
@@ -635,8 +635,8 @@ auto histo_3d::add
             }
     );
     
-    uint16_t x_index = 0, y_index = 0, z_index = 0;
-    uint64_t news_index = 0, x_bin_tot = 0, xy_bin_tot = 0,
+    uint_fast16_t x_index = 0, y_index = 0, z_index = 0;
+    uint_fast64_t news_index = 0, x_bin_tot = 0, xy_bin_tot = 0,
              to_add_xindex = 0, to_add_xyindex = 0;
     
     //Go through all the x-bins
@@ -779,11 +779,11 @@ auto histo_3d::add
     std::get<1>(this->overf) += std::get<1>(other.overf);
     std::get<2>(this->overf) += std::get<2>(other.overf);
 
-    for (uint16_t i = 0; i<this->counts.size(); i++)
+    for (uint_fast16_t i = 0; i<this->counts.size(); i++)
     {
-        for (uint16_t j = 0; j<this->counts[0].size(); j++)
+        for (uint_fast16_t j = 0; j<this->counts[0].size(); j++)
         {
-            for (uint16_t k = 0; k<this->counts[0][0].size(); k++)
+            for (uint_fast16_t k = 0; k<this->counts[0][0].size(); k++)
             {
                 this->counts[i][j][k] += other.counts[i][j][k];
             }
@@ -794,7 +794,7 @@ auto histo_3d::add
 }
 
 auto histo_1d::get_histo() const noexcept 
--> std::tuple<std::vector<double>, double, double, std::vector<double>, uint64_t>
+-> std::tuple<std::vector<double>, double, double, std::vector<double>, uint_fast64_t>
 {   
     auto ret_histo{this->counts};
     auto total = this->total_counts;
@@ -802,7 +802,7 @@ auto histo_1d::get_histo() const noexcept
     auto prev_x = this->xs[0];
     double curr_x, bin_size;
 
-    for (uint16_t i = 0; i<this->counts.size(); i++)
+    for (uint_fast16_t i = 0; i<this->counts.size(); i++)
     {
         curr_x = this->xs[i+1];
         bin_size = curr_x-prev_x;
@@ -826,7 +826,7 @@ auto histo_2d::get_histo() const noexcept -> std::tuple
     std::tuple<double, double>, 
     std::tuple<double, double>, 
     std::tuple<std::vector<double>, std::vector<double> >,
-    uint64_t >
+    uint_fast64_t >
 {   
     auto ret_histo{this->counts};
     auto total = this->total_counts;
@@ -835,7 +835,7 @@ auto histo_2d::get_histo() const noexcept -> std::tuple
     double curr_x, x_bin_size;
     double prev_y, curr_y, y_bin_size;
 
-    for (uint16_t i = 0; i<this->counts.size(); i++)
+    for (uint_fast16_t i = 0; i<this->counts.size(); i++)
     {
         curr_x = this->xs[i+1];
         x_bin_size = curr_x-prev_x;
@@ -843,7 +843,7 @@ auto histo_2d::get_histo() const noexcept -> std::tuple
 
         prev_y = this->ys[0];
 
-        for (uint16_t j = 0; j<this->counts[0].size(); j++)
+        for (uint_fast16_t j = 0; j<this->counts[0].size(); j++)
         {
             curr_y = this->ys[j+1];
             y_bin_size = curr_y-prev_y;
@@ -871,7 +871,7 @@ auto histo_3d::get_histo() const noexcept -> std::tuple
     std::tuple<double, double, double>, 
     std::tuple<double, double, double>, 
     std::tuple<std::vector<double>, std::vector<double>, std::vector<double> >,
-    uint64_t >
+    uint_fast64_t >
 {   
     auto ret_histo{this->counts};
     auto total = this->total_counts;
@@ -887,21 +887,21 @@ auto histo_3d::get_histo() const noexcept -> std::tuple
     {
         double prev, curr;
         prev = this->xs[0];
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
             curr = this->xs[i+1];
             x_bins[i] = curr - prev;
             prev = curr;
         }
         prev = this->ys[0];
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
             curr = this->ys[i+1];
             y_bins[i] = curr - prev;
             prev = curr;
         }
         prev = this->zs[0];
-        for (uint16_t i = 0; i < n_z_bins; i++)
+        for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
             curr = this->zs[i+1];
             z_bins[i] = curr - prev;
@@ -909,11 +909,11 @@ auto histo_3d::get_histo() const noexcept -> std::tuple
         }
     }
 
-    for (uint16_t i = 0; i < n_x_bins; i++)
+    for (uint_fast16_t i = 0; i < n_x_bins; i++)
     {
-        for (uint16_t j = 0; j < n_y_bins; j++)
+        for (uint_fast16_t j = 0; j < n_y_bins; j++)
         {
-            for (uint16_t k = 0; k < n_z_bins; k++)
+            for (uint_fast16_t k = 0; k < n_z_bins; k++)
             {
                 ret_histo[i][j][k] /= static_cast<double>(total)*x_bins[i]*y_bins[j]*z_bins[k];
             }
@@ -941,21 +941,21 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
     double, 
     double, 
     std::vector<double>&&, 
-    uint64_t >
+    uint_fast64_t >
 {   
     auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
     std::vector<double> ret_histo;
     std::vector<double> ret_grid;
     std::vector<double> bins;
     double curr, prev;
-    uint16_t n_x_bins = static_cast<uint16_t>(std::get<0>(xs).size()-1);
-    uint16_t n_y_bins = static_cast<uint16_t>(std::get<1>(xs).size()-1);
+    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs).size()-1);
+    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs).size()-1);
 
     if (project_ys == true)
     {
         bins.reserve(n_y_bins);
         prev = std::get<1>(xs)[0];
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
             curr = std::get<1>(xs)[i+1];
             bins[i] = curr - prev;
@@ -963,9 +963,9 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
         }
 
         ret_histo = std::vector<double>(n_x_bins, 0.0);
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            for (uint16_t j = 0; j < n_y_bins; j++)
+            for (uint_fast16_t j = 0; j < n_y_bins; j++)
             {
                 ret_histo[i] += full_histo[i][j]*bins[j];
             }
@@ -977,7 +977,7 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
     {
         bins.reserve(n_x_bins);
         prev = std::get<0>(xs)[0];
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
             curr = std::get<0>(xs)[i+1];
             bins[i] = curr - prev;
@@ -985,9 +985,9 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
         }
 
         ret_histo = std::vector<double>(n_y_bins, 0.0);
-        for (uint16_t i = 0; i<n_y_bins; i++)
+        for (uint_fast16_t i = 0; i<n_y_bins; i++)
         {
-            for (uint16_t j = 0; j<n_x_bins; j++)
+            for (uint_fast16_t j = 0; j<n_x_bins; j++)
             {
                 ret_histo[i] += full_histo[j][i]*bins[j];
             }
@@ -1006,12 +1006,12 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
         );
 }
 
-auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
+auto histo_3d::project_1d(const uint_fast8_t dim_left) const noexcept -> std::tuple
 <   std::vector<double>&&, 
     double, 
     double, 
     std::vector<double>&&, 
-    uint64_t >
+    uint_fast64_t >
 {   
     auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
     std::vector<double> ret_histo;
@@ -1019,9 +1019,9 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
     std::vector<double> bins1;
     std::vector<double> bins2;
     double curr, prev;
-    uint16_t n_x_bins = static_cast<uint16_t>(std::get<0>(xs).size()-1);
-    uint16_t n_y_bins = static_cast<uint16_t>(std::get<1>(xs).size()-1);
-    uint16_t n_z_bins = static_cast<uint16_t>(std::get<2>(xs).size()-1);
+    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs).size()-1);
+    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs).size()-1);
+    uint_fast16_t n_z_bins = static_cast<uint_fast16_t>(std::get<2>(xs).size()-1);
 
     if (dim_left == 0) //x
     {
@@ -1029,7 +1029,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         bins2.reserve(n_z_bins); //z
 
         prev = std::get<1>(xs)[0];
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
             curr = std::get<1>(xs)[i+1];
             bins1[i] = curr - prev;
@@ -1037,7 +1037,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         }
 
         prev = std::get<2>(xs)[0];
-        for (uint16_t i = 0; i < n_z_bins; i++)
+        for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
             curr = std::get<2>(xs)[i+1];
             bins2[i] = curr - prev;
@@ -1045,11 +1045,11 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         }
 
         ret_histo = std::vector<double>(n_x_bins, 0.0);
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            for (uint16_t j = 0; j < n_y_bins; j++)
+            for (uint_fast16_t j = 0; j < n_y_bins; j++)
             {
-                for (uint16_t k = 0; k < n_z_bins; k++)
+                for (uint_fast16_t k = 0; k < n_z_bins; k++)
                 {
                     ret_histo[i] += full_histo[i][j][k]*bins1[j]*bins2[k];
                 }
@@ -1064,7 +1064,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         bins2.reserve(n_z_bins); //z
 
         prev = std::get<0>(xs)[0];
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
             curr = std::get<0>(xs)[i+1];
             bins1[i] = curr - prev;
@@ -1072,7 +1072,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         }
         
         prev = std::get<2>(xs)[0];
-        for (uint16_t i = 0; i < n_z_bins; i++)
+        for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
             curr = std::get<2>(xs)[i+1];
             bins2[i] = curr - prev;
@@ -1080,11 +1080,11 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         }
 
         ret_histo = std::vector<double>(n_y_bins, 0.0);
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
-            for (uint16_t j = 0; j < n_x_bins; j++)
+            for (uint_fast16_t j = 0; j < n_x_bins; j++)
             {
-                for (uint16_t k = 0; k < n_z_bins; k++)
+                for (uint_fast16_t k = 0; k < n_z_bins; k++)
                 {
                     ret_histo[i] += full_histo[j][i][k]*bins1[j]*bins2[k];
                 }
@@ -1099,7 +1099,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         bins2.reserve(n_z_bins); //x
 
         prev = std::get<1>(xs)[0];
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
             curr = std::get<1>(xs)[i+1];
             bins1[i] = curr - prev;
@@ -1107,7 +1107,7 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         }
         
         prev = std::get<0>(xs)[0];
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
             curr = std::get<0>(xs)[i+1];
             bins2[i] = curr - prev;
@@ -1115,11 +1115,11 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
         }
 
         ret_histo = std::vector<double>(n_z_bins, 0.0);
-        for (uint16_t i = 0; i < n_z_bins; i++)
+        for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
-            for (uint16_t j = 0; j < n_x_bins; j++)
+            for (uint_fast16_t j = 0; j < n_x_bins; j++)
             {
-                for (uint16_t k = 0; k < n_y_bins; k++)
+                for (uint_fast16_t k = 0; k < n_y_bins; k++)
                 {
                     ret_histo[i] += full_histo[j][k][i]*bins1[k]*bins2[j];
                 }
@@ -1144,13 +1144,13 @@ auto histo_3d::project_1d(const uint8_t dim_left) const noexcept -> std::tuple
             tots
         );
 }
-auto histo_3d::project_2d(const uint8_t dim_integrated)
+auto histo_3d::project_2d(const uint_fast8_t dim_integrated)
 const noexcept -> std::tuple
 <   std::vector<std::vector<double> >, 
     double, 
     double, 
     std::tuple<std::vector<double>, std::vector<double> >,
-    uint64_t >
+    uint_fast64_t >
 {
     auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
     std::vector<std::vector<double> > ret_histo;
@@ -1158,16 +1158,16 @@ const noexcept -> std::tuple
     std::vector<double> ret_grid2;
     std::vector<double> bins;
     double curr, prev;
-    uint16_t n_x_bins = static_cast<uint16_t>(std::get<0>(xs).size()-1);
-    uint16_t n_y_bins = static_cast<uint16_t>(std::get<1>(xs).size()-1);
-    uint16_t n_z_bins = static_cast<uint16_t>(std::get<2>(xs).size()-1);
+    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs).size()-1);
+    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs).size()-1);
+    uint_fast16_t n_z_bins = static_cast<uint_fast16_t>(std::get<2>(xs).size()-1);
 
     if (dim_integrated == 0) //x
     {
         bins = std::vector<double>(n_x_bins, 0.0);
 
         prev = std::get<0>(xs)[0];
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
             curr = std::get<0>(xs)[i+1];
             bins[i] = curr - prev;
@@ -1183,11 +1183,11 @@ const noexcept -> std::tuple
                             0.0
                         )
                     );
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
-            for (uint16_t j = 0; j < n_z_bins; j++)
+            for (uint_fast16_t j = 0; j < n_z_bins; j++)
             {
-                for (uint16_t k = 0; k < n_x_bins; k++)
+                for (uint_fast16_t k = 0; k < n_x_bins; k++)
                 {
                     ret_histo[i][j] += full_histo[k][i][j]*bins[k];
                 }
@@ -1202,7 +1202,7 @@ const noexcept -> std::tuple
         bins = std::vector<double>(n_y_bins, 0.0);
 
         prev = std::get<1>(xs)[0];
-        for (uint16_t i = 0; i < n_y_bins; i++)
+        for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
             curr = std::get<1>(xs)[i+1];
             bins[i] = curr - prev;
@@ -1218,11 +1218,11 @@ const noexcept -> std::tuple
                             0.0
                         )
                     );
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            for (uint16_t j = 0; j < n_z_bins; j++)
+            for (uint_fast16_t j = 0; j < n_z_bins; j++)
             {
-                for (uint16_t k = 0; k < n_y_bins; k++)
+                for (uint_fast16_t k = 0; k < n_y_bins; k++)
                 {
                     ret_histo[i][j] += full_histo[i][k][j]*bins[k];
                 }
@@ -1237,7 +1237,7 @@ const noexcept -> std::tuple
         bins = std::vector<double>(n_z_bins, 0.0);
 
         prev = std::get<2>(xs)[0];
-        for (uint16_t i = 0; i < n_z_bins; i++)
+        for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
             curr = std::get<2>(xs)[i+1];
             bins[i] = curr - prev;
@@ -1253,11 +1253,11 @@ const noexcept -> std::tuple
                             0.0
                         )
                     );
-        for (uint16_t i = 0; i < n_x_bins; i++)
+        for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            for (uint16_t j = 0; j < n_y_bins; j++)
+            for (uint_fast16_t j = 0; j < n_y_bins; j++)
             {
-                for (uint16_t k = 0; k < n_z_bins; k++)
+                for (uint_fast16_t k = 0; k < n_z_bins; k++)
                 {
                     ret_histo[i][j] += full_histo[i][j][k]*bins[k];
                 }
@@ -1292,7 +1292,7 @@ auto operator==
 {
     bool ret = (c1.xs.size() == c2.xs.size());
     ret *= (c1.counts.size() == c2.counts.size());
-    for (uint16_t i = 0; i<c1.xs.size(); i++)
+    for (uint_fast16_t i = 0; i<c1.xs.size(); i++)
     {
         ret *= (c1.xs[i] == c2.xs[i]);
     }
@@ -1307,11 +1307,11 @@ auto operator==
 {
     bool ret = (c1.xs.size() == c2.xs.size());
     ret *= (c1.ys.size() == c2.ys.size());
-    for (uint16_t i = 0; i<c1.xs.size(); i++)
+    for (uint_fast16_t i = 0; i<c1.xs.size(); i++)
     {
         ret *= (c1.xs[i] == c2.xs[i]);
     }
-    for (uint16_t i = 0; i<c1.ys.size(); i++)
+    for (uint_fast16_t i = 0; i<c1.ys.size(); i++)
     {
         ret *= (c1.ys[i] == c2.ys[i]);
     }
@@ -1327,15 +1327,15 @@ auto operator==
     bool ret = (c1.xs.size() == c2.xs.size());
     ret *= (c1.ys.size() == c2.ys.size());
     ret *= (c1.zs.size() == c2.zs.size());
-    for (uint16_t i = 0; i<c1.xs.size(); i++)
+    for (uint_fast16_t i = 0; i<c1.xs.size(); i++)
     {
         ret *= (c1.xs[i] == c2.xs[i]);
     }
-    for (uint16_t i = 0; i<c1.ys.size(); i++)
+    for (uint_fast16_t i = 0; i<c1.ys.size(); i++)
     {
         ret *= (c1.ys[i] == c2.ys[i]);
     }
-    for (uint16_t i = 0; i<c1.zs.size(); i++)
+    for (uint_fast16_t i = 0; i<c1.zs.size(); i++)
     {
         ret *= (c1.zs[i] == c2.zs[i]);
     }

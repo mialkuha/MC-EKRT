@@ -62,15 +62,15 @@ public:
             double mu = 46.4;
             double k = 1.5;
             double p = (mu/k) / (mu/k + 1.);
-            uint nAncestors = static_cast<uint>(floor(nTwo));
-            uint mult = 0;
+            uint_fast32_t nAncestors = static_cast<uint_fast32_t>(floor(nTwo));
+            uint_fast32_t mult = 0;
             //std::cout << (*random_generator)() << ' ' << std::flush;
-            std::negative_binomial_distribution<uint> distr(static_cast<uint>(k),1.-p);
-            for (uint i = 0; i < nAncestors; ++i) {
+            std::negative_binomial_distribution<uint_fast32_t> distr(static_cast<uint_fast32_t>(k),1.-p);
+            for (uint_fast32_t i = 0; i < nAncestors; ++i) {
             mult += distr(*random_generator);
             //std::cout << mult << ' ' << std::flush;
             }
-            sumET = mult;
+            sumET = static_cast<double>(mult);
             //std::cout << std::endl << nAncestors << ' ' << sumET/nAncestors << std::endl << std::endl;
             // cout << endl << nAncestors << ' ' << sumET/nAncestors << endl << endl;
         }
@@ -105,18 +105,18 @@ public:
     (
         std::vector<Coll> &collisions, 
         const xsectval &sigma_inel, 
-        const uint &N_events, 
-        const uint &nBins, 
+        const uint_fast64_t &N_events, 
+        const uint_fast64_t &nBins, 
         const double *const binsLow, 
         const double *const binsHigh,
         std::ostream &out_stream
     ) noexcept -> void
     {
         // Make sure that no rounding downwards.
-        double eps = 0.1/N_events;
+        double eps = 0.1/static_cast<double>(N_events);
         
         // int comp = 1;
-        for (uint8_t comp = 1; comp <= 5; ++comp) {
+        for (uint_fast8_t comp = 1; comp <= 5; ++comp) {
             
             // Print out the header.
             out_stream << std::endl;
@@ -163,10 +163,10 @@ public:
             
             std::vector<Coll> centrality;
             // Number of collisions within centrality class i.
-            for (uint i = 0; i < nBins; i++)
+            for (uint_fast8_t i = 0; i < nBins; i++)
             {
-                uint lower = static_cast<uint>(binsLow[i]*N_events+eps);
-                uint upper = static_cast<uint>(binsHigh[i]*N_events+eps);
+                uint_fast64_t lower = static_cast<uint_fast64_t>(binsLow[i]*static_cast<double>(N_events)+eps);
+                uint_fast64_t upper = static_cast<uint_fast64_t>(binsHigh[i]*static_cast<double>(N_events)+eps);
                 centrality.clear();
                 while (lower<upper)
                 {
@@ -315,11 +315,11 @@ public:
         auto n_x_bins = histo.size();
         auto n_y_bins = histo[0].size();
 
-        for (uint8_t i = 0; i < n_x_bins; i++)
+        for (uint_fast8_t i = 0; i < n_x_bins; i++)
         {
             file << xs0[i] << ' ' << xs0[i+1] << ' ';
 
-            for (uint8_t j = 0; j < n_y_bins; j++)
+            for (uint_fast8_t j = 0; j < n_y_bins; j++)
             {   
                 file << histo[i][j] * norm << ' ';
             }
@@ -579,9 +579,9 @@ public:
                                          name+"_SAT_MC.dat"};
         
         double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, theta;
-        uint64_t n_jets;
+        uint_fast64_t n_jets;
 
-        for (uint8_t i=0; i<4; i++)
+        for (uint_fast8_t i=0; i<4; i++)
         {
             n_jets = filtered_scatterings[i].size()*2;
 
@@ -645,7 +645,7 @@ public:
     {        
         //double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, phi;
         double pt, y1, y2, t01, t02, x, y, tata, phi;
-        uint64_t n_dijets;
+        uint_fast64_t n_dijets;
         n_dijets = filtered_scatterings.size();
         jet_file.write(reinterpret_cast<char*>(&n_dijets), sizeof n_dijets); //total number of dijets
 
@@ -749,13 +749,13 @@ public:
         bool are_ns_depleted    = false;
         bool is_saturation      = false;
         bool is_mc_glauber      = false;
-        uint32_t n_events       = 10000;
+        uint_fast32_t n_events       = 10000;
         spatial b_max           = 20;//fm
         momentum pt0            = 2.728321;//GeV
         double K_factor         = 1.0;
         double K_sat            = 1.0;
 
-        uint16_t count = 0;
+        uint_fast16_t count = 0;
 
         if (input.is_open())
         {
@@ -877,7 +877,7 @@ public:
         const histo_1d &dETdb,
         const histo_1d &dEdb,
         const xsectval &dijet_norm,
-        const uint32_t &AA_events
+        const uint_fast32_t &AA_events
     ) noexcept -> void
     {
         std::string true_postfix{name_postfix+".dat"};
@@ -912,7 +912,7 @@ public:
         (
             dETdy,
             "dETdy_sim_"+true_postfix, 
-            1.0/ AA_events,
+            1.0/ static_cast<double>(AA_events),
             false
         );
 
@@ -921,7 +921,7 @@ public:
         (
             dEdy, 
             "dEdy_sim_"+true_postfix, 
-            1.0/ AA_events,
+            1.0/ static_cast<double>(AA_events),
             false
         );
 
@@ -930,7 +930,7 @@ public:
         (
             dNdy, 
             "dNdy_sim_"+true_postfix, 
-            1.0/ AA_events,
+            1.0/ static_cast<double>(AA_events),
             false
         );
 
@@ -948,7 +948,7 @@ public:
         (
             dETdeta, 
             "dETdeta_sim_"+true_postfix, 
-            1.0 / AA_events,
+            1.0 / static_cast<double>(AA_events),
             false
         );
 
@@ -957,7 +957,7 @@ public:
         (
             dEdeta, 
             "dEdeta_sim_"+true_postfix, 
-            1.0 / AA_events,
+            1.0 / static_cast<double>(AA_events),
             false
         );
 

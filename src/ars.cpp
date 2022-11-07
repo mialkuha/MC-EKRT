@@ -48,7 +48,7 @@ double ars::throw_one_adaptive(std::mt19937 & random_generator)
             const double comparator = this->unif_dist(random_generator);
 
             //Index of the lower bound of the zk interval where rand falls
-            uint k=0; 
+            uint_fast16_t k=0; 
             for (; k<this->zk.size()-1; k++)
             {
                 if (this->zk.at(k+1) > rand) break;
@@ -67,7 +67,7 @@ double ars::throw_one_adaptive(std::mt19937 & random_generator)
                 }//std::cout<<"HERE 1"<<rand<<std::endl;
                 continue;
             }
-            const uint j = static_cast<uint>(temp_j);
+            const uint_fast16_t j = static_cast<uint_fast16_t>(temp_j);
 
             const double hxk = this->log_values.at(xk);
             const double hdxk = this->log_der_values.at(xk);
@@ -127,7 +127,7 @@ double ars::throw_one_const(std::mt19937 & random_generator)
             const double comparator = this->unif_dist(random_generator);
 
             //Index of the lower bound of the zk interval where rand falls
-            uint k=0; 
+            uint_fast16_t k=0; 
             for (; k<this->zk.size()-1; k++)
             {
                 if (this->zk.at(k+1) > rand) break;
@@ -140,7 +140,7 @@ double ars::throw_one_const(std::mt19937 & random_generator)
             {//std::cout<<"HERE 1"<<rand<<std::endl;
                 continue;
             }
-            const uint j = static_cast<uint>(temp_j);
+            const uint_fast16_t j = static_cast<uint_fast16_t>(temp_j);
 
             const double hxk = this->log_values.at(xk);
             const double hdxk = this->log_der_values.at(xk);
@@ -178,11 +178,11 @@ double ars::throw_one_const(std::mt19937 & random_generator)
     } while (true);
 }   
 
-std::vector<double> ars::throw_n(const uint & n, std::mt19937 & random_generator) noexcept
+std::vector<double> ars::throw_n(const uint_fast32_t & n, std::mt19937 & random_generator) noexcept
 {
     std::vector<double> vec({});
     vec.reserve(n); 
-    for (uint i=0; i<n; i++)
+    for (uint_fast32_t i=0; i<n; i++)
     {
         vec.emplace_back(this->throw_one(random_generator));
     }
@@ -192,7 +192,7 @@ std::vector<double> ars::throw_n(const uint & n, std::mt19937 & random_generator
 
 void ars::initialize_distribution() noexcept
 {
-    for (uint k=0; k<this->abscissae.size(); k++)
+    for (uint_fast16_t k=0; k<this->abscissae.size(); k++)
     {
         auto xk = this->abscissae.at(k);
 
@@ -200,7 +200,7 @@ void ars::initialize_distribution() noexcept
         this->log_der_values.emplace(xk,this->log_der(xk));
     }
 
-    for (uint k=0; k<this->abscissae.size()-1; k++)
+    for (uint_fast16_t k=0; k<this->abscissae.size()-1; k++)
     {
         auto xk = this->abscissae.at(k);
         auto xkp1 = this->abscissae.at(k+1);
@@ -265,7 +265,7 @@ void ars::update_distribution() noexcept
         this->zk.emplace(std::next(this->zk.cbegin()), (hkp1 - hk - xkp1*hdkp1 + x0*hdk)/(hdk - hdkp1));
     }
 
-    for (uint k=1; k<this->abscissae.size()-1; k++)
+    for (uint_fast16_t k=1; k<this->abscissae.size()-1; k++)
     {
         auto xk = this->abscissae.at(k);
         auto iter = this->log_values.find(xk);

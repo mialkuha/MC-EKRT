@@ -16,12 +16,12 @@ public:
     (
         const double &first, 
         const double &last, 
-        const uint16_t &len
+        const uint_fast16_t &len
     ) noexcept -> std::vector<double>
     {
         std::vector<double> result(len);
-        double step = (last-first) / (len - 1);
-        for (uint16_t i=0; i<len; i++) { result[i] = first + i*step; }
+        double step = (last-first) / static_cast<double>(len-1);
+        for (uint_fast16_t i=0; i<len; i++) { result[i] = first + static_cast<double>(i)*step; }
         return result;
     }
 
@@ -30,13 +30,13 @@ public:
     (
         const double &first, 
         const double &last, 
-        const uint16_t &len
+        const uint_fast16_t &len
     ) noexcept -> std::vector<double>
     {
         std::vector<double> result(len);
-        double step = pow(last/first, 1.0/(len-1.0));
+        double step = pow(last/first, 1.0/static_cast<double>(len-1));
         result[0] = first;
-        for (uint16_t i=1; i<len; i++) { result[i] = result[i-1]*step; }
+        for (uint_fast16_t i=1; i<len; i++) { result[i] = result[i-1]*step; }
         return result;
     }
 

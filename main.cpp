@@ -15,12 +15,20 @@
 #include <unordered_set>
 #include <vector>
 
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wextra"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
+#include "LHAPDF/GridPDF.h"
+#pragma GCC diagnostic pop
+
 #include "ars.hpp"
 #include "generic_helpers.hpp"
 #include "high_level_calcs.hpp"
 #include "histo.hpp"
 #include "io_helpers.hpp"
-#include "LHAPDF/GridPDF.h"
 #include "nucleus_generator.hpp"
 #include "pqcd.hpp"
 #include "typedefs.hpp"
@@ -104,12 +112,12 @@ struct dijet_with_ns
 
 auto check_and_place_circle_among_others
 (
-    std::tuple<double, double, double, uint16_t> cand_circle, 
-    std::vector<std::tuple<double, double, double, uint16_t> > &final_circles
+    std::tuple<double, double, double, uint_fast16_t> cand_circle, 
+    std::vector<std::tuple<double, double, double, uint_fast16_t> > &final_circles
 ) noexcept -> bool
 {
     auto & [cand_x, cand_y, cand_r, cand_overlap] = cand_circle;
-    std::vector<uint16_t*> overlaps_with;
+    std::vector<uint_fast16_t*> overlaps_with;
     
     for (auto & [circ_x, circ_y, circ_r, circ_overlap] : final_circles)
     {
@@ -147,16 +155,15 @@ auto filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
     std::vector<dijet_with_coords> &filtered_scatterings,
-    std::uniform_real_distribution<double> &unirand,
     std::shared_ptr<std::mt19937> random_generator,
     const bool mom_cons = false,
-    const bool mom_cons_local = false,
+    /*const bool mom_cons_local = false,*/
     const bool saturation = false,
     const bool deplete_nucleons = false,
     const momentum sqrt_s = 0,
     const double &maximum_overlap = 2.0,
     const spatial &proton_width = 1.0,
-    const xsectval &sigma_inel = 1.0,
+    /*const xsectval &sigma_inel = 1.0,*/
     const bool include_tata = false,
     const std::vector<nucleon> &pro = {}, 
     const std::vector<nucleon> &tar = {}, 
@@ -183,7 +190,7 @@ auto filter_end_state
     }
     candidates.shrink_to_fit();
     
-    std::vector<std::tuple<double, double, double, uint16_t> > final_circles;
+    std::vector<std::tuple<double, double, double, uint_fast16_t> > final_circles;
     final_circles.reserve(candidates.size());
     filtered_scatterings.reserve(filtered_scatterings.size()+candidates.size());
 
@@ -287,9 +294,11 @@ volatile std::atomic_bool g_bug_bool = false;
 void abort_handler(int num)
 {
     user_aborted = true;
+    std::cout<<std::endl<<"Terminate called "<<num<<std::endl;
 }
 void term_handler(int num)
 {
+    user_aborted = true;
     std::cout<<std::endl<<"Terminate called "<<num<<std::endl;
 }
 
@@ -336,7 +345,7 @@ int main(int argc, char** argv)
                   include_tata             = true/*, 
                   average_spatial_taas     = false*/;
     std::string   event_file_name = "event_log_"+name_postfix+".dat";
-    uint32_t      AA_events             = 0;
+    uint_fast32_t AA_events             = 0;
     const spatial b_min                 = 0;
     std::mutex AA_events_mutex; 
     std::cout<<std::endl<<std::endl<<"Doing the run "<<name_postfix<<std::endl;
@@ -345,7 +354,7 @@ int main(int argc, char** argv)
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
     //Parameters for the nuclei
-    //uint8_t samplersN = 32;
+    //uint_fast8_t samplersN = 32;
     const spatial rad_min=0,
                   rad_max=30;
     const std::function<double(const double&)> rad_pdf{[](const double & x)
@@ -359,7 +368,7 @@ int main(int argc, char** argv)
     } while (radial_sampler->is_adaptive());
     //std::vector<std::shared_ptr<ars> > sampler_pointers;
     //std::mutex radial_sampler_mutex;
-    //for (uint8_t i=0; i<samplersN; i++)
+    //for (uint_fast8_t i=0; i<samplersN; i++)
     //{
     //    sampler_pointers.push_back(std::make_shared<ars>(rad_pdf, rad_min, rad_max));
     //}
@@ -393,15 +402,15 @@ int main(int argc, char** argv)
     std::vector<io::Coll> collisions_for_reporting;
     std::vector<io::Coll> collisions_for_reporting_midrap;
     std::mutex colls_mutex; 
-    std::vector<double> kt_bins{helpers::loglinspace(kt0, 100, 16)};
-    auto kt_v_dummy = helpers::loglinspace(200, sqrt_s/2.0, 5);
+    std::vector<double> kt_bins{helpers::loglinspace(kt0, 100, 16u)};
+    auto kt_v_dummy = helpers::loglinspace(200, sqrt_s/2.0, 5u);
     for (auto ktdummy : kt_v_dummy)
     {
         kt_bins.push_back(ktdummy);
     }
-    const std::vector<double> y_bins{helpers::linspace(-ylim, ylim, 40)};
-    const std::vector<double> b_bins{helpers::linspace(b_min, b_max, 21)};
-    std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31)};
+    const std::vector<double> y_bins{helpers::linspace(-ylim, ylim, 40u)};
+    const std::vector<double> b_bins{helpers::linspace(b_min, b_max, 21u)};
+    std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
 
     //sigma_jet parameters
     /*const bool read_sigmajets_from_file = false;*/
@@ -413,10 +422,10 @@ int main(int argc, char** argv)
     /*npdfs_spatial=            */g_use_snpdfs,
     /*npdf_setnumber=           */1,
     /*K_factor=                 */K_factor,
-    /*A=                        */(g_is_aa)? 208 : 1, //Pb 
-    /*B=                        */(g_is_pp)? 1 : 208, //Pb
-    /*ZA=                       */(g_is_aa)? 82 : 1,  //Pb
-    /*ZB=                       */(g_is_pp)? 1 : 82   //Pb
+    /*A=                        */(g_is_aa)? 208u : 1u, //Pb 
+    /*B=                        */(g_is_pp)? 1u : 208u, //Pb
+    /*ZA=                       */(g_is_aa)? 82u : 1u,  //Pb
+    /*ZB=                       */(g_is_pp)? 1u : 82u   //Pb
     /*p_n_pdf=                  */
     /*rA_spatial=               */
     /*rB_spatial=               */);
@@ -575,8 +584,8 @@ int main(int argc, char** argv)
 
     std::ofstream total_energy;
     std::mutex total_energy_mutex; 
-    auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
-    int64_t max_energy_broken = 0;
+    //auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
+    //int_fast64_t max_energy_broken = 0;
  
     total_energy.open("total_energies_"+name_postfix+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
@@ -622,9 +631,9 @@ int main(int argc, char** argv)
             event_file << "///"<<std::endl;
         }
 
-        std::vector<uint64_t> event_indexes(desired_N_events);
+        std::vector<uint_fast64_t> event_indexes(desired_N_events);
         std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        std::atomic<uint64_t> running_count{desired_N_events};
+        std::atomic<uint_fast64_t> running_count{desired_N_events};
 
         std::signal(SIGINT, abort_handler);
         //std::signal(SIGTERM, term_handler);
@@ -653,11 +662,12 @@ int main(int argc, char** argv)
                  &envelope_maximum=envelope_maximum,
                  &K_sat=K_sat,
                  &colls_scatterings=colls_scatterings
-                ](const uint64_t index) 
+                ](const uint_fast64_t index) 
                 {
+                    static_cast<void>(index);
                     do //while (g_bug_bool)
                     {
-                        uint32_t NColl = 0;
+                        uint_fast32_t NColl = 0;
                         std::vector<nn_coll> binary_collisions;
                         std::vector<dijet_with_coords> filtered_scatterings;
 
@@ -666,7 +676,7 @@ int main(int argc, char** argv)
 
                         //std::shared_ptr<ars> radial_sampler;
                         //bool sampler_found = false;
-                        //uint8_t s_index = index % samplersN;
+                        //uint_fast8_t s_index = index % samplersN;
 
                         //{
                         //    std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
@@ -770,7 +780,7 @@ int main(int argc, char** argv)
                                 //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
                                 //log_file << std::endl;
                             }*/
-                            NColl = static_cast<uint32_t>(binary_collisions.size());
+                            NColl = static_cast<uint_fast32_t>(binary_collisions.size());
                             if (NColl<1)
                             {
                                 impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
@@ -805,16 +815,15 @@ int main(int argc, char** argv)
                             (
                                 binary_collisions, 
                                 filtered_scatterings, 
-                                unirand, 
                                 eng, 
                                 g_is_mom_cons_new, 
-                                false,
+                                /*g_is_mom_cons_local, FEATURE NOT IMPLEMENTED*/
                                 g_is_saturation, 
                                 g_are_ns_depleted, 
                                 sqrt_s,
                                 max_overlap,
                                 proton_width,
-                                sigma_inel_for_glauber,
+                                /*sigma_inel_for_glauber, FEATURE NOT IMPLEMENTED*/
                                 include_tata,
                                 pro,
                                 tar,
@@ -954,7 +963,7 @@ int main(int argc, char** argv)
                         }
                         //PrintThread{} <<"\rA+A collisions calculated: " << AA_events << std::flush;
 
-                        uint32_t Npart=0;
+                        uint_fast32_t Npart=0;
                         for (auto &A : pro)
                         {
                             if (A.wounded)
@@ -972,7 +981,7 @@ int main(int argc, char** argv)
 
                         {
                             const std::lock_guard<std::mutex> lock(colls_mutex);
-                            for (uint8_t i=0; i<4; i++)
+                            for (uint_fast8_t i=0; i<4; i++)
                             {
                                 io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
                                 io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
@@ -988,7 +997,6 @@ int main(int argc, char** argv)
                         //filtered_scatterings.clear();
                 
                     } while (g_bug_bool);
-
                     bool ret_value = user_aborted;
                     return ret_value;
                 }
@@ -1232,7 +1240,7 @@ int main(int argc, char** argv)
 
     //log_file.close();
 
-    uint nBins = 18;
+    uint_fast8_t nBins = 18;
     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
     double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
     std::ofstream glauber_report_file;
@@ -1257,7 +1265,7 @@ int main(int argc, char** argv)
     for (auto [centLow, centHigh] : centBins)
     {
         std::stringstream jetsname{""};
-        jetsname<<"jets_"<<int(centLow*100)<<"_"<<int(centHigh*100)<<"_"<<name_pfs;
+        jetsname<<"jets_"<<static_cast<uint_fast8_t>(centLow*100)<<"_"<<static_cast<uint_fast8_t>(centHigh*100)<<"_"<<name_pfs;
         jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
 
         histo_1d dETdy_by_cent{y_bins};
@@ -1265,13 +1273,13 @@ int main(int argc, char** argv)
         std::vector<std::tuple<double, double> > new_ET_y;
         std::vector<std::tuple<double, double> > new_E_y;
 
-        uint64_t N_evts_tot = colls_scatterings.size();
+        uint_fast64_t N_evts_tot = colls_scatterings.size();
         // Make sure that no rounding downwards.
-        double eps = 0.1/N_evts_tot;
+        double eps = 0.1/static_cast<double>(N_evts_tot);
 
-        uint64_t lower_ind = static_cast<uint64_t>(centLow*N_evts_tot+eps);
-        uint64_t upper_ind = static_cast<uint64_t>(centHigh*N_evts_tot+eps);
-        uint64_t n_in_bin = upper_ind - lower_ind;
+        uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
+        uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
+        uint_fast64_t n_in_bin = upper_ind - lower_ind;
 
         //total number of events in this bin
         jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
@@ -1279,7 +1287,7 @@ int main(int argc, char** argv)
         auto it = colls_scatterings.crbegin();
         std::advance(it, lower_ind);
 
-        for (uint64_t ii = 0; ii<n_in_bin; it++, ii++)
+        for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
         {
             for (auto e_co : it->second)
             {
@@ -1301,25 +1309,24 @@ int main(int argc, char** argv)
 
         std::stringstream outname{""};
 
-        outname<<"dEdy_"<<int(centLow*100)<<"_"<<int(centHigh*100)<<name_pfs;
+        outname<<"dEdy_"<<static_cast<uint_fast8_t>(centLow*100)<<"_"<<static_cast<uint_fast8_t>(centHigh*100)<<name_pfs;
         io::print_1d_histo
         (
             dEdy_by_cent, 
             outname.str(), 
-            1.0/ (N_evts_tot*n_in_bin),
+            1.0/ static_cast<double>(N_evts_tot*n_in_bin),
             false
         );
         outname.seekp(0);
-        outname<<"dETdy_"<<int(centLow*100)<<"_"<<int(centHigh*100)<<name_pfs;
+        outname<<"dETdy_"<<static_cast<uint_fast8_t>(centLow*100)<<"_"<<static_cast<uint_fast8_t>(centHigh*100)<<name_pfs;
         io::print_1d_histo
         (
             dETdy_by_cent,
             outname.str(), 
-            1.0/ (N_evts_tot*n_in_bin),
+            1.0/ static_cast<double>(N_evts_tot*n_in_bin),
             false
         );
     }
     
-
     return 0;
 }

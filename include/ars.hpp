@@ -41,7 +41,7 @@ public:
             void add_point(const double & absc, const double & weight) noexcept
             {
                 std::unique_lock lock{this->m};
-                uint i=0;
+                uint_fast16_t i=0;
                 for (; i<this->abscissae.size(); i++)
                 {
                     if (absc < this->abscissae.at(i))
@@ -49,8 +49,8 @@ public:
                         break;
                     }
                 }
-                this->abscissae.insert(this->abscissae.begin()+i,absc);
-                this->weights.insert(this->weights.begin()+i,weight);
+                this->abscissae.insert(this->abscissae.begin()+static_cast<int_fast32_t>(i),absc);
+                this->weights.insert(this->weights.begin()+static_cast<int_fast32_t>(i),weight);
 
                 this->initialize_members();
                 /* maybe TODO to be more efficient
@@ -86,9 +86,9 @@ public:
                     {
                         //std::unique_lock lock{this->m};
                         //rand is between 0 and normalization
-                        double rand = static_cast<double>(g())*this->normalization/(static_cast<double>(g.max())-static_cast<double>(g.min()));
+                        double rand = static_cast<double>(g())*this->normalization/(static_cast<double>(g.max()-g.min()));
                         //std::cout<<"here norm:"<<this->normalization<<" rand:"<<rand;
-                        uint i=0;
+                        uint_fast16_t i=0;
                         for (; i<this->cdf_weights.size()-1; i++)
                         {
                             if (rand < this->cdf_weights.at(i+1))
@@ -122,7 +122,7 @@ public:
                 this->exp_factors.clear(); 
                 this->cdf_weights.clear();
                 this->cdf_weights.emplace_back(0.0);
-                for (uint ip1=1; ip1<this->abscissae.size(); ip1++)
+                for (uint_fast16_t ip1=1; ip1<this->abscissae.size(); ip1++)
                 {
                     ai = bi;
                     bi = this->abscissae.at(ip1);
@@ -186,7 +186,7 @@ public:
             return throw_one_const(random_generator);
         }
     }
-    std::vector<double> throw_n(const uint & n, std::mt19937 & random_generator) noexcept;
+    std::vector<double> throw_n(const uint_fast32_t & n, std::mt19937 & random_generator) noexcept;
     bool is_adaptive() noexcept { return this->adaptive;}
 private:
     void initialize_distribution() noexcept;

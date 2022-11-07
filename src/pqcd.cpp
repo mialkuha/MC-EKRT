@@ -20,10 +20,10 @@ auto pqcd::diff_sigma::make_pdfs
     const bool &isoscalar_target,
     const bool &npdfs_spatial,
     const int &npdf_setnumber,
-    const int &A,
-    const int &B,
-    const int &ZA,
-    const int &ZB,
+    const uint_fast16_t &A,
+    const uint_fast16_t &B,
+    const uint_fast16_t &ZA,
+    const uint_fast16_t &ZB,
     const std::function<double (const double &)> &rA_spatial,
     const std::function<double (const double &)> &rB_spatial
 ) noexcept -> std::tuple
@@ -148,7 +148,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping
     const std::array<double, 7> &f_i_x2,
     const std::array<double, 7> &f_ai_x1,
     const std::array<double, 7> &f_ai_x2,
-    const uint8_t &num_flavors,
+    const uint_fast8_t &num_flavors,
     const momentum &s_hat,
     const momentum &t_hat, 
     const momentum &u_hat
@@ -163,7 +163,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping
     
     //*/
     ///* GQ->XX
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         sum += f_i_x1[0] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
         sum += f_i_x1[0] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
@@ -172,15 +172,15 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping
     }
     //*/
     ///* QQ->XX
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         sum += 0.5 * f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
         sum += 0.5 * f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
     }
 
-    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
+    for (uint_fast8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
     {
-        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
+        for (uint_fast8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
         {
             if (flavor1 != flavor2)
             {
@@ -192,7 +192,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping
         }
     }
 
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         sum += f_i_x1[flavor] * f_ai_x2[flavor] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
                                                   + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
@@ -212,7 +212,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
     const std::array<double, 7> &f_i_x2,
     const std::array<double, 7> &f_ai_x1,
     const std::array<double, 7> &f_ai_x2,
-    const uint8_t &num_flavours,
+    const uint_fast8_t &num_flavours,
     const momentum &s_hat,
     const momentum &t_hat, 
     const momentum &u_hat
@@ -227,7 +227,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
                                                   + pqcd::diff_sigma::sigma_gg_qaq(s_hat, u_hat, t_hat));
     //*/
     ///* GQ->XX
-    for (uint8_t flavor = 1; flavor <= num_flavours; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavours; ++flavor)
     {
         sum += f_i_x1[0] * f_i_x2[flavor] * (pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat) 
                                             + pqcd::diff_sigma::sigma_gq_gq(s_hat, u_hat, t_hat));
@@ -240,15 +240,15 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
     }
     //*/
     ///* QQ->XX
-    for (uint8_t flavor = 1; flavor <= num_flavours; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavours; ++flavor)
     {
         sum += f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
         sum += f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
     }
 
-    for (uint8_t flavor1 = 1; flavor1 <= num_flavours; ++flavor1)
+    for (uint_fast8_t flavor1 = 1; flavor1 <= num_flavours; ++flavor1)
     {
-        for (uint8_t flavor2 = 1; flavor2 <= num_flavours; ++flavor2)
+        for (uint_fast8_t flavor2 = 1; flavor2 <= num_flavours; ++flavor2)
         {
             if (flavor1 != flavor2)
             {
@@ -264,7 +264,7 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
         }
     }
 
-    for (uint8_t flavor = 1; flavor <= num_flavours; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavours; ++flavor)
     {
         sum += f_i_x1[flavor] * f_ai_x2[flavor] *
                 (
@@ -302,9 +302,9 @@ auto pqcd::throw_0_truncated_poissonian
     const double &lambda, 
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng
-) noexcept -> uint8_t
+) noexcept -> uint_fast8_t
 {
-    uint8_t k = 1;
+    uint_fast8_t k = 1;
     long double t;
     if (lambda < 1E-6)
     {
@@ -440,12 +440,12 @@ auto pqcd::generate_bin_NN_coll
 ) noexcept -> void
 {
     //First generate the number of produced dijets from zero-truncated Poissonian distribution
-    uint8_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
+    uint_fast8_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
     coll.dijets.reserve(nof_dijets);
 
     const momentum sqrt_s = coll.getcr_sqrt_s();
 
-    for (uint8_t i=0; i < nof_dijets; i++)
+    for (uint_fast8_t i=0; i < nof_dijets; i++)
     {
         coll.dijets.push_back(pqcd::generate_2_to_2_scatt
         (
@@ -671,7 +671,7 @@ auto pqcd::calculate_spatial_sigma_jet_full
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
 
-    const int A=208, B=208;
+    const uint_fast16_t A=208, B=208;
     const double scaA = A / tAA_0;//c=A*(R-1)/TAA(0)
     std::function<double(double const&)> cA = [&](double const &r){return scaA*(r-1);};
     const double scaB = B / tBB_0;
@@ -723,7 +723,7 @@ auto pqcd::calculate_spatial_sigma_jet_factored
     const double upper_limits[3] = {1, 1, 1};
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
-    int not_success = 0;
+    int not_success;
 
     //First piece: pp
     params.d_params.projectile_with_npdfs = false;
@@ -877,8 +877,8 @@ auto pqcd::calculate_spatial_sigma_jet_mf
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
 
-    const int A = params.d_params.A, 
-              B = params.d_params.B;
+    const uint_fast16_t A = params.d_params.A, 
+                        B = params.d_params.B;
 
     //c=A*(R-1)/TAA(0)
     const double scaA = A * sum_tppa / tAA_0, 
@@ -1108,7 +1108,7 @@ auto pqcd::diff_cross_section_2jet
     }
 
     // gg -> qaq
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         xsect = units * f_i_x1[0] * f_i_x2[0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
         process.sigma = xsect;
@@ -1126,7 +1126,7 @@ auto pqcd::diff_cross_section_2jet
 
     ///* GQ->XX
     // gq -> gq
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         xsect = units * f_i_x1[0] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
         process.sigma = xsect;
@@ -1180,7 +1180,7 @@ auto pqcd::diff_cross_section_2jet
     //*/
     ///* QQ->XX
     // qiqi -> qiqi
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         xsect = units * 0.5 * f_i_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
         process.sigma = xsect;
@@ -1208,9 +1208,9 @@ auto pqcd::diff_cross_section_2jet
     }
 
     // qiqj -> qiqj
-    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
+    for (uint_fast8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
     {
-        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
+        for (uint_fast8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
         {
             if (flavor1 != flavor2)
             {
@@ -1266,7 +1266,7 @@ auto pqcd::diff_cross_section_2jet
     }
 
     // qiaqi -> qiaqi
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         xsect = units * f_i_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat);
         process.sigma = xsect;
@@ -1294,7 +1294,7 @@ auto pqcd::diff_cross_section_2jet
     }
 
     // qiaqi -> gg
-    for (uint8_t flavor = 1; flavor <= num_flavors; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= num_flavors; ++flavor)
     {
         xsect = units * 0.5 * f_i_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat);
         process.sigma = xsect;
@@ -1322,9 +1322,9 @@ auto pqcd::diff_cross_section_2jet
     }
 
     // qiaqi -> qjaqj
-    for (uint8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
+    for (uint_fast8_t flavor1 = 1; flavor1 <= num_flavors; ++flavor1)
     {
-        for (uint8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
+        for (uint_fast8_t flavor2 = 1; flavor2 <= num_flavors; ++flavor2)
         {
             if (flavor1 != flavor2)
             {
@@ -1373,7 +1373,7 @@ auto pqcd::diff_sigma::sigma_jet
 ) noexcept -> xsectval
 {
     const double alpha_s = p_p_pdf->alphasQ2(q2);
-    const uint8_t num_flavors = static_cast<uint8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
+    const uint_fast8_t num_flavors = static_cast<uint_fast8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
 
     auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
         = pqcd::diff_sigma::make_pdfs
@@ -1426,7 +1426,7 @@ auto pqcd::diff_sigma::sigma_1jet
 ) noexcept -> xsectval
 {
     auto alpha_s = p_p_pdf->alphasQ2(q2);
-    auto num_flavors = static_cast<uint8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
+    auto num_flavors = static_cast<uint_fast8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
 
     auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
         = pqcd::diff_sigma::make_pdfs
@@ -1481,10 +1481,10 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     const std::array<const double, 3> &T_sums
 ) noexcept-> xsectval
 {
-    const uint16_t A=208, B=208;
+    const uint_fast16_t A=208, B=208;
     xsectval sum = 0;
     const double alpha_s = p_p_pdf->alphasQ2(q2);
-    const uint8_t numFlavours = static_cast<uint8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
+    const uint_fast8_t numFlavours = static_cast<uint_fast8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
 
     std::array<std::array<double, 13>, 13> f_i_x_matrix;
     std::array<double, 13> cAs, cBs, xfxQ2_1s, xfxQ2_2s;
@@ -1493,7 +1493,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
 
     xfxQ2_1s[0] = p_p_pdf->xfxQ2(0, x1, q2); // 0 = gluons
     xfxQ2_2s[0] = p_p_pdf->xfxQ2(0, x2, q2); // 0 = gluons
-    for (uint8_t i=1; i<7; i++)
+    for (uint_fast8_t i=1; i<7; i++)
     {
         xfxQ2_1s[i] = p_p_pdf->xfxQ2(i, x1, q2); // 1-6 = quarks
         xfxQ2_1s[i+6] = p_p_pdf->xfxQ2(-i, x1, q2); // 7-12 = antiquarks
@@ -1551,17 +1551,17 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
 
 
     f_i_x_matrix[0][0] = xfxQ2_1s[0]*xfxQ2_2s[0]*(1 + cAs[0]*T_sums[0] + cBs[0]*T_sums[1] + cAs[0]*cBs[0]*T_sums[2]);
-    for (uint8_t j = 1; j <= numFlavours; ++j)
+    for (uint_fast8_t j = 1; j <= numFlavours; ++j)
     {
         f_i_x_matrix[0][j] = xfxQ2_1s[0]*xfxQ2_2s[j]*(1 + cAs[0]*T_sums[0] + cBs[j]*T_sums[1] + cAs[0]*cBs[j]*T_sums[2]);
         f_i_x_matrix[0][j+6] = xfxQ2_1s[0]*xfxQ2_2s[j+6]*(1 + cAs[0]*T_sums[0] + cBs[j+6]*T_sums[1] + cAs[0]*cBs[j+6]*T_sums[2]);
     }
-    for (uint8_t i = 1; i <= numFlavours; ++i)
+    for (uint_fast8_t i = 1; i <= numFlavours; ++i)
     {
         f_i_x_matrix[i][0] = xfxQ2_1s[i]*xfxQ2_2s[0]*(1 + cAs[i]*T_sums[0] + cBs[0]*T_sums[1] + cAs[i]*cBs[0]*T_sums[2]);
         f_i_x_matrix[i+6][0] = xfxQ2_1s[i+6]*xfxQ2_2s[0]*(1 + cAs[i+6]*T_sums[0] + cBs[0]*T_sums[1] + cAs[i+6]*cBs[0]*T_sums[2]);
 
-        for (uint8_t j = 1; j <= numFlavours; ++j)
+        for (uint_fast8_t j = 1; j <= numFlavours; ++j)
         {
             f_i_x_matrix[i][j] = xfxQ2_1s[i]*xfxQ2_2s[j]*(1 + cAs[i]*T_sums[0] + cBs[j]*T_sums[1] + cAs[i]*cBs[j]*T_sums[2]);
             f_i_x_matrix[i+6][j] = xfxQ2_1s[i+6]*xfxQ2_2s[j]*(1 + cAs[i+6]*T_sums[0] + cBs[j]*T_sums[1] + cAs[i+6]*cBs[j]*T_sums[2]);
@@ -1575,7 +1575,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     sum += numFlavours * f_i_x_matrix[0][0] * pqcd::diff_sigma::sigma_gg_qaq(s_hat, t_hat, u_hat);
     //*/
     ///* GQ->XX
-    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= numFlavours; ++flavor)
     {
         sum += f_i_x_matrix[0][flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
         sum += f_i_x_matrix[0][flavor+6] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
@@ -1584,15 +1584,15 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
     }
     //*/
     ///* QQ->XX
-    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= numFlavours; ++flavor)
     {
         sum += 0.5 * f_i_x_matrix[flavor][flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
         sum += 0.5 * f_i_x_matrix[flavor+6][flavor+6] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
     }
 
-    for (uint8_t flavor1 = 1; flavor1 <= numFlavours; ++flavor1)
+    for (uint_fast8_t flavor1 = 1; flavor1 <= numFlavours; ++flavor1)
     {
-        for (uint8_t flavor2 = 1; flavor2 <= numFlavours; ++flavor2)
+        for (uint_fast8_t flavor2 = 1; flavor2 <= numFlavours; ++flavor2)
         {
             if (flavor1 != flavor2)
             {
@@ -1604,7 +1604,7 @@ auto pqcd::diff_sigma::spatial_sigma_jet_full
         }
     }
 
-    for (uint8_t flavor = 1; flavor <= numFlavours; ++flavor)
+    for (uint_fast8_t flavor = 1; flavor <= numFlavours; ++flavor)
     {
         sum += f_i_x_matrix[flavor][flavor+6] * (pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat) 
                                                 + 0.5 * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat) 
@@ -2046,7 +2046,7 @@ auto pqcd::f_ses
 ) noexcept -> xsectval
 {
     xsectval sum = 0;
-    for (int flavor = -5; flavor <= 5; ++flavor)
+    for (int_fast8_t flavor = -5; flavor <= 5; ++flavor)
     {
         sum += (flavor == 0) ? p_pdf->xfxQ2(flavor, x, q2) : 4 * p_pdf->xfxQ2(flavor, x, q2) / 9;
     }

@@ -14,8 +14,17 @@
 #include <variant>
 #include <tuple>
 
-#include "generic_helpers.hpp"
+
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wall"
+#pragma GCC diagnostic ignored "-Wextra"
+#pragma GCC diagnostic ignored "-Wsign-conversion"
+#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
+#pragma GCC diagnostic ignored "-Wold-style-cast"
 #include "LHAPDF/GridPDF.h"
+#pragma GCC diagnostic pop
+
+#include "generic_helpers.hpp"
 #include "linear_interpolator.hpp"
 #include "linterp.h"
 #include "nucleus_generator.hpp"
@@ -79,7 +88,7 @@ public:
         init_step_size = gsl_vector_alloc(2);
         gsl_vector_set_all(init_step_size, 0.5);
 
-        uint8_t iter = 0;
+        uint_fast8_t iter = 0;
         int status;
         double simplex_size = 0;
 
@@ -136,7 +145,7 @@ public:
         const momentum &mand_s, 
         const momentum &kt02,  
         pqcd::sigma_jet_params params,
-        const uint16_t n_divisions = 100
+        const uint_fast16_t n_divisions = 100
     )
     {
         const std::vector<double> mand_ss{helpers::linspace(kt02, mand_s, n_divisions)};
@@ -229,7 +238,7 @@ public:
         const momentum &sqrt_s,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf,    
         pqcd::sigma_jet_params params,
-        const uint16_t n_divisions = 100
+        const uint_fast16_t n_divisions = 100
     )
     {
         const std::vector<double> sqrt_ss{helpers::linspace(kt0, sqrt_s, n_divisions)};
@@ -588,7 +597,7 @@ public:
         const bool &verbose
     ) noexcept -> void
     {
-        uint n_pairs = 0, mombroke = 0, nof_softs = 0;
+        uint_fast32_t n_pairs = 0, mombroke = 0, nof_softs = 0;
         
         std::vector<std::tuple<nucleon* const, nucleon* const> > binary_pairs;
         
@@ -600,7 +609,7 @@ public:
             }
         }
         
-        std::vector<uint64_t> pair_indexes(binary_pairs.size());
+        std::vector<uint_fast64_t> pair_indexes(binary_pairs.size());
         std::iota(pair_indexes.begin(), pair_indexes.end(), 0);
         
         std::shuffle(pair_indexes.begin(), pair_indexes.end(), *eng);
@@ -761,7 +770,7 @@ public:
     ) noexcept -> void
     {
 
-        uint n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
+        uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
         spatial tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
         spatial tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
@@ -800,7 +809,7 @@ public:
             }
         }
         
-        std::vector<uint64_t> pair_indexes(binary_pairs.size());
+        std::vector<uint_fast64_t> pair_indexes(binary_pairs.size());
         std::iota(pair_indexes.begin(), pair_indexes.end(), 0);
 
         std::shuffle(pair_indexes.begin(), pair_indexes.end(), *eng);
@@ -872,17 +881,17 @@ public:
                     envelope_maximum = std::get<xsectval>(envelope_maximums);
                 }
 
-                const int NA = dsigma_params.d_params.A, 
-                        NB = dsigma_params.d_params.B;
+                const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                    NB = dsigma_params.d_params.B;
                 //c=A*(R-1)/TAA(0)
-                const double scaA = NA * *sum_tppa / tAA_0, 
-                            intA = 1.0 - scaA;
+                const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                             intA = 1.0 - scaA;
                 const std::function<double(double const&)> 
                     rA_spatial_ = [&](double const &r)
                         {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
 
-                const double scaB = NB * *sum_tppb / tBB_0, 
-                            intB = 1.0 - scaB;
+                const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                             intB = 1.0 - scaB;
                 const std::function<double(double const&)> 
                     rB_spatial_ = [&](double const &r)
                         {return r*scaB + intB;};
@@ -993,7 +1002,7 @@ public:
         {
             std::string line;
 
-            for (uint8_t i = 0; i < 8; i++)
+            for (uint_fast8_t i = 0; i < 8; i++)
             {
                 std::getline(input, line); //Skip the 8 unimportant rows
             }
@@ -1004,7 +1013,7 @@ public:
 
                 if (line.empty()) //The nuclei are separated by empty line, followed by 4 comment lines
                 {
-                    for (uint8_t i = 0; i < 4; i++)
+                    for (uint_fast8_t i = 0; i < 4; i++)
                     {
                         std::getline(input, line);
                     }
@@ -1123,11 +1132,11 @@ public:
     ) noexcept -> spatial
     {
         spatial sum_tpp=0.0; //sum(T_pp(b_ii'))
-        uint16_t A=static_cast<uint16_t>(nucleus.size());
+        uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
 
         auto [x1, y1, z1] = nuc.co;
 
-        for (uint16_t i=0; i<A; i++)
+        for (uint_fast16_t i=0; i<A; i++)
         {
             //sum_tpp += Tpp((nuc.co - nucleus.at(i).co).magt2());
             auto [x2, y2, z2] = nucleus.at(i).co;
@@ -1164,12 +1173,12 @@ private:
         }
         dat_file << std::endl;
 
-        for (uint8_t i = 0; i < n_kt_bins; i++)
+        for (uint_fast8_t i = 0; i < n_kt_bins; i++)
         {
             dat_file << kt_bin_walls[i] << ' ' << kt_bin_walls[i+1] << ' ';
             const auto kt_bin_size = kt_bin_walls[i+1] - kt_bin_walls[i];
 
-            for (uint8_t j = 0; j < n_y_bins; j++)
+            for (uint_fast8_t j = 0; j < n_y_bins; j++)
             {
                 const auto y_bin_size = y_bin_walls[j+1] - y_bin_walls[j];
                 const auto bin = std::make_tuple(kt_bin_walls[i], kt_bin_walls[i+1], y_bin_walls[j], y_bin_walls[j+1]);
@@ -1211,12 +1220,12 @@ private:
         }
         dat_file << std::endl;
 
-        for (uint8_t i = 0; i < n_kt_bins; i++)
+        for (uint_fast8_t i = 0; i < n_kt_bins; i++)
         {
             dat_file << kt_bin_walls[i] << ' ' << kt_bin_walls[i+1] << ' ';
             const auto kt_bin_size = kt_bin_walls[i+1] - kt_bin_walls[i];
 
-            for (uint8_t j = 0; j < n_y_bins; j++)
+            for (uint_fast8_t j = 0; j < n_y_bins; j++)
             {
                 const auto y_bin_size = y_bin_walls[j+1] - y_bin_walls[j];
                 const auto bin = std::make_tuple(kt_bin_walls[i], kt_bin_walls[i+1], y_bin_walls[j], y_bin_walls[j+1]);
@@ -1259,12 +1268,12 @@ private:
         }
         dat_file << std::endl;
 
-        for (uint8_t i = 0; i < n_pt_bins; i++)
+        for (uint_fast8_t i = 0; i < n_pt_bins; i++)
         {
             dat_file << pt_bin_walls[i] << ' ' << pt_bin_walls[i+1] << ' ';
             const auto pt_bin_size = pt_bin_walls[i+1] - pt_bin_walls[i];
 
-            for (uint8_t j = 0; j < n_eta_bins; j++)
+            for (uint_fast8_t j = 0; j < n_eta_bins; j++)
             {
                 const auto eta_bin_size = eta_bin_walls[j+1] - eta_bin_walls[j];
                 const auto bin = std::make_tuple(pt_bin_walls[i], pt_bin_walls[i+1], eta_bin_walls[j], eta_bin_walls[j+1]);
@@ -1291,7 +1300,7 @@ private:
 
         std::ifstream input(filename);
 
-        std::array<uint16_t,3> dim_Ns;
+        std::array<uint_fast16_t,3> dim_Ns;
         std::vector<spatial> grid1, grid2, grid3;
         std::vector< std::vector<spatial>::iterator > grid_iter_list;
         std::vector<xsectval> f_values;
@@ -1303,7 +1312,7 @@ private:
 
             std::getline(input, line); //#2
             std::istringstream line_stream(line);
-            uint64_t num_elements;
+            uint_fast64_t num_elements;
             line_stream.ignore(256,'=');
             line_stream >> num_elements;
 
@@ -1352,12 +1361,12 @@ private:
             std::getline(input, line); //#15 empty
             std::getline(input, line); //#16 Don't need anything from here
             f_values.reserve(num_elements);
-            uint64_t k=0;
+            uint_fast64_t k=0;
             xsectval sigma_jet;
 
-            for (uint64_t i=0; i<dim_Ns[0]; i++)
+            for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
             {
-                for (uint64_t j=0; j<dim_Ns[1]; j++)
+                for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
                 {
                     std::getline(input, line);
                     line_stream = std::istringstream(line);
@@ -1387,7 +1396,7 @@ private:
 
         std::ifstream input(filename);
 
-        std::array<uint16_t,2> dim_Ns;
+        std::array<uint_fast16_t,2> dim_Ns;
         std::vector<spatial> grid1, grid2;
         std::vector< std::vector<spatial>::iterator > grid_iter_list;
         std::vector<xsectval> f_values;
@@ -1399,7 +1408,7 @@ private:
 
             std::getline(input, line); //#2
             std::istringstream line_stream(line);
-            uint64_t num_elements;
+            uint_fast64_t num_elements;
             line_stream.ignore(256,'=');
             line_stream >> num_elements;
 
@@ -1435,10 +1444,10 @@ private:
             std::getline(input, line); //#11 empty
             std::getline(input, line); //#12 Don't need anything from here
             f_values.reserve(num_elements);
-            uint64_t j=0;
+            uint_fast64_t j=0;
             xsectval sigma_jet;
 
-            for (uint64_t i=0; i<dim_Ns[0]; i++)
+            for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
             {
                 std::getline(input, line);
                 line_stream = std::istringstream(line);
@@ -1466,7 +1475,7 @@ private:
 
         std::ifstream input(filename);
 
-        std::array<uint16_t,5> dim_Ns;
+        std::array<uint_fast16_t,5> dim_Ns;
         std::vector<spatial> grid1, grid2, grid3, grid4, grid5;
         std::vector< std::vector<spatial>::iterator > grid_iter_list;
         std::vector<xsectval> f_values;
@@ -1478,7 +1487,7 @@ private:
 
             std::getline(input, line); //#2
             std::istringstream line_stream(line);
-            uint64_t num_elements;
+            uint_fast64_t num_elements;
             line_stream.ignore(256,'=');
             line_stream >> num_elements;
 
@@ -1553,16 +1562,16 @@ private:
             std::getline(input, line); //#23 empty
             std::getline(input, line); //#24 Don't need anything from here
             f_values.reserve(num_elements);
-            uint16_t m=0;
+            uint_fast16_t m=0;
             xsectval sigma_jet;
 
-            for (uint16_t i=0; i<dim_Ns[0]; i++)
+            for (uint_fast16_t i=0; i<dim_Ns[0]; i++)
             {
-                for (uint16_t j=0; j<dim_Ns[1]; j++)
+                for (uint_fast16_t j=0; j<dim_Ns[1]; j++)
                 {
-                    for (uint16_t k=0; k<dim_Ns[2]; k++)
+                    for (uint_fast16_t k=0; k<dim_Ns[2]; k++)
                     {
-                        for (uint16_t l=0; l<dim_Ns[3]; l++)
+                        for (uint_fast16_t l=0; l<dim_Ns[3]; l++)
                         {
                             std::getline(input, line);
                             line_stream = std::istringstream(line);
@@ -1604,7 +1613,7 @@ private:
     ) noexcept -> InterpMultilinear<3, xsectval>
     {
         const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
-        std::array<uint16_t,3> dim_Ns{0}; //How many points to calculate in each dimension
+        std::array<uint_fast16_t,3> dim_Ns{0}; //How many points to calculate in each dimension
         std::array<xsectval,8> corners{0};
         const spatial tAA_0 = 29.5494;//30.5;
         const spatial tBB_0 = 29.5494;//30.5;
@@ -1626,7 +1635,7 @@ private:
         corner_futures[6]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit, mand_s);
         corner_futures[7]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit, kt02  );
 
-        for (uint8_t i=1; i<8; i++)
+        for (uint_fast8_t i=1; i<8; i++)
         {
             corners[i] = corner_futures[i].get();
         }
@@ -1644,7 +1653,7 @@ private:
             abs(corners[3]-corners[7])
         };
         xsectval max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[0] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[0] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         //sum_Tpp_B
         differences = std::array<xsectval,4>
@@ -1655,7 +1664,7 @@ private:
             abs(corners[5]-corners[7])
         });
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[1] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[1] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         //mand_s
         differences = std::array<xsectval,4>
@@ -1666,7 +1675,7 @@ private:
             abs(corners[6]-corners[7])
         });
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[2] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[2] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         for (auto & n : dim_Ns)
         {
@@ -1687,7 +1696,7 @@ private:
         grid_iter_list.push_back(grid3.begin());
     
         // total number of elements
-        uint64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2]; 
+        uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2]; 
 
         std::ofstream sigma_jet_grid_file;
         sigma_jet_grid_file.open("sigma_jet_grid_mf_MC.dat", std::ios::out);
@@ -1710,25 +1719,25 @@ private:
 
         // fill in the values of f(x) at the gridpoints. 
         // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-        std::vector<uint64_t> c_style_indexes(num_elements);
+        std::vector<uint_fast64_t> c_style_indexes(num_elements);
         std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        const uint64_t rad1 = dim_Ns[1]*dim_Ns[2], 
+        const uint_fast64_t rad1 = dim_Ns[1]*dim_Ns[2], 
                     rad2 = dim_Ns[2]; //These will help untangle the C-style index into coordinates
         // c_index = ii*rad1 + jj*rad2 + kk
         std::vector<xsectval> f_values(num_elements);
-        std::atomic<uint64_t> running_count{num_elements};
+        std::atomic<uint_fast64_t> running_count{num_elements};
         
         std::for_each
         (
             std::execution::par, 
             c_style_indexes.begin(), 
             c_style_indexes.end(), 
-            [=, &f_values, &running_count](const uint64_t index) 
+            [=, &f_values/*, &running_count*/](const uint_fast64_t index) 
             {
-                uint64_t kk = index % rad1 % rad2;
-                uint64_t i_dummy = index - kk; 
-                uint64_t jj = (i_dummy % rad1) / rad2;
-                uint64_t ii = (i_dummy - jj*rad2) / rad1;
+                uint_fast64_t kk = index % rad1 % rad2;
+                uint_fast64_t i_dummy = index - kk; 
+                uint_fast64_t jj = (i_dummy % rad1) / rad2;
+                uint_fast64_t ii = (i_dummy - jj*rad2) / rad1;
                 xsectval dummy = pqcd::calculate_spatial_sigma_jet_mf
                                 (
                                     p_p_pdf, 
@@ -1747,11 +1756,11 @@ private:
             }
         );
         
-        for (uint64_t i=0; i<dim_Ns[0]; i++)
+        for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
         {
-            for (uint64_t j=0; j<dim_Ns[1]; j++)
+            for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
             {
-                for (uint64_t k=0; k<dim_Ns[2]; k++)
+                for (uint_fast64_t k=0; k<dim_Ns[2]; k++)
                 {
                     sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k] << ' ';
                 }
@@ -1778,7 +1787,7 @@ private:
     ) noexcept -> InterpMultilinear<2, xsectval>
     {
         const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
-        std::array<uint16_t,2> dim_Ns{0}; //How many points to calculate in each dimension
+        std::array<uint_fast16_t,2> dim_Ns{0}; //How many points to calculate in each dimension
         std::array<xsectval,4> corners{0};
         const spatial tAA_0 = 29.5494;//30.5
         const spatial tBB_0 = 29.5494;//30.5
@@ -1796,7 +1805,7 @@ private:
         corner_futures[2]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, upper_sumTpp_limit);
         corner_futures[3]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit);
 
-        for (uint8_t i=1; i<4; i++)
+        for (uint_fast8_t i=1; i<4; i++)
         {
             corners[i] = corner_futures[i].get();
         }
@@ -1812,7 +1821,7 @@ private:
             abs(corners[1]-corners[3])
         };
         xsectval max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[0] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[0] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         //sum_Tpp_B
         differences = std::array<xsectval,2>
@@ -1821,7 +1830,7 @@ private:
             abs(corners[2]-corners[3])
         });
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[1] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[1] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         for (auto & n : dim_Ns)
         {
@@ -1840,7 +1849,7 @@ private:
         grid_iter_list.push_back(grid2.begin());
     
         // total number of elements
-        uint64_t num_elements = dim_Ns[0] * dim_Ns[1]; 
+        uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1]; 
 
         std::ofstream sigma_jet_grid_file;
         sigma_jet_grid_file.open("sigma_jet_grid_mf.dat", std::ios::out);
@@ -1859,22 +1868,22 @@ private:
 
         // fill in the values of f(x) at the gridpoints. 
         // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-        std::vector<uint64_t> c_style_indexes(num_elements);
+        std::vector<uint_fast64_t> c_style_indexes(num_elements);
         std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        const uint64_t rad = dim_Ns[1]; //This will help untangle the C-style index into coordinates
+        const uint_fast64_t rad = dim_Ns[1]; //This will help untangle the C-style index into coordinates
         // c_index = ii*rad1 + jj
         std::vector<xsectval> f_values(num_elements);
-        std::atomic<uint64_t> running_count{num_elements};
+        std::atomic<uint_fast64_t> running_count{num_elements};
         
         std::for_each
         (
             std::execution::par, 
             c_style_indexes.begin(), 
             c_style_indexes.end(), 
-            [=, &f_values, &running_count](const uint64_t index) 
+            [=, &f_values/*, &running_count*/](const uint_fast64_t index) 
             {
-                uint64_t jj = index % rad;
-                uint64_t ii = (index - jj) / rad;
+                uint_fast64_t jj = index % rad;
+                uint_fast64_t ii = (index - jj) / rad;
                 xsectval dummy = pqcd::calculate_spatial_sigma_jet_mf
                                 (
                                     p_p_pdf, 
@@ -1893,9 +1902,9 @@ private:
             }
         );
         
-        for (uint64_t i=0; i<dim_Ns[0]; i++)
+        for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
         {
-            for (uint64_t j=0; j<dim_Ns[1]; j++)
+            for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
             {
                 sigma_jet_grid_file << f_values[i*rad + j] << ' ';
             }
@@ -1920,7 +1929,7 @@ private:
     ) noexcept -> InterpMultilinear<5, xsectval>
     {
         const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
-        std::array<uint16_t,5> dim_Ns{0}; //How many points to calculate in each dimension
+        std::array<uint_fast16_t,5> dim_Ns{0}; //How many points to calculate in each dimension
         std::array<xsectval,32> corners{0};
 
         auto sigma_jet_function = [=](const double T_sums_1, const double T_sums_2, const double T_sums_3, const spatial tAA_0, const spatial tBB_0)
@@ -1965,8 +1974,8 @@ private:
         //corner_futures[29] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], upper_limits[3], lower_limits[3]);
         //corner_futures[30] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], upper_limits[3]);
         //corner_futures[31] = std::async(std::launch::async, sigma_jet_function, lower_limits[0], lower_limits[1], lower_limits[2], lower_limits[3], lower_limits[3]);
-    uint8_t iiii=0;
-        for (uint8_t i=4; i<32; i+=4)
+    uint_fast8_t iiii=0;
+        for (uint_fast8_t i=4; i<32; i+=4)
         {
             corners[i] = corner_futures[i].get();
             iiii=1;
@@ -1981,33 +1990,33 @@ private:
 
         //sum_1
         std::array<xsectval,16> differences;
-        for (uint8_t i=0; i<16; i++)
+        for (uint_fast8_t i=0; i<16; i++)
         {
             differences[i] = abs(corners[i]-corners[i+16]);
         }
         xsectval max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[0] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[0] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         //sum_2
         {
-        uint8_t j=0;
-        for (uint8_t i=0; i<8; i++)
+        uint_fast8_t j=0;
+        for (uint_fast8_t i=0; i<8; i++)
         {
             differences[i] = abs(corners[j]-corners[j+8]);
             j++;
         }
         j=16;
-        for (uint8_t i=8; i<16; i++)
+        for (uint_fast8_t i=8; i<16; i++)
         {
             differences[i] = abs(corners[j]-corners[j+8]);
             j++;
         }
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[1] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[1] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
         //sum_3
         j=0;
-        for (uint8_t i=0; i<16; i++)
+        for (uint_fast8_t i=0; i<16; i++)
         {
             differences[i++] = abs(corners[j]-corners[j+4]);
             differences[i++] = abs(corners[j+1]-corners[j+5]);
@@ -2016,31 +2025,31 @@ private:
             j+=8;
         }
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[2] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+        dim_Ns[2] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
         }
         //TAA(0)
         /*
         j=0;
-        for (uint8_t i=0; i<16; i++)
+        for (uint_fast8_t i=0; i<16; i++)
         {
             differences[i++] = abs(corners[j]-corners[j+2]);
             differences[i] = abs(corners[j+1]-corners[j+3]);
             j+=4;
         }
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[3] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));*/
+        dim_Ns[3] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));*/
         dim_Ns[3] = 1;
         
         //TBB(0)
         /*
         j=0;
-        for (uint8_t i=0; i<16; i++)
+        for (uint_fast8_t i=0; i<16; i++)
         {
             differences[i] = abs(corners[j]-corners[j+1]);
             j+=2;
         }
         max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[4] = static_cast<uint16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));*/
+        dim_Ns[4] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));*/
         dim_Ns[4] = 1;
 
         for (auto & n : dim_Ns)
@@ -2068,7 +2077,7 @@ private:
         grid_iter_list.push_back(grid5.begin());
     
         // total number of elements
-        uint64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3] * dim_Ns[4]; 
+        uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2] * dim_Ns[3] * dim_Ns[4]; 
 
         std::ofstream sigma_jet_grid_file;
         sigma_jet_grid_file.open("sigma_jet_full_grid.dat", std::ios::out);
@@ -2099,31 +2108,31 @@ private:
 
         // fill in the values of f(x) at the gridpoints. 
         // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-        std::vector<uint64_t> c_style_indexes(num_elements);
+        std::vector<uint_fast64_t> c_style_indexes(num_elements);
         std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        const uint64_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
+        const uint_fast64_t rad1 = dim_Ns[1]*dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
                     rad2 = dim_Ns[2]*dim_Ns[3]*dim_Ns[4], 
                     rad3 = dim_Ns[3]*dim_Ns[4], 
                     rad4 = dim_Ns[4]; //These will help untangle the C-style index into coordinates
         // c_index = ii*rad1 + jj*rad2 + kk*rad3 + ll*rad4 + mm
         std::vector<xsectval> f_values(num_elements);
-        std::atomic<uint64_t> running_count{num_elements};
+        std::atomic<uint_fast64_t> running_count{num_elements};
         
         std::for_each
         (
             std::execution::par, 
             c_style_indexes.begin(), 
             c_style_indexes.end(), 
-            [=, &f_values, &running_count](const uint64_t index) 
+            [=, &f_values/*, &running_count*/](const uint_fast64_t index) 
             {
-                uint64_t mm = index % rad1 % rad2 % rad3 % rad4;
-                uint64_t i_dummy = (index - mm); 
-                uint64_t ll = (i_dummy % rad1 % rad2 % rad3) / rad4;
+                uint_fast64_t mm = index % rad1 % rad2 % rad3 % rad4;
+                uint_fast64_t i_dummy = (index - mm); 
+                uint_fast64_t ll = (i_dummy % rad1 % rad2 % rad3) / rad4;
                 i_dummy = (i_dummy - ll*rad4); 
-                uint64_t kk = (i_dummy % rad1 % rad2) / rad3;
+                uint_fast64_t kk = (i_dummy % rad1 % rad2) / rad3;
                 i_dummy = (i_dummy - kk*rad3); 
-                uint64_t jj = (i_dummy % rad1) / rad2;
-                uint64_t ii = (i_dummy - jj*rad2) / rad1;
+                uint_fast64_t jj = (i_dummy % rad1) / rad2;
+                uint_fast64_t ii = (i_dummy - jj*rad2) / rad1;
                 xsectval dummy = sigma_jet_function(grid1[ii], grid2[jj], grid3[kk], grid4[ll], grid5[mm]);
                 //xsectval dummy = pqcd::calculate_spatial_sigma_jet_full(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &grid1[ii], &grid2[jj], &grid3[kk], &grid4[ll], &grid5[mm]);
                 f_values[index] = dummy;
@@ -2132,15 +2141,15 @@ private:
         );
 
 
-        for (uint64_t i=0; i<dim_Ns[0]; i++)
+        for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
         {
-            for (uint64_t j=0; j<dim_Ns[1]; j++)
+            for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
             {
-                for (uint64_t k=0; k<dim_Ns[2]; k++)
+                for (uint_fast64_t k=0; k<dim_Ns[2]; k++)
                 {
-                    for (uint64_t l=0; l<dim_Ns[3]; l++)
+                    for (uint_fast64_t l=0; l<dim_Ns[3]; l++)
                     {
-                        for (uint64_t m=0; m<dim_Ns[4]; m++)
+                        for (uint_fast64_t m=0; m<dim_Ns[4]; m++)
                         {
                             sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k*rad3 + l*rad4 + m] << ' ';
                         }      
@@ -2166,11 +2175,11 @@ private:
     ) noexcept -> spatial
     {
         spatial tA=0.0; //sum(T_p(b_ij + b))
-        uint16_t A=static_cast<uint16_t>(nucleus.size());
+        uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
 
         auto [bx, by, bz] = b;
 
-        for (uint16_t i=0; i<A; i++)
+        for (uint_fast16_t i=0; i<A; i++)
         {
             //tAB1 += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
             auto [x1, y1, z1] = nucleus.at(i).co;
@@ -2188,14 +2197,14 @@ private:
     ) noexcept -> spatial
     {
         spatial tAB=0.0; //sum(T_pp(b_ij + b))
-        uint16_t A=static_cast<uint16_t>(pro.size()), 
-                B=static_cast<uint16_t>(tar.size());
+        uint_fast16_t A=static_cast<uint_fast16_t>(pro.size()), 
+                B=static_cast<uint_fast16_t>(tar.size());
 
         auto [bx, by, bz] = b;
 
-        for (uint16_t i=0; i<A; i++)
+        for (uint_fast16_t i=0; i<A; i++)
         {
-            for (uint16_t j=0; j<B; j++)
+            for (uint_fast16_t j=0; j<B; j++)
             {
                 //tAB1 += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
                 auto [x1, y1, z1] = pro.at(i).co;
@@ -2213,7 +2222,7 @@ private:
         std::shared_ptr<ars> radial_sampler
     )
     {
-        uint64_t num_nuclei = 10000;
+        uint_fast64_t num_nuclei = 10000;
         std::array<double,201> grid_xs;
         std::array<double,201> grid_ys;
 
@@ -2250,10 +2259,10 @@ private:
         }
 
         std::array<std::array<coords,201>,201> grid;
-        for (uint16_t i=0; i<201; i++)
+        for (uint_fast16_t i=0; i<201; i++)
         {
             grid[i] = std::array<coords,201>();
-            for (uint16_t j=0; j<201; j++)
+            for (uint_fast16_t j=0; j<201; j++)
             {
                 grid[i][j] = coords({grid_xs[i], grid_ys[j], 0});
             }
@@ -2265,7 +2274,7 @@ private:
         nuclei_file<<"nucleiShift"<<num_nuclei<<" = {";
         TAs_file<<"TAsShift"<<num_nuclei<<" = {";
         //TAAs_file<<"TAAsNoShift"<<num_nuclei<<" = {";
-        std::vector<uint64_t> indexes((num_nuclei/2)-1);
+        std::vector<uint_fast64_t> indexes((num_nuclei/2)-1);
         std::iota(indexes.begin(), indexes.end(), 0); //generates the list as {0,1,2,3,...}
 
         calcs::generate_nuclei
@@ -2284,9 +2293,9 @@ private:
             std::execution::par, 
             indexes.begin(), 
             indexes.end(), 
-            [&](const uint64_t index) 
+            [&](const uint_fast64_t index) 
             {
-
+                static_cast<void>(index);
                 std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
                 auto [pro, tar] = calcs::generate_nuclei
                 (
@@ -2320,13 +2329,13 @@ private:
                 std::array<std::array<double,201>,201> grid_TBs;
                 //std::array<std::array<double,201>,201> grid_TBBs;
 
-                for (uint16_t i=0; i<201; i++)
+                for (uint_fast16_t i=0; i<201; i++)
                 {
                     grid_TAs[i] = std::array<double,201>();
                     //grid_TAAs[i] = std::array<double,201>();
                     grid_TBs[i] = std::array<double,201>();
                     //grid_TBBs[i] = std::array<double,201>();
-                    for (uint16_t j=0; j<201; j++)
+                    for (uint_fast16_t j=0; j<201; j++)
                     {
                         grid_TAs[i][j] = calculate_tA(grid[i][j], pro, Tp);
                         //grid_TAAs[i][j] = calculate_tAB(grid[i][j], pro, pro, Tpp);
@@ -2437,13 +2446,13 @@ private:
         std::array<std::array<double,201>,201> grid_TBs;
         //std::array<std::array<double,201>,201> grid_TBBs;
 
-        for (uint16_t i=0; i<201; i++)
+        for (uint_fast16_t i=0; i<201; i++)
         {
             grid_TAs[i] = std::array<double,201>();
             //grid_TAAs[i] = std::array<double,201>();
             grid_TBs[i] = std::array<double,201>();
             //grid_TBBs[i] = std::array<double,201>();
-            for (uint16_t j=0; j<201; j++)
+            for (uint_fast16_t j=0; j<201; j++)
             {
                 grid_TAs[i][j] = calculate_tA(grid[i][j], pro, Tp);
                 //grid_TAAs[i][j] = calculate_tAB(grid[i][j], pro, pro, Tpp);
@@ -2526,7 +2535,7 @@ private:
         std::shared_ptr<ars> radial_sampler
     )
     {
-        uint64_t num_nuclei = 10000;
+        uint_fast64_t num_nuclei = 10000;
         std::array<double,201> grid_xs;
         std::array<double,201> grid_ys;
 
@@ -2553,10 +2562,10 @@ private:
         }
 
         std::array<std::array<coords,201>,201> grid;
-        for (uint16_t i=0; i<201; i++)
+        for (uint_fast16_t i=0; i<201; i++)
         {
             grid[i] = std::array<coords,201>();
-            for (uint16_t j=0; j<201; j++)
+            for (uint_fast16_t j=0; j<201; j++)
             {
                 grid[i][j] = coords({grid_xs[i], grid_ys[j], 0});
             }
@@ -2564,10 +2573,10 @@ private:
 
         std::array<std::array<double,201>,201> TA_grid;
         std::mutex TA_grid_mutex;
-        for (uint16_t i=0; i<201; i++)
+        for (uint_fast16_t i=0; i<201; i++)
         {
             TA_grid[i] = std::array<double,201>();
-            for (uint16_t j=0; j<201; j++)
+            for (uint_fast16_t j=0; j<201; j++)
             {
                 TA_grid[i][j] = 0.0;
             }
@@ -2576,7 +2585,7 @@ private:
         TAs_file.open("TA_ave_no_shift.wl");
 
         TAs_file<<"TAaveNoShift"<<num_nuclei<<" = ";
-        std::vector<uint64_t> indexes((num_nuclei/2)-1);
+        std::vector<uint_fast64_t> indexes((num_nuclei/2)-1);
         std::iota(indexes.begin(), indexes.end(), 0); //generates the list as {0,1,2,3,...}
 
         calcs::generate_nuclei
@@ -2595,9 +2604,9 @@ private:
             std::execution::par, 
             indexes.begin(), 
             indexes.end(), 
-            [&](const uint64_t index) 
+            [&](const uint_fast64_t index) 
             {
-
+                static_cast<void>(index);
                 std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
                 auto [pro, tar] = calcs::generate_nuclei
                 (
@@ -2612,10 +2621,10 @@ private:
                 lock_rad.~unique_lock();
 
                 std::array<std::array<double,201>,201> TA_grid_dummy;
-                for (uint16_t i=0; i<201; i++)
+                for (uint_fast16_t i=0; i<201; i++)
                 {
                     TA_grid_dummy[i] = std::array<double,201>();
-                    for (uint16_t j=0; j<201; j++)
+                    for (uint_fast16_t j=0; j<201; j++)
                     {
                         TA_grid_dummy[i][j] = calcs::calculate_tA(grid[i][j], pro, Tp);
                         TA_grid_dummy[i][j] += calcs::calculate_tA(grid[i][j], tar, Tp);
@@ -2625,9 +2634,9 @@ private:
 
                 {
                     const std::lock_guard<std::mutex> lock(TA_grid_mutex);
-                    for (uint16_t i=0; i<201; i++)
+                    for (uint_fast16_t i=0; i<201; i++)
                     {
-                        for (uint16_t j=0; j<201; j++)
+                        for (uint_fast16_t j=0; j<201; j++)
                         {
                             TA_grid[i][j] += TA_grid_dummy[i][j];
                         }
