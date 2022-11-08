@@ -1,17 +1,16 @@
-name {}
-is_pp {}
-is_pa {}
-is_aa {}
-use_npdfs {}
-use_snpdfs {}
-is_mom_cons {}
-is_mom_cons_new {}
-are_ns_depleted {}
-is_saturation {}
-is_sat_overlap {}
-is_mc_glauber {}
-n_events {}
-b_max {}
-pt0 {}
-K_factor {}
-K_sat {}
+name example_name       # Name of the run, affects output filenames and such 
+is_pp false             # If the run is proton-proton 
+is_pa false             # If the run is proton-nucleus
+is_aa true              # If the run is nucleus-nucleus
+use_npdfs true          # Is there should be nuclear corrections in nucleus' PDFs
+use_snpdfs true         # If the used nPDF should be spatially dependent or average
+is_mom_cons true        # If the momentum conservation should be forced
+are_ns_depleted false   # Probably always false here, kept for testing purposes for now
+is_saturation true      # If the EKRT saturation should be used
+is_mc_glauber true      # If true, nucleon-nucleon collisions are decided like with hard spheres
+n_events 5000           # How many events should be simulated
+b_min 0                 # (fm) minimum of the impact parameter 
+b_max 20                # (fm) maximum of the impact parameter
+pt0 1.0                 # (GeV) jet p_T lower cutoff
+K_factor 1.0            # pQCD K-factor to account for the higher order corrections
+M_sat 2.5               # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat

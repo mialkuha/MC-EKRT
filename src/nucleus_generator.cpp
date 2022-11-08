@@ -1,11 +1,11 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2022 Mikko Kuha
 
 #include "nucleus_generator.hpp"
 
 std::uniform_real_distribution<double> nucleus_generator::unif_dist = std::uniform_real_distribution<double>(0.0,1.0);
 
-std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const bool &target, const momentum & mom, 
-        const spatial & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler)
+std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const bool &target, const double & mom, 
+        const double & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler)
 {
     std::vector<nucleon> generated_nucleus;
     std::vector<coords> generated_coords;
@@ -21,8 +21,6 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
 
     coords new_coords;
     bool coords_do_fit;
-    auto count=0;
-
     do // while (generated_coords.size() < N);
     {
         do // while (!coords_do_fit);
@@ -47,14 +45,10 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         if (params.correct_overlap_bias && !coords_do_fit)
         {
             generated_coords.clear();
-            count++;
-            //std::cout<<"throw! "<<count<<' '<<std::flush;
         }
         generated_coords.push_back(std::move(new_coords));
 
     } while (generated_coords.size() < N);
-    
-    //std::cout<<"threw away "<<count<<" times\n";
 
     coords com{0.0,0.0,0.0}; //center of mass
 
@@ -137,14 +131,14 @@ void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, cons
 
 }
 
-bool nucleus_generator::coords_fit(const coords& co, const std::vector<coords>& other_coords, const spatial& min_distance) noexcept
+bool nucleus_generator::coords_fit(const coords& co, const std::vector<coords>& other_coords, const double& min_distance) noexcept
 {
     if (min_distance<=0)
     {
         return true;
     }
     
-    const spatial md2 = pow(min_distance,2);
+    const double md2 = pow(min_distance,2);
     
     for (const auto& oco : other_coords)
     {

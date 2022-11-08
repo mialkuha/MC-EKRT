@@ -943,21 +943,21 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
     std::vector<double>&&, 
     uint_fast64_t >
 {   
-    auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
+    auto [ full_histo, uf, of, xs_, tots ] = this->get_histo();
     std::vector<double> ret_histo;
     std::vector<double> ret_grid;
     std::vector<double> bins;
     double curr, prev;
-    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs).size()-1);
-    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs).size()-1);
+    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs_).size()-1);
+    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs_).size()-1);
 
     if (project_ys == true)
     {
         bins.reserve(n_y_bins);
-        prev = std::get<1>(xs)[0];
+        prev = std::get<1>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
-            curr = std::get<1>(xs)[i+1];
+            curr = std::get<1>(xs_)[i+1];
             bins[i] = curr - prev;
             prev = curr;
         }
@@ -971,15 +971,15 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
             }
         }
 
-        ret_grid = std::get<0>(xs);
+        ret_grid = std::get<0>(xs_);
     }
     else
     {
         bins.reserve(n_x_bins);
-        prev = std::get<0>(xs)[0];
+        prev = std::get<0>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            curr = std::get<0>(xs)[i+1];
+            curr = std::get<0>(xs_)[i+1];
             bins[i] = curr - prev;
             prev = curr;
         }
@@ -993,7 +993,7 @@ auto histo_2d::project_1d(const bool project_ys) const noexcept -> std::tuple
             }
         }
 
-        ret_grid = std::get<1>(xs);
+        ret_grid = std::get<1>(xs_);
     }
 
     return std::make_tuple
@@ -1013,33 +1013,33 @@ auto histo_3d::project_1d(const uint_fast8_t dim_left) const noexcept -> std::tu
     std::vector<double>&&, 
     uint_fast64_t >
 {   
-    auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
+    auto [ full_histo, uf, of, xs_, tots ] = this->get_histo();
     std::vector<double> ret_histo;
     std::vector<double> ret_grid;
     std::vector<double> bins1;
     std::vector<double> bins2;
     double curr, prev;
-    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs).size()-1);
-    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs).size()-1);
-    uint_fast16_t n_z_bins = static_cast<uint_fast16_t>(std::get<2>(xs).size()-1);
+    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs_).size()-1);
+    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs_).size()-1);
+    uint_fast16_t n_z_bins = static_cast<uint_fast16_t>(std::get<2>(xs_).size()-1);
 
     if (dim_left == 0) //x
     {
         bins1.reserve(n_y_bins); //y
         bins2.reserve(n_z_bins); //z
 
-        prev = std::get<1>(xs)[0];
+        prev = std::get<1>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
-            curr = std::get<1>(xs)[i+1];
+            curr = std::get<1>(xs_)[i+1];
             bins1[i] = curr - prev;
             prev = curr;
         }
 
-        prev = std::get<2>(xs)[0];
+        prev = std::get<2>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
-            curr = std::get<2>(xs)[i+1];
+            curr = std::get<2>(xs_)[i+1];
             bins2[i] = curr - prev;
             prev = curr;
         }
@@ -1056,25 +1056,25 @@ auto histo_3d::project_1d(const uint_fast8_t dim_left) const noexcept -> std::tu
             }
         }
 
-        ret_grid = std::get<0>(xs);
+        ret_grid = std::get<0>(xs_);
     }
     else if (dim_left == 1) //y
     {
         bins1.reserve(n_x_bins); //x
         bins2.reserve(n_z_bins); //z
 
-        prev = std::get<0>(xs)[0];
+        prev = std::get<0>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            curr = std::get<0>(xs)[i+1];
+            curr = std::get<0>(xs_)[i+1];
             bins1[i] = curr - prev;
             prev = curr;
         }
         
-        prev = std::get<2>(xs)[0];
+        prev = std::get<2>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
-            curr = std::get<2>(xs)[i+1];
+            curr = std::get<2>(xs_)[i+1];
             bins2[i] = curr - prev;
             prev = curr;
         }
@@ -1091,25 +1091,25 @@ auto histo_3d::project_1d(const uint_fast8_t dim_left) const noexcept -> std::tu
             }
         }
 
-        ret_grid = std::get<1>(xs);
+        ret_grid = std::get<1>(xs_);
     }
     else if (dim_left == 2) //z
     {
         bins1.reserve(n_y_bins); //y
         bins2.reserve(n_z_bins); //x
 
-        prev = std::get<1>(xs)[0];
+        prev = std::get<1>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
-            curr = std::get<1>(xs)[i+1];
+            curr = std::get<1>(xs_)[i+1];
             bins1[i] = curr - prev;
             prev = curr;
         }
         
-        prev = std::get<0>(xs)[0];
+        prev = std::get<0>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            curr = std::get<0>(xs)[i+1];
+            curr = std::get<0>(xs_)[i+1];
             bins2[i] = curr - prev;
             prev = curr;
         }
@@ -1126,7 +1126,7 @@ auto histo_3d::project_1d(const uint_fast8_t dim_left) const noexcept -> std::tu
             }
         }
 
-        ret_grid = std::get<2>(xs);
+        ret_grid = std::get<2>(xs_);
     }
     else
     {
@@ -1152,24 +1152,24 @@ const noexcept -> std::tuple
     std::tuple<std::vector<double>, std::vector<double> >,
     uint_fast64_t >
 {
-    auto [ full_histo, uf, of, xs, tots ] = this->get_histo();
+    auto [ full_histo, uf, of, xs_, tots ] = this->get_histo();
     std::vector<std::vector<double> > ret_histo;
     std::vector<double> ret_grid1;
     std::vector<double> ret_grid2;
     std::vector<double> bins;
     double curr, prev;
-    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs).size()-1);
-    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs).size()-1);
-    uint_fast16_t n_z_bins = static_cast<uint_fast16_t>(std::get<2>(xs).size()-1);
+    uint_fast16_t n_x_bins = static_cast<uint_fast16_t>(std::get<0>(xs_).size()-1);
+    uint_fast16_t n_y_bins = static_cast<uint_fast16_t>(std::get<1>(xs_).size()-1);
+    uint_fast16_t n_z_bins = static_cast<uint_fast16_t>(std::get<2>(xs_).size()-1);
 
     if (dim_integrated == 0) //x
     {
         bins = std::vector<double>(n_x_bins, 0.0);
 
-        prev = std::get<0>(xs)[0];
+        prev = std::get<0>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_x_bins; i++)
         {
-            curr = std::get<0>(xs)[i+1];
+            curr = std::get<0>(xs_)[i+1];
             bins[i] = curr - prev;
             prev = curr;
         }
@@ -1194,17 +1194,17 @@ const noexcept -> std::tuple
             }
         }
 
-        ret_grid1 = std::get<1>(xs);
-        ret_grid2 = std::get<2>(xs);
+        ret_grid1 = std::get<1>(xs_);
+        ret_grid2 = std::get<2>(xs_);
     }
     else if (dim_integrated == 1) //y
     {
         bins = std::vector<double>(n_y_bins, 0.0);
 
-        prev = std::get<1>(xs)[0];
+        prev = std::get<1>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_y_bins; i++)
         {
-            curr = std::get<1>(xs)[i+1];
+            curr = std::get<1>(xs_)[i+1];
             bins[i] = curr - prev;
             prev = curr;
         }
@@ -1229,17 +1229,17 @@ const noexcept -> std::tuple
             }
         }
 
-        ret_grid1 = std::get<0>(xs);
-        ret_grid2 = std::get<2>(xs);
+        ret_grid1 = std::get<0>(xs_);
+        ret_grid2 = std::get<2>(xs_);
     }
     else if (dim_integrated == 2) //z
     {
         bins = std::vector<double>(n_z_bins, 0.0);
 
-        prev = std::get<2>(xs)[0];
+        prev = std::get<2>(xs_)[0];
         for (uint_fast16_t i = 0; i < n_z_bins; i++)
         {
-            curr = std::get<2>(xs)[i+1];
+            curr = std::get<2>(xs_)[i+1];
             bins[i] = curr - prev;
             prev = curr;
         }
@@ -1264,8 +1264,8 @@ const noexcept -> std::tuple
             }
         }
 
-        ret_grid1 = std::get<0>(xs);
-        ret_grid2 = std::get<1>(xs);
+        ret_grid1 = std::get<0>(xs_);
+        ret_grid2 = std::get<1>(xs_);
     }
     else
     {

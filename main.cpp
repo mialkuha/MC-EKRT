@@ -1,5 +1,6 @@
 //Copyright (c) 2022 Mikko Kuha 
 //TODO implement M-tree (https://github.com/erdavila/M-Tree ? Boost::Graph?)
+//     Probably more like NN-tree.... 
 
 #include <algorithm>
 #include <atomic>
@@ -35,18 +36,18 @@
 
 auto find_sigma_jet_cutoff_p0
 (
-    momentum &kt02, 
-    const momentum &mand_s, 
-    const xsectval &target, 
+    double &kt02, 
+    const double &mand_s, 
+    const double &target, 
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
     const pqcd::sigma_jet_params &jet_params, 
     const bool &verbose=true
-) noexcept -> momentum
+) noexcept -> double
 {
-    xsectval sigma_jet=0.0;
+    double sigma_jet=0.0;
     kt02 = 2.0;
 
-    auto difference_to_target = [&](const momentum &_kt02)
+    auto difference_to_target = [&](const double &_kt02)
     {
         return pqcd::calculate_sigma_jet(p_p_pdf, &mand_s, &_kt02, jet_params) - target;
     };
@@ -60,20 +61,20 @@ auto find_sigma_jet_cutoff_p0
 
 auto find_sigma_jet_cutoff_Q
 (
-    const momentum &kt02, 
-    const momentum &mand_s, 
-    const xsectval &target, 
+    const double &kt02, 
+    const double &mand_s, 
+    const double &target, 
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
     pqcd::sigma_jet_params jet_params, 
     const bool &verbose=true
 ) noexcept -> void
 {
-    xsectval sigma_jet=0.0;
-    momentum scalar = 1.0;
+    double sigma_jet=0.0;
+    double scalar = 1.0;
 
-    auto difference_to_target = [&](const momentum &scalar_)
+    auto difference_to_target = [&](const double &scalar_)
     {
-        momentum kt02dummy = 4.0;
+        double kt02dummy = 4.0;
         auto jet_params_ = pqcd::sigma_jet_params(
         /*d_params=                 */jet_params.d_params,
         /*scale_choice=             */jet_params.scale_c,
@@ -135,7 +136,7 @@ auto check_and_place_circle_among_others
 auto throw_location_for_dijet
 (
     const dijet_with_ns &cand,
-    const spatial &proton_width,
+    const double &proton_width,
     std::normal_distribution<double> &normal_dist, 
     std::shared_ptr<std::mt19937> random_generator
 ) noexcept -> std::tuple<double, double, double>
@@ -157,17 +158,17 @@ auto filter_end_state
     std::vector<dijet_with_coords> &filtered_scatterings,
     std::shared_ptr<std::mt19937> random_generator,
     const bool mom_cons = false,
-    /*const bool mom_cons_local = false,*/
+    /*const bool mom_cons_local = false, NOT YET IMPLEMENTED*/
     const bool saturation = false,
     const bool deplete_nucleons = false,
-    const momentum sqrt_s = 0,
+    const double sqrt_s = 0,
     const double &maximum_overlap = 2.0,
-    const spatial &proton_width = 1.0,
-    /*const xsectval &sigma_inel = 1.0,*/
-    const bool include_tata = false,
+    const double &proton_width = 1.0,
+    /*const double &sigma_inel = 1.0, NOT YET IMPLEMENTED*/
+    const bool calculate_tata = true,
     const std::vector<nucleon> &pro = {}, 
     const std::vector<nucleon> &tar = {}, 
-    const std::function<spatial(const spatial&)> Tpp = nullptr
+    const std::function<double(const double&)> Tpp = nullptr
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
@@ -199,8 +200,8 @@ auto filter_end_state
     std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the smallest t0 is first
               [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.t0 < s2.t0); });
     
-    momentum kt;
-    rapidity y1, y2;
+    double kt;
+    double y1, y2;
     double i_x1_sum_to_be, i_x2_sum_to_be;
     double tata = 0.0;
 
@@ -212,7 +213,7 @@ auto filter_end_state
 
         if (mom_cons)
         {
-            //MOMENTUM CONSERVATION
+            //double CONSERVATION
 
             if (deplete_nucleons && (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon)))
             {
@@ -270,7 +271,7 @@ auto filter_end_state
             }
         }
 
-        if (include_tata)
+        if (calculate_tata)
         {
             nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
             tata = calcs::calculate_sum_tpp(dummy, pro, Tpp) * calcs::calculate_sum_tpp(dummy, tar, Tpp);
@@ -284,22 +285,19 @@ auto filter_end_state
         filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
     }
 
-    //std::cout << "candidates filtered: " << collision_candidates.size() - final_candidates.size() << " out of " << collision_candidates.size() << std::endl;
-
     binary_collisions.clear();
 }
 
+//--------------------------------------------//
+// THESE ARE A HACK TO SAVE THE WORK THIS FAR //
+// IN THE CASE OF SUDDEN TERMINATION          //
+//--------------------------------------------//
 volatile std::atomic_bool user_aborted = false;
 volatile std::atomic_bool g_bug_bool = false;
 void abort_handler(int num)
 {
     user_aborted = true;
-    std::cout<<std::endl<<"Terminate called "<<num<<std::endl;
-}
-void term_handler(int num)
-{
-    user_aborted = true;
-    std::cout<<std::endl<<"Terminate called "<<num<<std::endl;
+    std::cout<<std::endl<<"Abort called "<<num<<std::endl;
 }
 
 int main(int argc, char** argv)
@@ -319,84 +317,79 @@ int main(int argc, char** argv)
         g_use_npdfs,
         g_use_snpdfs,
         g_is_mom_cons,
-        g_is_mom_cons_new,
         g_are_ns_depleted,
         g_is_saturation,
         g_is_mc_glauber,
         desired_N_events,
+        b_min,
         b_max,
         pt0,
         K_factor,
         K_sat
     ] = io::read_conf(std::string(argv[1]));
 
-    //A lot of printing
+    //Prints a lot of debugging info
     bool verbose = false;
 
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
     //General parameters for the simulation
-    const bool    read_nuclei_from_file    = false, 
-                  read_events_from_file    = false,
-                  read_sigmajets_from_file = true,
-                  end_state_filtering      = true, 
-                  varying_inel             = true, 
-                  save_events              = false, 
-                  include_tata             = true/*, 
-                  average_spatial_taas     = false*/;
-    std::string   event_file_name = "event_log_"+name_postfix+".dat";
-    uint_fast32_t AA_events             = 0;
-    const spatial b_min                 = 0;
-    std::mutex AA_events_mutex; 
+    const bool    read_sigmajets_from_file  = true,
+                  end_state_filtering       = true, 
+                  sigma_inel_from_sigma_jet = true, 
+                  save_events               = false,
+                  calculate_end_state       = true,
+                  calculate_tata            = true,
+                  reduce_nucleon_energies   = false;
+
+    uint_fast32_t AA_events_done           = 0;
+    std::mutex AA_events_mutex;
+
     std::cout<<std::endl<<std::endl<<"Doing the run "<<name_postfix<<std::endl;
+
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
     //Parameters for the nuclei
-    //uint_fast8_t samplersN = 32;
-    const spatial rad_min=0,
+    const double rad_min=0,
                   rad_max=30;
     const std::function<double(const double&)> rad_pdf{[](const double & x)
     {
         return x*x/(1+exp((x-6.624)/0.549));
     }};
     auto radial_sampler{std::make_shared<ars>(rad_pdf, rad_min, rad_max)};
-    do //while (radial_sampler->is_adaptive())
+    //The adaptive algorithm in the sampler is not thread-safe,
+    //so to run the program multithreaded let's first saturate the sampler
+    do //while (radial_sampler->is_adaptive()) 
     {
         radial_sampler->throw_one(*eng);
     } while (radial_sampler->is_adaptive());
-    //std::vector<std::shared_ptr<ars> > sampler_pointers;
-    //std::mutex radial_sampler_mutex;
-    //for (uint_fast8_t i=0; i<samplersN; i++)
-    //{
-    //    sampler_pointers.push_back(std::make_shared<ars>(rad_pdf, rad_min, rad_max));
-    //}
 
     nucleus_generator::nucleus_params nuc_params = 
     {
-        /* .NA=                   */(g_is_aa)? 208u : 1u, //Pb 
-        /* .ZA=                   */(g_is_aa)? 82u : 1u, //Pb 
-        /* .NB=                   */(g_is_pp)? 1u : 208u, //Pb 
-        /* .ZB=                   */(g_is_pp)? 1u : 82u, //Pb 
+        /* .NA=                   */(g_is_aa)? 208u : 1u,
+        /* .ZA=                   */(g_is_aa)? 82u : 1u,  
+        /* .NB=                   */(g_is_pp)? 1u : 208u, 
+        /* .ZB=                   */(g_is_pp)? 1u : 82u,  
         /* .min_distance=         */0.4, 
         /* .shift_cms=            */true, 
         /* .correct_overlap_bias= */true
     };
     
     //Parameters for the hard collisions
-    const spatial proton_width = 0.573;
-    const spatial proton_width_2 = pow(0.573, 2);
-    const std::function<spatial(const spatial&)> Tpp{[&proton_width_2](const spatial &bsquared)
+    const double proton_width = 0.573;
+    const double proton_width_2 = pow(proton_width, 2);
+    const std::function<double(const double&)> Tpp{[&proton_width_2](const double &bsquared)
     {
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }}; 
-    xsectval sigma_inel_for_glauber       = 70;//mb
-    const momentum sqrt_s                 = 5020;//GeV
-    const momentum mand_s                 = pow(sqrt_s, 2);//GeV^2
-    momentum kt0                          = pt0;//2.728321;//GeV
-    momentum kt02                         = pow(kt0, 2);//GeV^2
-    rapidity ylim                         = static_cast<rapidity>(log(sqrt_s / kt0));
+    double sigma_inel_for_glauber       = 70;//mb
+    const double sqrt_s                 = 5020;//GeV
+    const double mand_s                 = pow(sqrt_s, 2);//GeV^2
+    double kt0                          = pt0;//2.728321;//GeV
+    double kt02                         = pow(kt0, 2);//GeV^2
+    double ylim                         = static_cast<double>(log(sqrt_s / kt0));
     auto p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
 
     std::vector<io::Coll> collisions_for_reporting;
@@ -413,7 +406,6 @@ int main(int argc, char** argv)
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
 
     //sigma_jet parameters
-    /*const bool read_sigmajets_from_file = false;*/
     pqcd::diff_sigma::params diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */(g_is_aa && g_use_npdfs),
     /*target_with_npdfs=        */(!g_is_pp && g_use_npdfs),
@@ -435,47 +427,6 @@ int main(int argc, char** argv)
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
 
-    //calculate_sigma_1jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params, name_postfix);
-    //calculate_sigma_jet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params);
-    //calculate_sigma_dijet_analytical(mand_s, kt_bins, y_bins, p_pdf, &jet_params, name_postfix);
-//std::vector<double> mands = {2., 5., 10., 20., 50.,100.,200.,500.,1000.,2000.,5000.,};
-//for (auto & m : mands) m = m*m;
-//std::vector<double> kt02ss = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
-//std::vector<double> inels = {1., 1., 1., 1., 1.,1.,1.,1.,1.,1.,1.,};
-//for (int i=0; i<11 ; i++) find_sigma_jet_cutoff(kt02ss[i], mands[i], 124.6635, p_pdf, jet_params, true);
-//std::cout<<kt02<<std::endl;
-//xsectval s_jet = 124.6635;
-//xsectval target_s_jet;
-//auto scalars = {1.0, 1/2.0, 1/3.0, 1/4.0};
-//auto kt02s = {pow(2.11167, 2), pow(3.45886, 2), pow(4.33213, 2), pow(5.38004, 2), pow(6.63009, 2)};
-//std::vector<double> kt02s{helpers::loglinspace(0.25, 100.0, 150)};
-//std::ofstream out_file;
-//out_file.open("p02_sjet.csv", std::ios::out);
-//
-//find_sigma_jet_cutoff_p0(kt02, mand_s, target_s_jet, p_pdf, jet_params);
-//
-//for (auto s : scalars)
-//{
-//    target_s_jet = s*s_jet;
-//    find_sigma_jet_cutoff_p0(kt02, mand_s, target_s_jet, p_pdf, jet_params);
-//    kt02s.push_back(find_sigma_jet_cutoff_p0(kt02, mand_s, target_s_jet, p_pdf, jet_params));
-//    std::cout<<std::endl;
-//}
-//
-//for (auto k : kt02s)
-//{
-//    auto res = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &k, jet_params);
-//    std::cout<<k<<','<<res<<std::endl;
-//    out_file<<k<<','<<res<<std::endl;
-//}
-//for (auto k : kt02s)
-//{
-//    find_sigma_jet_cutoff_Q(k, mand_s, s_jet, p_pdf, jet_params);
-//    std::cout<<std::endl;
-//}
-//
-//return 0;
-
     auto
     [
         dijet_norm,
@@ -489,7 +440,7 @@ int main(int argc, char** argv)
     (
         (diff_params.projectile_with_npdfs || diff_params.target_with_npdfs),
         g_use_snpdfs,
-        g_is_mom_cons,
+        reduce_nucleon_energies,
         read_sigmajets_from_file,
         p_pdf, 
         mand_s,
@@ -499,9 +450,9 @@ int main(int argc, char** argv)
         jet_params
     );
     
-    if (varying_inel)
+    if (sigma_inel_from_sigma_jet)
     {
-        auto dummy = std::get<xsectval>(sigma_jet) / (4 * M_PI * proton_width_2);
+        auto dummy = std::get<double>(sigma_jet) / (4 * M_PI * proton_width_2);
         dummy = dummy / 10; //mb -> fm²
 
         sigma_inel_for_glauber = (4 * M_PI * proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
@@ -514,9 +465,8 @@ int main(int argc, char** argv)
     /*pp_scattering=            */g_is_pp,
     /*pA_scattering=            */g_is_pa,
     /*spatial_pdfs=             */g_use_snpdfs,
-    /*spatial_averaging=        */false,
-    /*calculate_end_state=      */true,
-    /*reduce_nucleon_energies=  */g_is_mom_cons,
+    /*calculate_end_state=      */calculate_end_state,
+    /*reduce_nucleon_energies=  */reduce_nucleon_energies,
     /*sigma_inel_for_glauber=   */sigma_inel_for_glauber,
     /*Tpp=                      */Tpp,
     /*normalize_to=             */B2_normalization_mode::inelastic,
@@ -524,186 +474,144 @@ int main(int argc, char** argv)
     /*energy_threshold=         */kt0
     };
 
-//std::cout<<std::get<xsectval>(sigma_jet)<<std::endl;
-//return 0;
-
-    //find_sigma_jet_cutoff(kt02, mand_s, 124.6635, p_pdf, jet_params, true);
-    //std::cout<<kt02<<std::endl;
-    
-    //if (!read_sigmajets_from_file)
-    //{
-        //double tolerance=0.05, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
-      //  double tolerance=0.05, upper_tAA_0_limit=42.0, lower_tAA_0_limit = 33.0, upper_sumTpp_limit=0.5, lower_sumTpp_limit=0.03411;
-      //  std::variant<InterpMultilinear<4, xsectval>, linear_interpolator, xsectval> 
-      //      sigma_jets = calculate_spatial_sigma_jets_mf(tolerance, p_pdf, mand_s, kt02, jet_params, upper_tAA_0_limit, lower_tAA_0_limit, upper_sumTpp_limit, lower_sumTpp_limit);
-        ////array<spatial,4> args{0.1, 0.3, 35.0, 40.0};
-        ////std::cout<<sigma_jets.interp(args.begin())<<std::endl;
-        ////std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
-
-        //double tolerance=0.25;//, upper_tAA_0_limit=46.0, lower_tAA_0_limit = 30.0, upper_sumTpp_limit=0.61, lower_sumTpp_limit=0.03411;
-        //                                            1.35134e-186, 1.4788e-177, 1.02829e-215       4.24149, 3.609, 10.7237
-        //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.0}, upper_limits = {4.5, 4.5, 11.0, 46.0};
-        //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 28.4}, upper_limits = {3.6, 3.6, 8.8, 41.2};
-        //const std::array<const double, 4>  lower_limits = {0.0, 0.0, 0.0, 30.5}, upper_limits = {3.6, 3.6, 8.8, 30.5};
-        //double tolerance=0.05, upper_tAA_0_limit=42.0, lower_tAA_0_limit = 33.0, upper_sumTpp_limit=0.5, lower_sumTpp_limit=0.03411;
-        //InterpMultilinear<5, xsectval> sigma_jets = calculate_spatial_sigma_jets_full(tolerance, p_pdf, p_pdf, mand_s, kt02, jet_params, lower_limits, upper_limits);
-        //array<spatial,5> args{3.5, 4.3, 8.0, 39.0, 42.0}; //-304.782
-        //std::cout<<sigma_jets.interp(args.begin())<<std::endl;
-
-        //std::cout<<pqcd::calculate_spatial_sigma_jet_mf(p_pdf, p_pdf, &mand_s, &kt02, &jet_params, &args[0], &args[1], &args[2], &args[3])<<std::endl;
-    //}    
-
     if (verbose) std::cout<<"Done!"<<std::endl;
-    
-    //std::ofstream log_file;
-    //log_file.open("log2.dat", std::ios::out);
-
-
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
 
-    histo_2d jets{kt_bins, y_bins};
-    histo_2d dijets{kt_bins, y_bins};
-    std::mutex jets_mutex; 
-    std::mutex dijets_mutex;
+//    OBSERVABLES TO BE SAVED
+//
+//    histo_2d jets{kt_bins, y_bins};
+//    histo_2d dijets{kt_bins, y_bins};
+//    std::mutex jets_mutex; 
+//    std::mutex dijets_mutex;
+//
+//    histo_1d dETdy{y_bins};
+//    histo_1d dEdy{y_bins};
+//    histo_1d dNdy{y_bins};
+//    histo_1d dNdET{et_bins};
+//    std::mutex dETdy_mutex; 
+//    std::mutex dEdy_mutex;
+//    std::mutex dNdy_mutex;
+//    std::mutex dNdET_mutex;
+//
+//    histo_1d dETdeta{y_bins};
+//    histo_1d dEdeta{y_bins};
+//    std::mutex dETdeta_mutex; 
+//    std::mutex dEdeta_mutex;
+// 
+//    histo_1d dETdb{b_bins};
+//    histo_1d dEdb{b_bins};
+//    std::mutex dETdb_mutex; 
+//    std::mutex dEdb_mutex;
 
-    histo_1d dETdy{y_bins};
-    histo_1d dEdy{y_bins};
-    histo_1d dNdy{y_bins};
-    histo_1d dNdET{et_bins};
-    std::mutex dETdy_mutex; 
-    std::mutex dEdy_mutex;
-    std::mutex dNdy_mutex;
-    std::mutex dNdET_mutex;
-
-    histo_1d dETdeta{y_bins};
-    histo_1d dEdeta{y_bins};
-    std::mutex dETdeta_mutex; 
-    std::mutex dEdeta_mutex;
 
     std::ofstream total_energy;
     std::mutex total_energy_mutex; 
-    //auto max_energy = 0.5*(diff_params.A+diff_params.B)*sqrt_s;
-    //int_fast64_t max_energy_broken = 0;
  
     total_energy.open("total_energies_"+name_postfix+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
- 
-    histo_1d dETdb{b_bins};
-    histo_1d dEdb{b_bins};
-    std::mutex dETdb_mutex; 
-    std::mutex dEdb_mutex;
+    
+    std::ofstream event_file;
+    std::mutex event_file_mutex; 
 
-    if (!read_events_from_file)
+    if (save_events)
     {
-        std::ofstream event_file;
-        std::mutex event_file_mutex; 
+        event_file.open("event_log_"+name_postfix+".dat");
 
-        if (save_events)
-        {
-            event_file.open(event_file_name);
+        event_file << "///AA b: ["<<b_min<<", "<<b_max<<"] fm"<<std::endl;
+        event_file << "///"<<std::endl;
+        event_file << "///Nucleus params:"<<std::endl;
+        event_file << "///Nucleus r: ["<<rad_min<<", "<<rad_max<<"] fm"<<std::endl;
+        event_file << "///Correct overlap bias: "<<nuc_params.correct_overlap_bias<<std::endl;
+        event_file << "///Nucleon min_distance: "<<nuc_params.min_distance<<" fm"<<std::endl;
+        event_file << "///Shift CMS: "<<nuc_params.shift_cms<<std::endl;
+        event_file << "///"<<std::endl;
+        event_file << "///Collision params:"<<std::endl;
+        event_file << "///Proton width: "<<sqrt(proton_width_2)<<" fm"<<std::endl;
+        event_file << "///Sqrt(s): "<<sqrt_s<<" GeV"<<std::endl;
+        event_file << "///kt0: "<<kt0<<" GeV"<<std::endl;
+        event_file << "///Projectile with npdfs: "<<diff_params.projectile_with_npdfs<<std::endl;
+        event_file << "///Target with npdfs: "<<diff_params.target_with_npdfs<<std::endl;
+        event_file << "///double npdfs: "<<coll_params.spatial_pdfs<<std::endl;
+        event_file << "///Projectile isoscalar: "<<diff_params.isoscalar_projectile<<std::endl;
+        event_file << "///Target isoscalar: "<<diff_params.isoscalar_target<<std::endl;
+        event_file << "///Normalization mode: "<<coll_params.normalize_to<<std::endl;
+        event_file << "///Scale choice: "<<jet_params.scale_c<<std::endl;
+        event_file << "///Scalar: "<<jet_params.scalar<<std::endl;
+        event_file << "///"<<std::endl;
+        event_file << "///End state params:"<<std::endl;
+        event_file << "///Calculate end state: "<<coll_params.calculate_end_state<<std::endl;
+        event_file << "///Power law: "<<power_law<<std::endl;
+        event_file << "///"<<std::endl;
+    }
 
-            event_file << "///AA b: ["<<b_min<<", "<<b_max<<"] fm"<<std::endl;
-            event_file << "///"<<std::endl;
-            event_file << "///Nucleus params:"<<std::endl;
-            event_file << "///Nucleus r: ["<<rad_min<<", "<<rad_max<<"] fm"<<std::endl;
-            event_file << "///Correct overlap bias: "<<nuc_params.correct_overlap_bias<<std::endl;
-            event_file << "///Nucleon min_distance: "<<nuc_params.min_distance<<" fm"<<std::endl;
-            event_file << "///Shift CMS: "<<nuc_params.shift_cms<<std::endl;
-            event_file << "///"<<std::endl;
-            event_file << "///Collision params:"<<std::endl;
-            event_file << "///Proton width: "<<sqrt(proton_width_2)<<" fm"<<std::endl;
-            event_file << "///Sqrt(s): "<<sqrt_s<<" GeV"<<std::endl;
-            event_file << "///kt0: "<<kt0<<" GeV"<<std::endl;
-            event_file << "///Projectile with npdfs: "<<diff_params.projectile_with_npdfs<<std::endl;
-            event_file << "///Target with npdfs: "<<diff_params.target_with_npdfs<<std::endl;
-            event_file << "///Spatial npdfs: "<<coll_params.spatial_pdfs<<std::endl;
-            event_file << "///Projectile isoscalar: "<<diff_params.isoscalar_projectile<<std::endl;
-            event_file << "///Target isoscalar: "<<diff_params.isoscalar_target<<std::endl;
-            event_file << "///Normalization mode: "<<coll_params.normalize_to<<std::endl;
-            event_file << "///Scale choice: "<<jet_params.scale_c<<std::endl;
-            event_file << "///Scalar: "<<jet_params.scalar<<std::endl;
-            event_file << "///"<<std::endl;
-            event_file << "///End state params:"<<std::endl;
-            event_file << "///Calculate end state: "<<coll_params.calculate_end_state<<std::endl;
-            event_file << "///Power law: "<<power_law<<std::endl;
-            event_file << "///"<<std::endl;
-        }
+    std::vector<uint_fast64_t> event_indexes(desired_N_events);
+    std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+    std::atomic<uint_fast64_t> running_count{desired_N_events};
 
-        std::vector<uint_fast64_t> event_indexes(desired_N_events);
-        std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        std::atomic<uint_fast64_t> running_count{desired_N_events};
+    std::signal(SIGINT, abort_handler);
 
-        std::signal(SIGINT, abort_handler);
-        //std::signal(SIGTERM, term_handler);
-        //std::signal(SIGSEGV, term_handler);
+    std::set_terminate([](){
+        std::cout << std::endl << "Unhandled exception" << std::endl;
+        g_bug_bool = true;
+    });
 
-        std::set_terminate([](){
-            std::cout << std::endl << "Unhandled exception" << std::endl;
-            g_bug_bool = true;
-        });
-
-        try
-        {
-            std::find_if
-            (
-                std::execution::par, 
-                event_indexes.begin(), 
-                event_indexes.end(), 
-                [&,&b_max=b_max,
-                 &verbose=verbose,
-                 &g_use_snpdfs=g_use_snpdfs,
-                 &g_is_mom_cons_new=g_is_mom_cons_new,
-                 &g_is_saturation=g_is_saturation,
-                 &g_are_ns_depleted=g_are_ns_depleted,
-                 &sigma_jet=sigma_jet,
-                 &power_law=power_law,
-                 &envelope_maximum=envelope_maximum,
-                 &K_sat=K_sat,
-                 &colls_scatterings=colls_scatterings
-                ](const uint_fast64_t index) 
+    try
+    {
+        std::find_if
+        (
+            std::execution::par, 
+            event_indexes.begin(), 
+            event_indexes.end(), 
+            [&,&b_max=b_max,
+             &verbose=verbose,
+             &g_use_snpdfs=g_use_snpdfs,
+             &g_is_mom_cons=g_is_mom_cons,
+             &g_is_saturation=g_is_saturation,
+             &g_are_ns_depleted=g_are_ns_depleted,
+             &sigma_jet=sigma_jet,
+             &power_law=power_law,
+             &envelope_maximum=envelope_maximum,
+             &K_sat=K_sat,
+             &colls_scatterings=colls_scatterings
+            ](const uint_fast64_t index) 
+            {
+                static_cast<void>(index);
+                do //while (g_bug_bool)
                 {
-                    static_cast<void>(index);
-                    do //while (g_bug_bool)
+                    uint_fast32_t NColl = 0;
+                    std::vector<nn_coll> binary_collisions;
+                    std::vector<dijet_with_coords> filtered_scatterings;
+                    double impact_parameter;
+
+                    std::vector<nucleon> pro, tar;
+                    uint_fast16_t times_discarded = 0;
+                    
+                    //B^2 from a uniform distribution
+                    impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
+
+                    //Demand at least one hard scattering
+                    do //while (NColl<1)
                     {
-                        uint_fast32_t NColl = 0;
-                        std::vector<nn_coll> binary_collisions;
-                        std::vector<dijet_with_coords> filtered_scatterings;
-
-                        //B^2 from a uniform distribution
-                        spatial impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min)); 
-
-                        //std::shared_ptr<ars> radial_sampler;
-                        //bool sampler_found = false;
-                        //uint_fast8_t s_index = index % samplersN;
-
-                        //{
-                        //    std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
-                        //    do //while sampler_found
-                        //    {
-                        //        if (!sampler_pointers[s_index]->locked())
-                        //        {
-                        //            radial_sampler = sampler_pointers[s_index];
-                        //            sampler_found = true;
-                        //        }
-                        //        s_index = (s_index + 1) % samplersN;
-                        //        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
-                        //    }
-                        //    while (!sampler_found);
-                        //    //std::cout<<std::endl<<s_index<<std::endl;
-                        //}
-                        //std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
-                        //auto radial_sampler = sampler_pointers[0];
-                        std::vector<nucleon> pro, tar;
-
-                        bool bugged, collided;
-                        // "ball" diameter = distance at which two nucleons interact
-                        const spatial d2 = 70.0/(M_PI*10.0); // in fm^2
-                        do //while (!collided || bugged)
+                        //Keep generating nuclei until there are nucleons close enough to each other
+                        //so that a collision is probable
+                        bool bugged, probably_collided;
+                        // "ball" diameter = distance at which two nucleons interact in MC Glauber
+                        const double d2 = sigma_inel_for_glauber/(M_PI*10.0); // in fm^2
+                        do //while (!probably_collided || bugged)  
                         {
+                            times_discarded++;
+                            if (times_discarded > 1000)
+                            {
+                                std::cout<<"Generated nuclei discarded over 1000 times. "
+                                         <<"Check impact parameters and/or collsion probabilities."
+                                         <<std::endl;
+                                times_discarded = 0;
+                            }
+
                             bugged = false;
-                            collided = false;
+                            probably_collided = false;
                             try
                             {
                                 auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
@@ -713,7 +621,6 @@ int main(int argc, char** argv)
                                     impact_parameter, 
                                     eng, 
                                     radial_sampler, 
-                                    read_nuclei_from_file, 
                                     verbose
                                 );
                                 pro = std::move(pro_dummy);
@@ -724,522 +631,258 @@ int main(int argc, char** argv)
                                 std::cout << e.what() << " in main, trying again"<<std::endl;
                                 bugged = true;
                             }
-                            
+
                             for (auto A : pro)
                             {
                                 for (auto B : tar)
                                 {
                                     // "ball" diameter = distance at which two nucleons interact
-                                    const spatial dij2 = A.calculate_bsquared(B);
-                                    
-                                    if (dij2 <= d2) //at least one collision
+                                    const double dij2 = A.calculate_bsquared(B);
+
+                                    if (dij2 <= d2) //Probably at least one collision
                                     {
-                                        collided = true;
+                                        probably_collided = true;
                                         continue;
                                     }
                                 }
-                                if (collided)
+                                if (probably_collided)
                                 {
                                     continue;
                                 }
                             }
 
-                        } while (!collided || bugged);
+                        } while (!probably_collided || bugged);
+
+                        binary_collisions.clear();
+                        if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
+
+                        calcs::collide_nuclei
+                        (
+                            g_use_snpdfs,
+                            pro, 
+                            tar, 
+                            binary_collisions, 
+                            sigma_jet,
+                            unirand, 
+                            eng, 
+                            coll_params, 
+                            jet_params,
+                            kt0,
+                            p_pdf,
+                            power_law,
+                            envelope_maximum,
+                            verbose
+                        );
                         
-                        do //while (NColl<1)
+                        NColl = static_cast<uint_fast32_t>(binary_collisions.size());
+                    } while (NColl<1);
+                    
+
+                    double sum_ET = 0;
+                    double sum_ET_midrap = 0;
+
+                    if(!end_state_filtering && save_events)
+                    {
+                        const std::lock_guard<std::mutex> lock(event_file_mutex);
+                        io::save_event(event_file, pro, tar, impact_parameter);
+                    }
+                    else if (end_state_filtering)
+                    {
+                        double max_overlap = K_sat;
+                        double sum_E = 0;
+                        filter_end_state
+                        (
+                            binary_collisions, 
+                            filtered_scatterings, 
+                            eng, 
+                            g_is_mom_cons, 
+                            /*g_is_mom_cons_local, FEATURE NOT IMPLEMENTED*/
+                            g_is_saturation, 
+                            g_are_ns_depleted, 
+                            sqrt_s,
+                            max_overlap,
+                            proton_width,
+                            /*sigma_inel_for_glauber, FEATURE NOT IMPLEMENTED*/
+                            calculate_tata,
+                            pro,
+                            tar,
+                            coll_params.Tpp
+                        );
+
+                        //std::vector<std::tuple<double, double> > new_jets;
+                        //std::vector<std::tuple<double, double> > new_dijets;
+                        //std::vector<std::tuple<double, double> > new_ET_y;
+                        //std::vector<std::tuple<double, double> > new_E_y;
+                        //std::vector<std::tuple<double, double> > new_N_y;
+                        //std::vector<std::tuple<double, double> > new_ET_eta;
+                        //std::vector<std::tuple<double, double> > new_E_eta;
+                        
+                        for (auto e_co : filtered_scatterings)
                         {
-                            binary_collisions.clear();
-                            if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
+                            auto e = e_co.dijet;
 
-                            calcs::collide_nuclei
-                            (
-                                g_use_snpdfs,
-                                pro, 
-                                tar, 
-                                binary_collisions, 
-                                sigma_jet,
-                                unirand, 
-                                eng, 
-                                coll_params, 
-                                jet_params,
-                                kt0,
-                                p_pdf,
-                                power_law,
-                                envelope_maximum,
-                                verbose
-                            );
+                            //new_jets.emplace_back(e.kt, e.y1);
+                            //new_jets.emplace_back(e.kt, e.y2);
+                            //
+                            //new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                            //
+                            //new_ET_y.emplace_back(e.y1, e.kt);
+                            //new_ET_y.emplace_back(e.y2, e.kt);
+                            //
+                            //new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                            //
+                            //new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                            //new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                            //
+                            //new_N_y.emplace_back(e.y1, 1);
+                            //new_N_y.emplace_back(e.y2, 1);
+                            //
+                            //new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                            
+                            sum_ET += 2*e.kt;
+                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));
 
-                            /*if (average_spatial_taas)
+                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
                             {
-                                //collide_nuclei_with_spatial_pdfs_averaging(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp);
+                                sum_ET_midrap += e.kt;
                             }
-                            else
+                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
                             {
-                                //log_file << impact_parameter << std::endl;
-                                //collide_nuclei_with_spatial_pdfs_factored(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
-                                //collide_nuclei_with_spatial_pdfs_full(pro, tar, binary_collisions, sigma_jets, unirand, eng, coll_params, verbose, Tpp, proton_width_2, {impact_parameter,0,0}, log_file);
-                                //log_file << std::endl;
-                            }*/
-                            NColl = static_cast<uint_fast32_t>(binary_collisions.size());
-                            if (NColl<1)
-                            {
-                                impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
-                                //const std::lock_guard<std::mutex> lock(radial_sampler_mutex);
-                                std::tie(pro, tar) = calcs::generate_nuclei
-                                (
-                                    nuc_params, 
-                                    sqrt_s, 
-                                    impact_parameter, 
-                                    eng, 
-                                    radial_sampler, 
-                                    read_nuclei_from_file, 
-                                    verbose
-                                );
+                                sum_ET_midrap += e.kt;
                             }
-                        } while (NColl<1);
-                        
+                        }
 
-                        momentum sum_ET = 0;
-                        momentum sum_ET_midrap = 0;
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(jets_mutex);
+                        //    jets.add(new_jets);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dijets_mutex);
+                        //    dijets.add(new_dijets);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
+                        //    dETdy.add(new_ET_y);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
+                        //    dEdy.add(new_E_y);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
+                        //    dNdy.add(new_N_y);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
+                        //    dETdeta.add(new_ET_eta);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
+                        //    dEdeta.add(new_E_eta);
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
+                        //    dNdET.add(std::make_tuple(sum_ET, 1));
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
+                        //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
+                        //}
+                        //
+                        //{
+                        //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
+                        //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
+                        //}
 
-                        if(!end_state_filtering && save_events)
+                        {
+                            const std::lock_guard<std::mutex> lock(total_energy_mutex);
+                            total_energy << sum_ET << ' ' << sum_E << std::endl;
+                        }
+
+                        if (save_events)
                         {
                             const std::lock_guard<std::mutex> lock(event_file_mutex);
-                            io::save_event(event_file, pro, tar, impact_parameter);
+                            io::save_event(event_file, pro, tar, impact_parameter, filtered_scatterings);
                         }
-                        else if (end_state_filtering)
+                    }
+
+                    {
+                        const std::lock_guard<std::mutex> lock(AA_events_mutex);
+                        AA_events_done++;
+                        if (AA_events_done % 100 == 0 )
                         {
-                            double max_overlap = K_sat;
-                            momentum sum_E = 0;
-                            filter_end_state
-                            (
-                                binary_collisions, 
-                                filtered_scatterings, 
-                                eng, 
-                                g_is_mom_cons_new, 
-                                /*g_is_mom_cons_local, FEATURE NOT IMPLEMENTED*/
-                                g_is_saturation, 
-                                g_are_ns_depleted, 
-                                sqrt_s,
-                                max_overlap,
-                                proton_width,
-                                /*sigma_inel_for_glauber, FEATURE NOT IMPLEMENTED*/
-                                include_tata,
-                                pro,
-                                tar,
-                                coll_params.Tpp
-                            );
-
-                            std::vector<std::tuple<double, double> > new_jets;
-                            std::vector<std::tuple<double, double> > new_dijets;
-                            std::vector<std::tuple<double, double> > new_ET_y;
-                            std::vector<std::tuple<double, double> > new_E_y;
-                            std::vector<std::tuple<double, double> > new_N_y;
-                            std::vector<std::tuple<double, double> > new_ET_eta;
-                            std::vector<std::tuple<double, double> > new_E_eta;
-                            
-                            for (auto e_co : filtered_scatterings)
-                            {
-                                auto e = e_co.dijet;
-
-                                new_jets.emplace_back(e.kt, e.y1);
-                                new_jets.emplace_back(e.kt, e.y2);
-                                
-                                new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
-
-                                new_ET_y.emplace_back(e.y1, e.kt);
-                                new_ET_y.emplace_back(e.y2, e.kt);
-                                
-                                new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-                                
-                                new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                                new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                                
-                                new_N_y.emplace_back(e.y1, 1);
-                                new_N_y.emplace_back(e.y2, 1);
-                                
-                                new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
-                                
-                                sum_ET += 2*e.kt;
-                                sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));
-
-                                if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                                {
-                                    sum_ET_midrap += e.kt;
-                                }
-                                if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                                {
-                                    sum_ET_midrap += e.kt;
-                                }
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(jets_mutex);
-                                jets.add(new_jets);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dijets_mutex);
-                                dijets.add(new_dijets);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dETdy_mutex);
-                                dETdy.add(new_ET_y);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dEdy_mutex);
-                                dEdy.add(new_E_y);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dNdy_mutex);
-                                dNdy.add(new_N_y);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dETdeta_mutex);
-                                dETdeta.add(new_ET_eta);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dEdeta_mutex);
-                                dEdeta.add(new_E_eta);
-                            }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(total_energy_mutex);
-                                total_energy << sum_ET << ' ' << sum_E << std::endl;
-                            }
-                                
-//                                if (sum_E > max_energy)
-//                                {
-//                                    std::cout << std::endl 
-//                                            << "Energy conservation violated! Total "<< ++max_energy_broken
-//                                            << " times this far in branch "<< i << std::endl
-//                                            << "E_T = " << sum_ET << ", E = " << sum_E  << std::endl;
-//                                }
-
-                            {
-                                const std::lock_guard<std::mutex> lock(dNdET_mutex);
-                                dNdET.add(std::make_tuple(sum_ET, 1));
-                            }
-                            
-                            {
-                                const std::lock_guard<std::mutex> lock(dETdb_mutex);
-                                dETdb.add(std::make_tuple(impact_parameter, sum_ET));
-                            }
-                            {
-                                const std::lock_guard<std::mutex> lock(dEdb_mutex);
-                                dEdb.add(std::make_tuple(impact_parameter, sum_E));
-                            }
-
-                            if (save_events)
-                            {
-                                const std::lock_guard<std::mutex> lock(event_file_mutex);
-                                io::save_event(event_file, pro, tar, impact_parameter, filtered_scatterings);
-                            }
-
-                            //filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
+                            std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
                         }
-                        else
+                    }
+
+                    uint_fast32_t Npart=0;
+                    for (auto &A : pro)
+                    {
+                        if (A.wounded)
                         {
-                            //binary_collisions.erase(binary_collisions.begin(), binary_collisions.end());
+                            Npart++;
                         }
-
-                        /*if (verbose || (nof_collisions%100)==0)
+                    }
+                    for (auto &B : tar)
+                    {
+                        if (B.wounded)
                         {
-                            std::cout << std::endl << "A+A collided thus far: " << nof_collisions << ", of which events thus far: " << AA_events << std::endl << std::endl;
-                        }*/
-
-                        {
-                            const std::lock_guard<std::mutex> lock(AA_events_mutex);
-                            AA_events++;
-                            if (AA_events % 100 == 0 )
-                            {
-                                std::cout <<"\rA+A collisions calculated: " << AA_events << std::flush;
-                            }
+                            Npart++;
                         }
-                        //PrintThread{} <<"\rA+A collisions calculated: " << AA_events << std::flush;
+                    }
 
-                        uint_fast32_t Npart=0;
-                        for (auto &A : pro)
+                    {
+                        const std::lock_guard<std::mutex> lock(colls_mutex);
+                        for (uint_fast8_t i=0; i<4; i++)
                         {
-                            if (A.wounded)
-                            {
-                                Npart++;
-                            }
-                        }
-                        for (auto &B : tar)
-                        {
-                            if (B.wounded)
-                            {
-                                Npart++;
-                            }
-                        }
+                            io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
+                            io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
+                            collisions_for_reporting.push_back(coll);
+                            collisions_for_reporting_midrap.push_back(coll_midrap);
 
-                        {
-                            const std::lock_guard<std::mutex> lock(colls_mutex);
-                            for (uint_fast8_t i=0; i<4; i++)
-                            {
-                                io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
-                                io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
-                                collisions_for_reporting.push_back(coll);
-                                collisions_for_reporting_midrap.push_back(coll_midrap);
-
-                                colls_scatterings.insert({coll, filtered_scatterings});
-                            }
-                            
-                            //io::save_single_coll_bin(filtered_scatterings,unirand,eng);
+                            colls_scatterings.insert({coll, filtered_scatterings});
                         }
-                        
-                        //filtered_scatterings.clear();
-                
-                    } while (g_bug_bool);
-                    bool ret_value = user_aborted;
-                    return ret_value;
-                }
-            );
-        }
-        catch(const std::exception& e)
-        {
-            std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
-        }
-        std::cout<<" ...done!"<<std::endl;
-    }
-    /*
-    else
-    {
-        std::ifstream event_file;
-        event_file.open(event_file_name);
-
-        if (event_file.is_open())
-        {
-            std::string line;
-            std::getline(event_file, line);
-            //Skip comments at the start
-            while (line[0] == '/')
-            {
-                std::getline(event_file, line);
+                    }
+            
+                } while (g_bug_bool);
+                bool ret_value = user_aborted;
+                return ret_value;
             }
-
-            do
-            {
-                std::getline(event_file, line);
-                std::istringstream line_stream(line);
-                spatial impact_parameter;
-                line_stream >> impact_parameter;
-
-                std::vector<nucleon> pro;
-                std::getline(event_file, line);
-                
-                //Read projectile
-                do 
-                {
-                    std::getline(event_file, line);
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    coords co;
-                    double x, y, z;
-
-                    line_stream.ignore(256,'{');
-                    line_stream >> x;
-                    line_stream.ignore(256,',');
-                    line_stream >> y;
-                    line_stream.ignore(256,',');
-                    line_stream >> z;
-                    co = coords{x, y, z};
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    momentum mom;
-                    line_stream >> mom;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    bool wounded;
-                    line_stream >> wounded;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    bool is_neutron;
-                    line_stream >> is_neutron;
-
-                    pro.push_back(nucleon{co, mom, wounded, is_neutron});
-
-                    std::getline(event_file, line);
-                } while (line.back() != '}');
-                pro.shrink_to_fit();
-
-                std::getline(event_file, line);
-                std::vector<nucleon> tar;
-                std::getline(event_file, line);
-
-                //Read target
-                do
-                {
-                    std::getline(event_file, line);
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    coords co;
-                    double x, y, z;
-
-                    line_stream.ignore(256,'{');
-                    line_stream >> x;
-                    line_stream.ignore(256,',');
-                    line_stream >> y;
-                    line_stream.ignore(256,',');
-                    line_stream >> z;
-                    co = coords{x, y, z};
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    momentum mom;
-                    line_stream >> mom;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    bool wounded;
-                    line_stream >> wounded;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    bool is_neutron;
-                    line_stream >> is_neutron;
-
-                    tar.push_back(nucleon{co, mom, wounded, is_neutron});
-
-                    std::getline(event_file, line);
-                } while (line.back() != '}');
-                tar.shrink_to_fit();
-                
-                std::getline(event_file, line);
-                std::getline(event_file, line);
-
-                //Read filtered scatterings
-                do
-                {
-                    std::getline(event_file, line);
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    momentum kt;
-                    line_stream >> kt;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    rapidity y1;
-                    line_stream >> y1;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    rapidity y2;
-                    line_stream >> y2;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    particle_id init1;
-                    line_stream >> init1;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    particle_id init2;
-                    line_stream >> init2;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    particle_id final1;
-                    line_stream >> final1;
-
-                    std::getline(event_file, line);
-                    line_stream = std::istringstream(line);
-                    particle_id final2;
-                    line_stream >> final2;
-
-                    filtered_scatterings.push_back(dijet_specs{kt, y1, y2, init1, init2, final1, final2});
-
-                    std::getline(event_file, line);
-                } while (line.back() != '}');
-                filtered_scatterings.shrink_to_fit();
-
-                std::getline(event_file, line);
-                std::getline(event_file, line);
-
-                nof_collisions++;
-                AA_events++;
-                momentum ET=0, E=0;
-                std::vector<std::tuple<double, double> > new_jets;
-                std::vector<std::tuple<double, double> > new_dijets;
-                std::vector<std::tuple<double, double> > new_ET_y;
-                std::vector<std::tuple<double, double> > new_E_y;
-                std::vector<std::tuple<double, double> > new_ET_eta;
-                std::vector<std::tuple<double, double> > new_E_eta;
-
-                for (auto e : filtered_scatterings)
-                {
-                    new_jets.emplace_back(e.kt, e.y1);
-                    new_jets.emplace_back(e.kt, e.y2);
-
-                    new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
-
-                    new_ET_y.emplace_back(e.y1, e.kt);
-                    new_ET_y.emplace_back(e.y2, e.kt);
-
-                    new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-
-                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-
-                    new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
-
-                    ET += 2*e.kt;
-                    E += e.kt*(cosh(e.y1) + cosh(e.y2));
-                }
- //               jets.add(new_jets);
- //               dijets.add(new_dijets);
-
-                //dETdy.add(new_ET_y);
-                //dEdy.add(new_E_y);
-
-                //dETdeta.add(new_ET_eta);
-                //dEdeta.add(new_E_eta);
-
- //               dETdb.add(std::make_tuple(impact_parameter, ET));
- //               dEdb.add(std::make_tuple(impact_parameter, E));
-
-                filtered_scatterings.erase(filtered_scatterings.begin(), filtered_scatterings.end());
-
-                std::cout<<"\rA+A collisions read thus far: " << nof_collisions << std::flush;
-
-                std::getline(event_file, line);
-            } while (line[0] == '{');
-        }
-        else
-        {
-            std::cout<<"ERROR READING EVENTS"<<std::endl;
-        }
-    }*/
+        );
+    }
+    catch(const std::exception& e)
+    {
+        std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
+    }
+    std::cout<<" ...done!"<<std::endl;
+    
 
 
-    io::print_histos
-    (
-        name_postfix,
-        jets,
-        dijets,
-        dETdy,
-        dEdy,
-        dNdy,
-        dNdET,
-        dETdeta,
-        dEdeta,
-        dETdb,
-        dEdb,
-        dijet_norm,
-        AA_events
-    );
-
-    //log_file.close();
-
+    //io::print_histos
+    //(
+    //    name_postfix,
+    //    jets,
+    //    dijets,
+    //    dETdy,
+    //    dEdy,
+    //    dNdy,
+    //    dNdET,
+    //    dETdeta,
+    //    dEdeta,
+    //    dETdb,
+    //    dEdb,
+    //    dijet_norm,
+    //    AA_events_done
+    //);
+    
     uint_fast8_t nBins = 18;
     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
     double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
@@ -1265,7 +908,7 @@ int main(int argc, char** argv)
     for (auto [centLow, centHigh] : centBins)
     {
         std::stringstream jetsname{""};
-        jetsname<<"jets_"<<static_cast<uint_fast8_t>(centLow*100)<<"_"<<static_cast<uint_fast8_t>(centHigh*100)<<"_"<<name_pfs;
+        jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
         jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
 
         histo_1d dETdy_by_cent{y_bins};
@@ -1309,7 +952,7 @@ int main(int argc, char** argv)
 
         std::stringstream outname{""};
 
-        outname<<"dEdy_"<<static_cast<uint_fast8_t>(centLow*100)<<"_"<<static_cast<uint_fast8_t>(centHigh*100)<<name_pfs;
+        outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
         io::print_1d_histo
         (
             dEdy_by_cent, 
@@ -1318,7 +961,7 @@ int main(int argc, char** argv)
             false
         );
         outname.seekp(0);
-        outname<<"dETdy_"<<static_cast<uint_fast8_t>(centLow*100)<<"_"<<static_cast<uint_fast8_t>(centHigh*100)<<name_pfs;
+        outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
         io::print_1d_histo
         (
             dETdy_by_cent,

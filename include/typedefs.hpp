@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2022 Mikko Kuha
 
 #ifndef TYPEDEFS_HPP
 #define TYPEDEFS_HPP
@@ -13,17 +13,13 @@
 #include <sstream>
 #include <tuple>
 
-typedef double momentum;
-typedef double rapidity;
-typedef double xsectval;
-typedef double spatial;
 typedef int_fast8_t particle_id;
 
 struct dijet_specs
 {
-    momentum kt{0};
-    rapidity y1{0};
-    rapidity y2{0};
+    double kt{0};
+    double y1{0};
+    double y2{0};
     particle_id init1{0};
     particle_id init2{0};
     particle_id final1{0};
@@ -32,7 +28,7 @@ struct dijet_specs
 
 struct xsection_id
 {
-  xsectval sigma;
+  double sigma;
   particle_id init1;
   particle_id init2;
   particle_id final1;
@@ -71,14 +67,13 @@ struct AA_collision_params
   bool pp_scattering;
   bool pA_scattering;
   bool spatial_pdfs;
-  bool spatial_averaging;
   bool calculate_end_state;
   bool reduce_nucleon_energies;
-  xsectval sigma_inel_for_glauber;
-  const std::function<spatial(const spatial&)> Tpp;
+  double sigma_inel_for_glauber;
+  const std::function<double(const double&)> Tpp;
   B2_normalization_mode normalize_to;
-  momentum sqrt_s;
-  momentum energy_threshold;
+  double sqrt_s;
+  double energy_threshold;
 };
 
 struct coords {

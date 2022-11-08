@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2022 Mikko Kuha
 
 #ifndef ARS_HPP
 #define ARS_HPP

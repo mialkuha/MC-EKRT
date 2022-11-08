@@ -23,7 +23,7 @@ void nn_coll::wound() noexcept
     this->target->wounded = true;
 }
 
-void nn_coll::calculate_xsects(const xsectval &sigma_jet, const std::function<spatial(const spatial&)> &Tpp, const spatial &b2, const B2_normalization_mode & mode) noexcept
+void nn_coll::calculate_xsects(const double &sigma_jet, const std::function<double(const double&)> &Tpp, const double &b2, const B2_normalization_mode & mode) noexcept
 {
     double normalization=1., max_tot=1., max_inel=1., eff_tot=1., eff_inel=1.;
 
@@ -69,9 +69,9 @@ void nn_coll::calculate_xsects(const xsectval &sigma_jet, const std::function<sp
 void nn_coll::push_end_states_to_collider_frame() noexcept
 {
     //Calculate transformation btw events CMS and collider frame
-    //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
+    //double rap = atanh( (this->projectile->mom - this->target->mom) 
     //                    / (this->projectile->mom + this->target->mom));
-    rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
+    double rap = 0.5*log(this->projectile->mom / this->target->mom);
 
     //Push all end states with the transformation
     for (auto &s : this->dijets)
@@ -84,9 +84,9 @@ void nn_coll::push_end_states_to_collider_frame() noexcept
 void nn_coll::reduce_energy_and_push_end_states_to_collider_frame() noexcept
 {
     //Calculate transformation btw events CMS and collider frame
-    //rapidity rap = atanh( (this->projectile->mom - this->target->mom) 
+    //double rap = atanh( (this->projectile->mom - this->target->mom) 
     //                    / (this->projectile->mom + this->target->mom));
-    rapidity rap = 0.5*log(this->projectile->mom / this->target->mom);
+    double rap = 0.5*log(this->projectile->mom / this->target->mom);
     auto x1 = 0.0, x2 = 0.0;
     for (auto s : this->dijets)
     {

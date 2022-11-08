@@ -104,7 +104,7 @@ public:
     static auto mc_glauber_style_report
     (
         std::vector<Coll> &collisions, 
-        const xsectval &sigma_inel, 
+        const double &sigma_inel, 
         const uint_fast64_t &N_events, 
         const uint_fast64_t &nBins, 
         const double *const binsLow, 
@@ -334,7 +334,7 @@ public:
         std::ofstream &event_file, 
         const std::vector<nucleon> &pro, 
         const std::vector<nucleon> &tar, 
-        const spatial &impact_parameter
+        const double &impact_parameter
     ) noexcept -> void
     {
         event_file << "{"<<std::endl;
@@ -383,7 +383,7 @@ public:
         std::ofstream &event_file, 
         const std::vector<nucleon> &pro, 
         const std::vector<nucleon> &tar, 
-        const spatial &impact_parameter,
+        const double &impact_parameter,
         const std::vector<dijet_with_coords> &filtered_scatterings
     ) noexcept -> void
     {
@@ -468,8 +468,8 @@ public:
                                          name+"_SAT.csv",
                                          name+"_SAT_MC.csv"};
         
-        momentum pt, energy, px, py, pz;
-        rapidity y1, y2;
+        double pt, energy, px, py, pz;
+        double y1, y2;
         double theta;
 
         for (size_t i=0; i<4; i++)
@@ -745,13 +745,13 @@ public:
         bool use_npdfs          = false;
         bool use_snpdfs         = false;
         bool is_mom_cons        = false;
-        bool is_mom_cons_new    = false;
         bool are_ns_depleted    = false;
         bool is_saturation      = false;
         bool is_mc_glauber      = false;
-        uint_fast32_t n_events       = 10000;
-        spatial b_max           = 20;//fm
-        momentum pt0            = 2.728321;//GeV
+        uint_fast32_t n_events  = 10000;
+        double b_min            = 0;//fm
+        double b_max            = 20;//fm
+        double pt0              = 2.728321;//GeV
         double K_factor         = 1.0;
         double K_sat            = 1.0;
 
@@ -795,10 +795,6 @@ public:
                 {
                     line_stream >> std::boolalpha >> is_mom_cons;
                 }
-                else if (param_name == "is_mom_cons_new")
-                {
-                    line_stream >> std::boolalpha >> is_mom_cons_new;
-                }
                 else if (param_name == "are_ns_depleted")
                 {
                     line_stream >> std::boolalpha >> are_ns_depleted;
@@ -814,6 +810,10 @@ public:
                 else if (param_name == "n_events")
                 {
                     line_stream >> n_events;
+                }
+                else if (param_name == "b_min")
+                {
+                    line_stream >> b_min;
                 }
                 else if (param_name == "b_max")
                 {
@@ -851,11 +851,11 @@ public:
                     use_npdfs,
                     use_snpdfs,
                     is_mom_cons,
-                    is_mom_cons_new,
                     are_ns_depleted,
                     is_saturation,
                     is_mc_glauber,
                     n_events,
+                    b_min,
                     b_max,
                     pt0,
                     K_factor,
@@ -876,7 +876,7 @@ public:
         const histo_1d &dEdeta,
         const histo_1d &dETdb,
         const histo_1d &dEdb,
-        const xsectval &dijet_norm,
+        const double &dijet_norm,
         const uint_fast32_t &AA_events
     ) noexcept -> void
     {

@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2022 Mikko Kuha
 
 #include "ars.hpp"
 
@@ -292,7 +292,7 @@ void ars::update_distribution() noexcept
                 auto xkp1 = this->abscissae.at(k+1);
                 std::tie(std::ignore, hkp1) = *std::next(temp.first);
                 std::tie(std::ignore, hdkp1) = *std::next(temp2.first);
-                this->zk.emplace(std::next(this->zk.cbegin(),k+1), (hkp1 - hk - xkp1*hdkp1 + xk*hdk)/(hdk - hdkp1));
+                this->zk.emplace(std::next(this->zk.cbegin(),static_cast<int_fast32_t>(k+1)), (hkp1 - hk - xkp1*hdkp1 + xk*hdk)/(hdk - hdkp1));
             }
             else
             {
