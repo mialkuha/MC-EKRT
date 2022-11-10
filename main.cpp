@@ -334,15 +334,16 @@ int main(int argc, char** argv)
     if (verbose) std::cout<<"Initializing..."<<std::flush;
     
     //General parameters for the simulation
-    const bool    read_sigmajets_from_file  = true,
+    const bool    read_sigmajets_from_file  = false,
                   end_state_filtering       = true, 
                   sigma_inel_from_sigma_jet = true, 
-                  save_events               = false,
+                  save_endstate_jets        = true,
+                  save_events_plaintext     = false,
                   calculate_end_state       = true,
                   calculate_tata            = true,
                   reduce_nucleon_energies   = false;
 
-    uint_fast32_t AA_events_done           = 0;
+    uint_fast32_t AA_events_done            = 0;
     std::mutex AA_events_mutex;
 
     std::cout<<std::endl<<std::endl<<"Doing the run "<<name_postfix<<std::endl;
@@ -438,8 +439,6 @@ int main(int argc, char** argv)
     ] = 
     calcs::prepare_sigma_jets
     (
-        (diff_params.projectile_with_npdfs || diff_params.target_with_npdfs),
-        g_use_snpdfs,
         reduce_nucleon_energies,
         read_sigmajets_from_file,
         p_pdf, 
@@ -456,7 +455,7 @@ int main(int argc, char** argv)
         dummy = dummy / 10; //mb -> fm²
 
         sigma_inel_for_glauber = (4 * M_PI * proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
-        std::cout<<std::endl<<sigma_inel_for_glauber<<std::endl;
+        std::cout<<"sigma_inel = "<<sigma_inel_for_glauber<<std::endl;
     }
 
     AA_collision_params coll_params
@@ -515,7 +514,7 @@ int main(int argc, char** argv)
     std::ofstream event_file;
     std::mutex event_file_mutex; 
 
-    if (save_events)
+    if (save_events_plaintext)
     {
         event_file.open("event_log_"+name_postfix+".dat");
 
@@ -566,7 +565,6 @@ int main(int argc, char** argv)
             event_indexes.end(), 
             [&,&b_max=b_max,
              &verbose=verbose,
-             &g_use_snpdfs=g_use_snpdfs,
              &g_is_mom_cons=g_is_mom_cons,
              &g_is_saturation=g_is_saturation,
              &g_are_ns_depleted=g_are_ns_depleted,
@@ -587,9 +585,6 @@ int main(int argc, char** argv)
 
                     std::vector<nucleon> pro, tar;
                     uint_fast16_t times_discarded = 0;
-                    
-                    //B^2 from a uniform distribution
-                    impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
 
                     //Demand at least one hard scattering
                     do //while (NColl<1)
@@ -601,10 +596,13 @@ int main(int argc, char** argv)
                         const double d2 = sigma_inel_for_glauber/(M_PI*10.0); // in fm^2
                         do //while (!probably_collided || bugged)  
                         {
+                            //B^2 from a uniform distribution
+                            impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
+                    
                             times_discarded++;
                             if (times_discarded > 1000)
                             {
-                                std::cout<<"Generated nuclei discarded over 1000 times. "
+                                std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
                                          <<"Check impact parameters and/or collsion probabilities."
                                          <<std::endl;
                                 times_discarded = 0;
@@ -658,7 +656,6 @@ int main(int argc, char** argv)
 
                         calcs::collide_nuclei
                         (
-                            g_use_snpdfs,
                             pro, 
                             tar, 
                             binary_collisions, 
@@ -681,7 +678,7 @@ int main(int argc, char** argv)
                     double sum_ET = 0;
                     double sum_ET_midrap = 0;
 
-                    if(!end_state_filtering && save_events)
+                    if(!end_state_filtering && save_events_plaintext)
                     {
                         const std::lock_guard<std::mutex> lock(event_file_mutex);
                         io::save_event(event_file, pro, tar, impact_parameter);
@@ -807,7 +804,7 @@ int main(int argc, char** argv)
                             total_energy << sum_ET << ' ' << sum_E << std::endl;
                         }
 
-                        if (save_events)
+                        if (save_events_plaintext)
                         {
                             const std::lock_guard<std::mutex> lock(event_file_mutex);
                             io::save_event(event_file, pro, tar, impact_parameter, filtered_scatterings);
@@ -847,8 +844,11 @@ int main(int argc, char** argv)
                             io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
                             collisions_for_reporting.push_back(coll);
                             collisions_for_reporting_midrap.push_back(coll_midrap);
-
-                            colls_scatterings.insert({coll, filtered_scatterings});
+                            
+                            if (save_endstate_jets)
+                            {
+                                colls_scatterings.insert({coll, filtered_scatterings});
+                            }
                         }
                     }
             
@@ -896,79 +896,83 @@ int main(int argc, char** argv)
     glauber_report_file.open(g_name_midrap, std::ios::out);
     io::mc_glauber_style_report(collisions_for_reporting_midrap, sigma_inel_for_glauber, desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
-    
-    const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.05},
-                                                            std::tuple<double,double>{0.25, 0.3},
-                                                            std::tuple<double,double>{0.6, 0.8}};
-                                                            
-    std::string name_pfs{name_postfix+".dat"};
 
-    std::ofstream jet_file;
-    
-    for (auto [centLow, centHigh] : centBins)
+
+    if (save_endstate_jets)
     {
-        std::stringstream jetsname{""};
-        jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-        jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
+        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.05},
+                                                                std::tuple<double,double>{0.25, 0.3},
+                                                                std::tuple<double,double>{0.6, 0.8}};
 
-        histo_1d dETdy_by_cent{y_bins};
-        histo_1d dEdy_by_cent{y_bins};
-        std::vector<std::tuple<double, double> > new_ET_y;
-        std::vector<std::tuple<double, double> > new_E_y;
+        std::string name_pfs{name_postfix+".dat"};
 
-        uint_fast64_t N_evts_tot = colls_scatterings.size();
-        // Make sure that no rounding downwards.
-        double eps = 0.1/static_cast<double>(N_evts_tot);
+        std::ofstream jet_file;
 
-        uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-        uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-        uint_fast64_t n_in_bin = upper_ind - lower_ind;
-
-        //total number of events in this bin
-        jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
-
-        auto it = colls_scatterings.crbegin();
-        std::advance(it, lower_ind);
-
-        for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+        for (auto [centLow, centHigh] : centBins)
         {
-            for (auto e_co : it->second)
+            std::stringstream jetsname{""};
+            jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+            jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
+
+            histo_1d dETdy_by_cent{y_bins};
+            histo_1d dEdy_by_cent{y_bins};
+            std::vector<std::tuple<double, double> > new_ET_y;
+            std::vector<std::tuple<double, double> > new_E_y;
+
+            uint_fast64_t N_evts_tot = colls_scatterings.size();
+            // Make sure that no rounding downwards.
+            double eps = 0.1/static_cast<double>(N_evts_tot);
+
+            uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
+            uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
+            uint_fast64_t n_in_bin = upper_ind - lower_ind;
+
+            //total number of events in this bin
+            jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
+
+            auto it = colls_scatterings.crbegin();
+            std::advance(it, lower_ind);
+
+            for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
             {
-                auto e = e_co.dijet;
+                for (auto e_co : it->second)
+                {
+                    auto e = e_co.dijet;
 
-                new_ET_y.emplace_back(e.y1, e.kt);
-                new_ET_y.emplace_back(e.y2, e.kt);
+                    new_ET_y.emplace_back(e.y1, e.kt);
+                    new_ET_y.emplace_back(e.y2, e.kt);
 
-                new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                }
+                io::append_single_coll_binary(jet_file, it->second, unirand, eng);
             }
-            io::append_single_coll_binary(jet_file, it->second, unirand, eng);
+            jet_file.close();
+            std::cout<<n_in_bin<<std::endl;
+
+            dETdy_by_cent.add(new_ET_y);
+            dEdy_by_cent.add(new_E_y);
+
+            std::stringstream outname{""};
+
+            outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+            io::print_1d_histo
+            (
+                dEdy_by_cent, 
+                outname.str(), 
+                1.0/ static_cast<double>(n_in_bin),
+                false
+            );
+            outname.seekp(0);
+            outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+            io::print_1d_histo
+            (
+                dETdy_by_cent,
+                outname.str(), 
+                1.0/ static_cast<double>(n_in_bin),
+                false
+            );
         }
-        jet_file.close();
-        std::cout<<n_in_bin<<std::endl;
-
-        dETdy_by_cent.add(new_ET_y);
-        dEdy_by_cent.add(new_E_y);
-
-        std::stringstream outname{""};
-
-        outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-        io::print_1d_histo
-        (
-            dEdy_by_cent, 
-            outname.str(), 
-            1.0/ static_cast<double>(N_evts_tot*n_in_bin),
-            false
-        );
-        outname.seekp(0);
-        outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-        io::print_1d_histo
-        (
-            dETdy_by_cent,
-            outname.str(), 
-            1.0/ static_cast<double>(N_evts_tot*n_in_bin),
-            false
-        );
     }
     
     return 0;

@@ -270,8 +270,6 @@ public:
 
     static auto prepare_sigma_jets
     (
-        const bool use_npdfs,
-        const bool spatial_pdfs,
         const bool reduce_nucleon_energies,
         const bool read_sigmajets_from_file,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
@@ -291,6 +289,9 @@ public:
         std::optional<std::vector<double> >
     >
     {
+        const bool use_npdfs = (jet_params.d_params.projectile_with_npdfs 
+                                || jet_params.d_params.target_with_npdfs);
+        const bool spatial_pdfs = jet_params.d_params.npdfs_spatial;
         double power_law = 0;
         double dijet_norm = 0;
 
@@ -418,17 +419,21 @@ public:
                     );
             }
         }
-        else //double nPDFs
+        else //spatial nPDFs
         {
             if (!reduce_nucleon_energies && read_sigmajets_from_file) //sigma_jet does not depend on energy
             {
                 power_law = 2.0;
 
-                std::cout<<"Reading double sigma_jets..."<<std::flush;
+                std::cout<<"Reading spatial sigma_jets..."<<std::flush;
                 variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial("sigma_jet_grid_spatial.dat");
                 std::cout<<"done!"<<std::endl;
 
-                dijet_norm = 93.7604; //sigma_jet with ave nPDF
+                auto other_params = jet_params;
+                other_params.d_params.npdfs_spatial = false;
+                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+                //dijet_norm = 93.7604;
+                std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
@@ -453,7 +458,7 @@ public:
                     upper_sumTpp_limit=0.61, 
                     lower_sumTpp_limit=0.01;
 
-                std::cout<<"Calculating double sigma_jets..."<<std::endl;
+                std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
                 variant_sigma_jet sigma_jet 
                     = calcs::calculate_spatial_sigma_jets
                         (
@@ -467,7 +472,13 @@ public:
                         );
                 std::cout<<"done!"<<std::endl;
 
-                dijet_norm = 93.7604; //sigma_jet with ave nPDF
+
+                std::cout<<"Calculating dijet_norm..."<<std::endl;
+                auto other_params = jet_params;
+                other_params.d_params.npdfs_spatial = false;
+                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+                //dijet_norm = 93.7604;
+                std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
@@ -488,11 +499,16 @@ public:
             {
                 power_law = 2.0;
 
-                std::cout<<"Reading double sigma_jets..."<<std::flush;
+                std::cout<<"Reading spatial sigma_jets..."<<std::flush;
                 variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial_MC("sigma_jet_grid_spatial_MC.dat");
                 std::cout<<"done!"<<std::endl;
 
-                dijet_norm = 93.7604; //sigma_jet with ave nPDF
+                std::cout<<"Calculating dijet_norm..."<<std::endl;
+                auto other_params = jet_params;
+                other_params.d_params.npdfs_spatial = false;
+                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+                //dijet_norm = 93.7604;
+                std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
@@ -522,7 +538,7 @@ public:
                     upper_sumTpp_limit=0.61, 
                     lower_sumTpp_limit=0.01;
 
-                std::cout<<"Calculating double sigma_jets..."<<std::endl;
+                std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
                 variant_sigma_jet sigma_jet 
                     = calcs::calculate_spatial_sigma_jets_MC
                         (
@@ -536,7 +552,12 @@ public:
                         );
                 std::cout<<"done!"<<std::endl;
 
-                dijet_norm = 93.7604; //sigma_jet with ave nPDF
+                std::cout<<"Calculating dijet_norm..."<<std::endl;
+                auto other_params = jet_params;
+                other_params.d_params.npdfs_spatial = false;
+                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+                //dijet_norm = 93.7604;
+                std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
@@ -917,7 +938,6 @@ public:
 
     static auto collide_nuclei
     (
-        const bool is_snPDF,
         std::vector<nucleon> &pro, 
         std::vector<nucleon> &tar, 
         std::vector<nn_coll> &binary_collisions, 
@@ -933,7 +953,7 @@ public:
         const bool &verbose
     ) noexcept -> void
     {
-        if (is_snPDF)
+        if (AA_params.spatial_pdfs)
         {
             collide_nuclei_snPDF
             (
@@ -1127,149 +1147,6 @@ public:
 
     
 private:
-
-//    static auto calculate_sigma_1jet_analytical
-//    (
-//        const double &mand_s, 
-//        const std::vector<double> &kt_bin_walls,
-//        const std::vector<double> &y_bin_walls,
-//        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-//        pqcd::sigma_jet_params params, 
-//        const std::string name_postfix
-//    ) noexcept -> void
-//    {
-//        std::string dataname = "sigma1jet_analytical"+name_postfix+".dat";
-//        std::ofstream dat_file;
-//        dat_file.open(dataname);
-//
-//        const auto n_kt_bins = kt_bin_walls.size() - 1;
-//        const auto n_y_bins = y_bin_walls.size() - 1;
-//
-//        dat_file << "///y bin walls:  ";
-//        for (auto y : y_bin_walls)
-//        {
-//            dat_file<<y<<' ';
-//        }
-//        dat_file << std::endl;
-//
-//        for (uint_fast8_t i = 0; i < n_kt_bins; i++)
-//        {
-//            dat_file << kt_bin_walls[i] << ' ' << kt_bin_walls[i+1] << ' ';
-//            const auto kt_bin_size = kt_bin_walls[i+1] - kt_bin_walls[i];
-//
-//            for (uint_fast8_t j = 0; j < n_y_bins; j++)
-//            {
-//                const auto y_bin_size = y_bin_walls[j+1] - y_bin_walls[j];
-//                const auto bin = std::make_tuple(kt_bin_walls[i], kt_bin_walls[i+1], y_bin_walls[j], y_bin_walls[j+1]);
-//                
-//                const auto diff_xsect = pqcd::calculate_sigma_1jet_binned
-//                    (
-//                        p_p_pdf, 
-//                        &mand_s,
-//                        &bin,
-//                        params
-//                    )/(kt_bin_size*y_bin_size);
-//                dat_file << diff_xsect << ' ';
-//            }
-//            dat_file << std::endl;
-//        }
-//        std::cout<<"printed to "<<dataname<<std::endl;
-//    }
-//
-//    static auto calculate_sigma_jet_analytical
-//    (
-//        const double &mand_s, 
-//        const std::vector<double> &kt_bin_walls,
-//        const std::vector<double> &y_bin_walls,
-//        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-//        pqcd::sigma_jet_params params
-//    ) noexcept -> void
-//    {
-//        std::string dataname = "sigmajet_analytical.dat";
-//        std::ofstream dat_file;
-//        dat_file.open(dataname);
-//
-//        const auto n_kt_bins = kt_bin_walls.size() - 1;
-//        const auto n_y_bins = y_bin_walls.size() - 1;
-//
-//        dat_file << "///y bin walls:  ";
-//        for (auto y : y_bin_walls)
-//        {
-//            dat_file<<y<<' ';
-//        }
-//        dat_file << std::endl;
-//
-//        for (uint_fast8_t i = 0; i < n_kt_bins; i++)
-//        {
-//            dat_file << kt_bin_walls[i] << ' ' << kt_bin_walls[i+1] << ' ';
-//            const auto kt_bin_size = kt_bin_walls[i+1] - kt_bin_walls[i];
-//
-//            for (uint_fast8_t j = 0; j < n_y_bins; j++)
-//            {
-//                const auto y_bin_size = y_bin_walls[j+1] - y_bin_walls[j];
-//                const auto bin = std::make_tuple(kt_bin_walls[i], kt_bin_walls[i+1], y_bin_walls[j], y_bin_walls[j+1]);
-//                
-//                dat_file << 
-//                    pqcd::calculate_sigma_jet_binned
-//                    (
-//                        p_p_pdf, 
-//                        &mand_s,
-//                        &bin,
-//                        params
-//                    )/(kt_bin_size*y_bin_size) << ' ';
-//            }
-//            dat_file << std::endl;
-//        }
-//        std::cout<<"printed to "<<dataname<<std::endl;
-//    }
-//
-//    static auto calculate_sigma_dijet_analytical
-//    (
-//        const double &mand_s, 
-//        const std::vector<double> &pt_bin_walls,
-//        const std::vector<double> &eta_bin_walls,
-//        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-//        pqcd::sigma_jet_params params, 
-//        const std::string name_postfix
-//    ) noexcept -> void
-//    {
-//        std::string dataname = "sigmadijet_analytical"+name_postfix+".dat";
-//        std::ofstream dat_file;
-//        dat_file.open(dataname);
-//
-//        const auto n_pt_bins = pt_bin_walls.size() - 1;
-//        const auto n_eta_bins = eta_bin_walls.size() - 1;
-//
-//        dat_file << "///eta bin walls:  ";
-//        for (auto eta : eta_bin_walls)
-//        {
-//            dat_file<<eta<<' ';
-//        }
-//        dat_file << std::endl;
-//
-//        for (uint_fast8_t i = 0; i < n_pt_bins; i++)
-//        {
-//            dat_file << pt_bin_walls[i] << ' ' << pt_bin_walls[i+1] << ' ';
-//            const auto pt_bin_size = pt_bin_walls[i+1] - pt_bin_walls[i];
-//
-//            for (uint_fast8_t j = 0; j < n_eta_bins; j++)
-//            {
-//                const auto eta_bin_size = eta_bin_walls[j+1] - eta_bin_walls[j];
-//                const auto bin = std::make_tuple(pt_bin_walls[i], pt_bin_walls[i+1], eta_bin_walls[j], eta_bin_walls[j+1]);
-//                
-//                dat_file << 
-//                    pqcd::calculate_sigma_dijet_binned
-//                    (
-//                        p_p_pdf, 
-//                        &mand_s,
-//                        &bin,
-//                        params
-//                    )/(pt_bin_size*eta_bin_size) << ' ';
-//            }
-//            dat_file << std::endl;
-//        }
-//        std::cout<<"printed to "<<dataname<<std::endl;
-//    }
 
     static auto read_sigma_jets_spatial_MC
     (
@@ -1571,14 +1448,16 @@ private:
                     rad2 = dim_Ns[2]; //These will help untangle the C-style index into coordinates
         // c_index = ii*rad1 + jj*rad2 + kk
         std::vector<double> f_values(num_elements);
-        std::atomic<uint_fast64_t> running_count{num_elements};
+        uint_fast64_t running_count{num_elements};
+        std::mutex count_mutex;
         
         std::for_each
         (
             std::execution::par, 
             c_style_indexes.begin(), 
             c_style_indexes.end(), 
-            [=, &f_values/*, &running_count*/](const uint_fast64_t index) 
+            [=, &f_values, &running_count, &count_mutex]
+            (const uint_fast64_t index) 
             {
                 uint_fast64_t kk = index % rad1 % rad2;
                 uint_fast64_t i_dummy = index - kk; 
@@ -1597,8 +1476,11 @@ private:
                                     tBB_0
                                 );
                 f_values[index] = dummy;
-                //PrintThread{} <<'\r'<<--running_count<<" left of "
-                //            <<num_elements<<" grid points to be calculated";
+                {
+                    const std::lock_guard<std::mutex> lock(count_mutex);
+                    std::cout <<'\r'<<--running_count<<" left of "
+                        <<num_elements<<" grid points to be calculated"<<std::flush;
+                }
             }
         );
         
@@ -1719,14 +1601,16 @@ private:
         const uint_fast64_t rad = dim_Ns[1]; //This will help untangle the C-style index into coordinates
         // c_index = ii*rad1 + jj
         std::vector<double> f_values(num_elements);
-        std::atomic<uint_fast64_t> running_count{num_elements};
+        uint_fast64_t running_count{num_elements};
+        std::mutex count_mutex;
         
         std::for_each
         (
             std::execution::par, 
             c_style_indexes.begin(), 
             c_style_indexes.end(), 
-            [=, &f_values/*, &running_count*/](const uint_fast64_t index) 
+            [=, &f_values, &running_count, &count_mutex]
+            (const uint_fast64_t index) 
             {
                 uint_fast64_t jj = index % rad;
                 uint_fast64_t ii = (index - jj) / rad;
@@ -1743,8 +1627,11 @@ private:
                                     tBB_0
                                 );
                 f_values[index] = dummy;
-                //PrintThread{} <<'\r'<<--running_count<<" left of "
-                //            <<num_elements<<" grid points to be calculated";
+                {
+                    const std::lock_guard<std::mutex> lock(count_mutex);
+                    std::cout <<'\r'<<--running_count<<" left of "
+                        <<num_elements<<" grid points to be calculated"<<std::flush;
+                }
             }
         );
         
@@ -1761,503 +1648,6 @@ private:
 
         return InterpMultilinear<2, double>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
     }
-    
-//    static auto calculate_tA
-//    (
-//        const coords &b, 
-//        const std::vector<nucleon> &nucleus,
-//        const std::function<double(const double&)> Tp
-//    ) noexcept -> double
-//    {
-//        double tA=0.0; //sum(T_p(b_ij + b))
-//        uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
-//
-//        auto [bx, by, bz] = b;
-//
-//        for (uint_fast16_t i=0; i<A; i++)
-//        {
-//            //tAB1 += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
-//            auto [x1, y1, z1] = nucleus.at(i).co;
-//            tA += Tp(pow(x1-bx,2) + pow(y1-by,2));
-//        }
-//        return tA;
-//    }
-//
-//    static auto calculate_tAB
-//    (
-//        const coords &b, 
-//        const std::vector<nucleon> &pro, 
-//        const std::vector<nucleon> &tar, 
-//        const std::function<double(const double&)> Tpp
-//    ) noexcept -> double
-//    {
-//        double tAB=0.0; //sum(T_pp(b_ij + b))
-//        uint_fast16_t A=static_cast<uint_fast16_t>(pro.size()), 
-//                B=static_cast<uint_fast16_t>(tar.size());
-//
-//        auto [bx, by, bz] = b;
-//
-//        for (uint_fast16_t i=0; i<A; i++)
-//        {
-//            for (uint_fast16_t j=0; j<B; j++)
-//            {
-//                //tAB1 += Tpp((pro.at(i).co - tar.at(j).co + b).magt2());
-//                auto [x1, y1, z1] = pro.at(i).co;
-//                auto [x2, y2, z2] = tar.at(j).co;
-//                tAB += Tpp(pow(x1-x2+bx,2) + pow(y1-y2+by,2));
-//            }   
-//        }
-//        return tAB;
-//    }
-//
-//    static void calculate_and_save_nuclei_TAs_TAAs
-//    (
-//        const nucleus_generator::nucleus_params &nuc_params,
-//        std::shared_ptr<std::mt19937> eng,
-//        std::shared_ptr<ars> radial_sampler
-//    )
-//    {
-//        uint_fast64_t num_nuclei = 10000;
-//        std::array<double,201> grid_xs;
-//        std::array<double,201> grid_ys;
-//
-//        const double proton_width_2 = pow(0.573, 2);
-//        const std::function<double(const double&)> 
-//            Tp{[&proton_width_2](const double &bsquared)
-//            {
-//                return exp(-bsquared / (2 * proton_width_2)) / (20 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-//            }}; 
-//        //const std::function<double(const double&)> 
-//        //    Tpp{[&proton_width_2](const double &bsquared)
-//        //    {
-//        //        return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-//        //    }};
-//
-//        std::ofstream nuclei_file;
-//        std::ofstream TAs_file;
-//        //std::ofstream TAAs_file;
-//        std::mutex nuclei_file_mutex;
-//        std::mutex TAs_file_mutex;
-//        //std::mutex TAAs_file_mutex;
-//        std::mutex radial_sampler_mutex; 
-//
-//        std::iota(grid_xs.begin(), grid_xs.end(), 0);
-//        std::iota(grid_ys.begin(), grid_ys.end(), 0);
-//
-//        for (auto & x : grid_xs)
-//        {
-//            x = -10.0 + 0.1*x;
-//        }
-//        for (auto & y : grid_ys)
-//        {
-//            y = -10.0 + 0.1*y;
-//        }
-//
-//        std::array<std::array<coords,201>,201> grid;
-//        for (uint_fast16_t i=0; i<201; i++)
-//        {
-//            grid[i] = std::array<coords,201>();
-//            for (uint_fast16_t j=0; j<201; j++)
-//            {
-//                grid[i][j] = coords({grid_xs[i], grid_ys[j], 0});
-//            }
-//        }
-//        nuclei_file.open("nuclei_shift.wl");
-//        TAs_file.open("TAs_shift.wl");
-//        //TAAs_file.open("TAAs_noshift.wl");
-//
-//        nuclei_file<<"nucleiShift"<<num_nuclei<<" = {";
-//        TAs_file<<"TAsShift"<<num_nuclei<<" = {";
-//        //TAAs_file<<"TAAsNoShift"<<num_nuclei<<" = {";
-//        std::vector<uint_fast64_t> indexes((num_nuclei/2)-1);
-//        std::iota(indexes.begin(), indexes.end(), 0); //generates the list as {0,1,2,3,...}
-//
-//        calcs::generate_nuclei
-//        (
-//            nuc_params, 
-//            1000, 
-//            0, 
-//            eng, 
-//            radial_sampler, 
-//            false, 
-//            false
-//        );
-//
-//        std::for_each
-//        (
-//            std::execution::par, 
-//            indexes.begin(), 
-//            indexes.end(), 
-//            [&](const uint_fast64_t index) 
-//            {
-//                static_cast<void>(index);
-//                std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
-//                auto [pro, tar] = calcs::generate_nuclei
-//                (
-//                    nuc_params, 
-//                    1000, 
-//                    0, 
-//                    eng, 
-//                    radial_sampler, 
-//                    false, 
-//                    false
-//                );
-//                lock_rad.~unique_lock();
-//
-//                {
-//                    const std::lock_guard<std::mutex> lock(nuclei_file_mutex);
-//                    nuclei_file<<"{";
-//                    std::for_each(pro.begin(), pro.end()-1, [&nuclei_file](const nucleon &nuc) 
-//                    { 
-//                        nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
-//                    });
-//                    nuclei_file<<"{"<<pro.back().co.x<<","<<pro.back().co.y<<","<<pro.back().co.z<<"}},\n    {";
-//                    std::for_each(tar.begin(), tar.end()-1, [&nuclei_file](const nucleon &nuc) 
-//                    { 
-//                        nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
-//                    });
-//                    nuclei_file<<"{"<<tar.back().co.x<<","<<tar.back().co.y<<","<<tar.back().co.z<<"}},\n    ";
-//                }
-//
-//                std::array<std::array<double,201>,201> grid_TAs;
-//                //std::array<std::array<double,201>,201> grid_TAAs;
-//                std::array<std::array<double,201>,201> grid_TBs;
-//                //std::array<std::array<double,201>,201> grid_TBBs;
-//
-//                for (uint_fast16_t i=0; i<201; i++)
-//                {
-//                    grid_TAs[i] = std::array<double,201>();
-//                    //grid_TAAs[i] = std::array<double,201>();
-//                    grid_TBs[i] = std::array<double,201>();
-//                    //grid_TBBs[i] = std::array<double,201>();
-//                    for (uint_fast16_t j=0; j<201; j++)
-//                    {
-//                        grid_TAs[i][j] = calculate_tA(grid[i][j], pro, Tp);
-//                        //grid_TAAs[i][j] = calculate_tAB(grid[i][j], pro, pro, Tpp);
-//                        grid_TBs[i][j] = calculate_tA(grid[i][j], tar, Tp);
-//                        //grid_TBBs[i][j] = calculate_tAB(grid[i][j], tar, tar, Tpp);
-//                    }
-//                }
-//
-//                {
-//                    const std::lock_guard<std::mutex> lock(TAs_file_mutex);
-//                    TAs_file<<"{";
-//                    std::for_each(grid_TAs.begin(), grid_TAs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
-//                    { 
-//                        TAs_file<<"{";
-//                        std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
-//                        { 
-//                            TAs_file<<val<<",";
-//                        });
-//                        TAs_file<<ys.back()<<"},\n    ";
-//                    });
-//                    TAs_file<<"{";
-//                    std::for_each(grid_TAs.back().begin(), grid_TAs.back().end()-1, [&TAs_file](const double &val) 
-//                    { 
-//                        TAs_file<<val<<",";
-//                    });
-//                    TAs_file<<grid_TAs.back().back()<<"}},\n    {";
-//                    std::for_each(grid_TBs.begin(), grid_TBs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
-//                    { 
-//                        TAs_file<<"{";
-//                        std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
-//                        { 
-//                            TAs_file<<val<<",";
-//                        });
-//                        TAs_file<<ys.back()<<"},\n    ";
-//                    });
-//                    TAs_file<<"{";
-//                    std::for_each(grid_TBs.back().begin(), grid_TBs.back().end()-1, [&TAs_file](const double &val) 
-//                    { 
-//                        TAs_file<<val<<",";
-//                    });
-//                    TAs_file<<grid_TBs.back().back()<<"}},\n    ";
-//                }
-//
-//                //{
-//                //    const std::lock_guard<std::mutex> lock(TAAs_file_mutex);
-//                //    TAAs_file<<"{";
-//                //    std::for_each(grid_TAAs.begin(), grid_TAAs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
-//                //    { 
-//                //        TAAs_file<<"{";
-//                //        std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
-//                //        { 
-//                //            TAAs_file<<val<<",";
-//                //        });
-//                //        TAAs_file<<ys.back()<<"},\n    ";
-//                //    });
-//                //    TAAs_file<<"{";
-//                //    std::for_each(grid_TAAs.back().begin(), grid_TAAs.back().end()-1, [&TAAs_file](const double &val) 
-//                //    { 
-//                //        TAAs_file<<val<<",";
-//                //    });
-//                //    TAAs_file<<grid_TAAs.back().back()<<"}},\n    {";
-//                //    std::for_each(grid_TBBs.begin(), grid_TBBs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
-//                //    { 
-//                //        TAAs_file<<"{";
-//                //        std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
-//                //        { 
-//                //            TAAs_file<<val<<",";
-//                //        });
-//                //        TAAs_file<<ys.back()<<"},\n    ";
-//                //    });
-//                //    TAAs_file<<"{";
-//                //    std::for_each(grid_TBBs.back().begin(), grid_TBBs.back().end()-1, [&TAAs_file](const double &val) 
-//                //    { 
-//                //        TAAs_file<<val<<",";
-//                //    });
-//                //    TAAs_file<<grid_TBBs.back().back()<<"}},\n    ";
-//                //    std::cout<<index<<std::flush;
-//                //}
-//            }
-//        );
-//
-//        auto [pro, tar] = generate_nuclei
-//        (
-//            nuc_params, 
-//            1000, 
-//            0, 
-//            eng, 
-//            radial_sampler, 
-//            false, 
-//            false
-//        );
-//
-//        nuclei_file<<"{";
-//        std::for_each(pro.begin(), pro.end()-1, [&nuclei_file](const nucleon &nuc) 
-//        { 
-//            nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
-//        });
-//        nuclei_file<<"{"<<pro.back().co.x<<","<<pro.back().co.y<<","<<pro.back().co.z<<"}},\n    {";
-//        std::for_each(tar.begin(), tar.end()-1, [&nuclei_file](const nucleon &nuc) 
-//        { 
-//            nuclei_file<<"{"<<nuc.co.x<<","<<nuc.co.y<<","<<nuc.co.z<<"},\n    ";
-//        });
-//        nuclei_file<<"{"<<tar.back().co.x<<","<<tar.back().co.y<<","<<tar.back().co.z<<"}}};\n\n";
-//        nuclei_file.close();
-//
-//        std::array<std::array<double,201>,201> grid_TAs;
-//        //std::array<std::array<double,201>,201> grid_TAAs;
-//        std::array<std::array<double,201>,201> grid_TBs;
-//        //std::array<std::array<double,201>,201> grid_TBBs;
-//
-//        for (uint_fast16_t i=0; i<201; i++)
-//        {
-//            grid_TAs[i] = std::array<double,201>();
-//            //grid_TAAs[i] = std::array<double,201>();
-//            grid_TBs[i] = std::array<double,201>();
-//            //grid_TBBs[i] = std::array<double,201>();
-//            for (uint_fast16_t j=0; j<201; j++)
-//            {
-//                grid_TAs[i][j] = calculate_tA(grid[i][j], pro, Tp);
-//                //grid_TAAs[i][j] = calculate_tAB(grid[i][j], pro, pro, Tpp);
-//                grid_TBs[i][j] = calculate_tA(grid[i][j], tar, Tp);
-//                //grid_TBBs[i][j] = calculate_tAB(grid[i][j], tar, tar, Tpp);
-//            }
-//        }
-//
-//        TAs_file<<"{";
-//        std::for_each(grid_TAs.begin(), grid_TAs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
-//        { 
-//            TAs_file<<"{";
-//            std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
-//            { 
-//                TAs_file<<val<<",";
-//            });
-//            TAs_file<<ys.back()<<"},\n    ";
-//        });
-//        TAs_file<<"{";
-//        std::for_each(grid_TAs.back().begin(), grid_TAs.back().end()-1, [&TAs_file](const double &val) 
-//        { 
-//            TAs_file<<val<<",";
-//        });
-//        TAs_file<<grid_TAs.back().back()<<"}},\n    {";
-//        std::for_each(grid_TBs.begin(), grid_TBs.end()-1, [&TAs_file](const std::array<double,201> &ys) 
-//        { 
-//            TAs_file<<"{";
-//            std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
-//            { 
-//                TAs_file<<val<<",";
-//            });
-//            TAs_file<<ys.back()<<"},\n    ";
-//        });
-//        TAs_file<<"{";
-//        std::for_each(grid_TBs.back().begin(), grid_TBs.back().end()-1, [&TAs_file](const double &val) 
-//        { 
-//            TAs_file<<val<<",";
-//        });
-//        TAs_file<<grid_TBs.back().back()<<"}}};\n\n";
-//        TAs_file.close();
-//
-//        //TAAs_file<<"{";
-//        //std::for_each(grid_TAAs.begin(), grid_TAAs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
-//        //{ 
-//        //    TAAs_file<<"{";
-//        //    std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
-//        //    { 
-//        //        TAAs_file<<val<<",";
-//        //    });
-//        //    TAAs_file<<ys.back()<<"},\n    ";
-//        //});
-//        //TAAs_file<<"{";
-//        //std::for_each(grid_TAAs.back().begin(), grid_TAAs.back().end()-1, [&TAAs_file](const double &val) 
-//        //{ 
-//        //    TAAs_file<<val<<",";
-//        //});
-//        //TAAs_file<<grid_TAAs.back().back()<<"}},\n    {";
-//        //std::for_each(grid_TBBs.begin(), grid_TBBs.end()-1, [&TAAs_file](const std::array<double,201> &ys) 
-//        //{ 
-//        //    TAAs_file<<"{";
-//        //    std::for_each(ys.begin(), ys.end()-1, [&TAAs_file](const double &val) 
-//        //    { 
-//        //        TAAs_file<<val<<",";
-//        //    });
-//        //    TAAs_file<<ys.back()<<"},\n    ";
-//        //});
-//        //TAAs_file<<"{";
-//        //std::for_each(grid_TBBs.back().begin(), grid_TBBs.back().end()-1, [&TAAs_file](const double &val) 
-//        //{ 
-//        //    TAAs_file<<val<<",";
-//        //});
-//        //TAAs_file<<grid_TBBs.back().back()<<"}}};\n\n";
-//        //TAAs_file.close();
-//    }
-//
-//    static void calculate_and_save_average_nuclei_TAs_TAAs
-//    (
-//        const nucleus_generator::nucleus_params &nuc_params,
-//        std::shared_ptr<std::mt19937> eng,
-//        std::shared_ptr<ars> radial_sampler
-//    )
-//    {
-//        uint_fast64_t num_nuclei = 10000;
-//        std::array<double,201> grid_xs;
-//        std::array<double,201> grid_ys;
-//
-//        const double proton_width_2 = pow(0.573, 2);
-//        const std::function<double(const double&)> 
-//            Tp{[&proton_width_2](const double &bsquared)
-//            {
-//                return exp(-bsquared / (2 * proton_width_2)) / (20 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-//            }}; 
-//
-//        std::ofstream TAs_file;
-//        std::mutex radial_sampler_mutex; 
-//
-//        std::iota(grid_xs.begin(), grid_xs.end(), 0);
-//        std::iota(grid_ys.begin(), grid_ys.end(), 0);
-//
-//        for (auto & x : grid_xs)
-//        {
-//            x = -10.0 + 0.1*x;
-//        }
-//        for (auto & y : grid_ys)
-//        {
-//            y = -10.0 + 0.1*y;
-//        }
-//
-//        std::array<std::array<coords,201>,201> grid;
-//        for (uint_fast16_t i=0; i<201; i++)
-//        {
-//            grid[i] = std::array<coords,201>();
-//            for (uint_fast16_t j=0; j<201; j++)
-//            {
-//                grid[i][j] = coords({grid_xs[i], grid_ys[j], 0});
-//            }
-//        }
-//
-//        std::array<std::array<double,201>,201> TA_grid;
-//        std::mutex TA_grid_mutex;
-//        for (uint_fast16_t i=0; i<201; i++)
-//        {
-//            TA_grid[i] = std::array<double,201>();
-//            for (uint_fast16_t j=0; j<201; j++)
-//            {
-//                TA_grid[i][j] = 0.0;
-//            }
-//        }
-//
-//        TAs_file.open("TA_ave_no_shift.wl");
-//
-//        TAs_file<<"TAaveNoShift"<<num_nuclei<<" = ";
-//        std::vector<uint_fast64_t> indexes((num_nuclei/2)-1);
-//        std::iota(indexes.begin(), indexes.end(), 0); //generates the list as {0,1,2,3,...}
-//
-//        calcs::generate_nuclei
-//        (
-//            nuc_params, 
-//            1000, 
-//            0, 
-//            eng, 
-//            radial_sampler, 
-//            false, 
-//            false
-//        );
-//
-//        std::for_each
-//        (
-//            std::execution::par, 
-//            indexes.begin(), 
-//            indexes.end(), 
-//            [&](const uint_fast64_t index) 
-//            {
-//                static_cast<void>(index);
-//                std::unique_lock<std::mutex> lock_rad(radial_sampler_mutex);
-//                auto [pro, tar] = calcs::generate_nuclei
-//                (
-//                    nuc_params, 
-//                    1000, 
-//                    0, 
-//                    eng, 
-//                    radial_sampler, 
-//                    false, 
-//                    false
-//                );
-//                lock_rad.~unique_lock();
-//
-//                std::array<std::array<double,201>,201> TA_grid_dummy;
-//                for (uint_fast16_t i=0; i<201; i++)
-//                {
-//                    TA_grid_dummy[i] = std::array<double,201>();
-//                    for (uint_fast16_t j=0; j<201; j++)
-//                    {
-//                        TA_grid_dummy[i][j] = calcs::calculate_tA(grid[i][j], pro, Tp);
-//                        TA_grid_dummy[i][j] += calcs::calculate_tA(grid[i][j], tar, Tp);
-//                        TA_grid_dummy[i][j] /= static_cast<double>(num_nuclei);
-//                    }
-//                }
-//
-//                {
-//                    const std::lock_guard<std::mutex> lock(TA_grid_mutex);
-//                    for (uint_fast16_t i=0; i<201; i++)
-//                    {
-//                        for (uint_fast16_t j=0; j<201; j++)
-//                        {
-//                            TA_grid[i][j] += TA_grid_dummy[i][j];
-//                        }
-//                    }
-//                }
-//            }
-//        );
-//
-//        TAs_file<<"{";
-//        std::for_each(TA_grid.begin(), TA_grid.end()-1, [&TAs_file](const std::array<double,201> &ys) 
-//        { 
-//            TAs_file<<"{";
-//            std::for_each(ys.begin(), ys.end()-1, [&TAs_file](const double &val) 
-//            { 
-//                TAs_file<<val<<",";
-//            });
-//            TAs_file<<ys.back()<<"},\n    ";
-//        });
-//        TAs_file<<"{";
-//        std::for_each(TA_grid.back().begin(), TA_grid.back().end()-1, [&TAs_file](const double &val) 
-//        { 
-//            TAs_file<<val<<",";
-//        });
-//        TAs_file<<TA_grid.back().back()<<"}};\n\n";
-//        TAs_file.close();
-//    }
 };
 
 #endif // HIGH_LEVEL_CALCS_HPP
