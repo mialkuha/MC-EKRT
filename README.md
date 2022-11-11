@@ -7,4 +7,4 @@
 - tbb (libtbb-dev in debian)
 - LHAPDF
 - GSL
-- boost library
+- boost library (libboost and libboost-dev in debian) 
