@@ -3,7 +3,7 @@ is_pp false             # If the run is proton-proton
 is_pa false             # If the run is proton-nucleus
 is_aa true              # If the run is nucleus-nucleus
 use_npdfs true          # Is there should be nuclear corrections in nucleus' PDFs
-use_snpdfs true         # If the used nPDF should be spatially dependent or average
+use_snpdfs false        # If the used nPDF should be spatially dependent or average
 is_mom_cons true        # If the momentum conservation should be forced
 are_ns_depleted false   # Probably always false here, kept for testing purposes for now
 is_saturation true      # If the EKRT saturation should be used
