@@ -34,7 +34,19 @@
 #include "pqcd.hpp"
 #include "typedefs.hpp"
 
-auto find_sigma_jet_cutoff_p0
+/**
+ * @brief Find k_T^2 cutoff that fits sigma_jet to a given 
+ * target number using secant method.
+ * 
+ * @param kt02 k_T^2 cutoff will be saved to this (GeV^2)
+ * @param mand_s mandelstam s for the process (GeV^2)
+ * @param target the target value for sigma_jet (mb)
+ * @param p_p_pdf pointer to LHAPDF PDF-object
+ * @param jet_params the struct of jet parameters
+ * @param verbose if true, prints all the intermediate results
+ * @return double the found k_T^2 cutoff (GeV^2)
+ */
+auto fit_sigma_jet_p0_cutoff
 (
     double &kt02, 
     const double &mand_s, 
@@ -59,6 +71,18 @@ auto find_sigma_jet_cutoff_p0
     return kt02;
 }
 
+/**
+ * @brief Find scale choice Q/k_T that fits sigma_jet to a given 
+ * target number, for a given target k_T^2 cutoff, using secant method.
+ * 
+ * @param kt02 The target k_T^2 cutoff value (GeV^2)
+ * @param mand_s mandelstam s for the process (GeV^2)
+ * @param target the target value for sigma_jet (mb)
+ * @param p_p_pdf pointer to LHAPDF PDF-object
+ * @param jet_params the struct of jet parameters
+ * @param verbose if true, prints all the intermediate results
+ * @return double the found scale choice Q/k_T
+ */
 auto find_sigma_jet_cutoff_Q
 (
     const double &kt02, 
@@ -67,7 +91,7 @@ auto find_sigma_jet_cutoff_Q
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
     pqcd::sigma_jet_params jet_params, 
     const bool &verbose=true
-) noexcept -> void
+) noexcept -> double
 {
     double sigma_jet=0.0;
     double scalar = 1.0;
@@ -80,7 +104,7 @@ auto find_sigma_jet_cutoff_Q
         /*scale_choice=             */jet_params.scale_c,
         /*scalar=                   */scalar_,
         /*use_ses=                  */jet_params.use_ses);
-        auto kt02_ = find_sigma_jet_cutoff_p0(kt02dummy, mand_s, target, p_p_pdf, jet_params_);
+        auto kt02_ = fit_sigma_jet_p0_cutoff(kt02dummy, mand_s, target, p_p_pdf, jet_params_);
         return kt02_ - kt02;
     };
 
@@ -88,9 +112,15 @@ auto find_sigma_jet_cutoff_Q
 
     if (verbose) std::cout<<scalar<<' '<<sigma_jet+target<<' '<<target<<std::endl;
     
-    return;
+    return scalar;
 }
 
+/**
+ * @brief struct for the end state filtering functions. In the constructor 
+ * calculates the formation time t0 = y/max(u,t) = (1/Q)*(E/Q) (in the collider frame) 
+ * for the jets.
+ * 
+ */
 struct dijet_with_ns
 {
     dijet_specs dijet;
@@ -98,7 +128,7 @@ struct dijet_with_ns
     nucleon * tar_nucleon;
     double t01;
     double t02;
-    double t0;
+    double t0; //Larger of the formation times := the formation time of the process
     dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_)
         : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
     {
@@ -111,6 +141,17 @@ struct dijet_with_ns
     }
 };
 
+/**
+ * @brief Checks if the candidate circle overlaps with the previous circles. If
+ * it does not, add it to the collection of accepted circles.
+ * 
+ * @param cand_circle (x,y,r,n), where x and y are coordinates (fm), r is 
+ * radius (fm) and n is for supporting, say, two circles overlapping but no 
+ * more (not implemented).
+ * @param final_circles A collection of the previously accepted circles.
+ * @return true The circle was accepted and added to the collection.
+ * @return false The circle was not accepted.
+ */
 auto check_and_place_circle_among_others
 (
     std::tuple<double, double, double, uint_fast16_t> cand_circle, 
@@ -118,24 +159,36 @@ auto check_and_place_circle_among_others
 ) noexcept -> bool
 {
     auto & [cand_x, cand_y, cand_r, cand_overlap] = cand_circle;
-    std::vector<uint_fast16_t*> overlaps_with;
     
     for (auto & [circ_x, circ_y, circ_r, circ_overlap] : final_circles)
     {
+        //If the any of the circles radii overlap with the candidate, just return false
         if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
         {
             return false;
         }
     }
 
+    //None overlapped, emplace the circle among others and return true
     final_circles.emplace_back(std::move(cand_circle));
         
     return true;
 }
 
+/**
+ * @brief Sample the coordinates for a given dijet from the Gaussian distribution
+ * that is the product of the two Gaussian distributions that are associated with
+ * the mother nucleons.
+ * 
+ * @param dijet The dijet in question
+ * @param proton_width Proton width (fm)
+ * @param normal_dist Normal distribution object
+ * @param random_generator Randdom generator object
+ * @return std::tuple<double, double, double> (x,y,z=0) coordinates of the dijet (fm)
+ */
 auto throw_location_for_dijet
 (
-    const dijet_with_ns &cand,
+    const dijet_with_ns &dijet,
     const double &proton_width,
     std::normal_distribution<double> &normal_dist, 
     std::shared_ptr<std::mt19937> random_generator
@@ -146,8 +199,8 @@ auto throw_location_for_dijet
     auto dy = normal_dist(*random_generator,param);
     auto dz = 0.0;
 
-    auto retx = 0.5*(cand.pro_nucleon->co.x + cand.tar_nucleon->co.x + M_SQRT2*dx);
-    auto rety = 0.5*(cand.pro_nucleon->co.y + cand.tar_nucleon->co.y + M_SQRT2*dy);
+    auto retx = 0.5*(dijet.pro_nucleon->co.x + dijet.tar_nucleon->co.x + M_SQRT2*dx);
+    auto rety = 0.5*(dijet.pro_nucleon->co.y + dijet.tar_nucleon->co.y + M_SQRT2*dy);
 
     return std::make_tuple(retx, rety, dz);
 }
