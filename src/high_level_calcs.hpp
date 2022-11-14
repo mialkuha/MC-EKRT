@@ -10,6 +10,7 @@
 #include <gsl/gsl_multimin.h>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <sstream>
 #include <variant>
 #include <tuple>

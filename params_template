@@ -8,7 +8,7 @@ is_mom_cons true        # If the momentum conservation should be forced
 are_ns_depleted false   # Probably always false here, kept for testing purposes for now
 is_saturation true      # If the EKRT saturation should be used
 is_mc_glauber true      # If true, nucleon-nucleon collisions are decided like with hard spheres
-n_events 5000           # How many events should be simulated
+n_events 500            # How many events should be simulated
 b_min 0                 # (fm) minimum of the impact parameter 
 b_max 20                # (fm) maximum of the impact parameter
 pt0 1.0                 # (GeV) jet p_T lower cutoff
