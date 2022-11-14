@@ -1,3 +1,4 @@
+#IF lhapdf-config DOESN'T WORK FOR YOU, CHECK THE TWO COMMENTS BELOW
 add_library(
 	Parts ars.cpp
 	hcubature.cpp
@@ -23,7 +24,7 @@ string(STRIP ${lhapdf_libdir} lhapdf_libdir)
 
 target_include_directories(Parts PUBLIC 
 	"${CMAKE_CURRENT_SOURCE_DIR}"
-	"${lhapdf_incdir}"
+	"${lhapdf_incdir}" #REPLACE THIS WITH THE PATH TO THE DIRECTORY OF LHAPDF HEADER FILES (.h)!!!
 )
 
 target_compile_features(Parts PUBLIC cxx_std_20)
@@ -37,8 +38,7 @@ find_package(Boost REQUIRED)
 find_package(GSL REQUIRED)
 
 target_link_directories(Parts PUBLIC 
-	"${lhapdf_libdir}"
-	"/usr/local/lib" #TODO INCLUDE BOOST NORMALLY
+	"${lhapdf_libdir}" #REPLACE THIS WITH THE PATH TO THE DIRECTORY OF LHAPDF LIBRARY FILES (.so)!!!
 )
 
 target_link_libraries(Parts PUBLIC 

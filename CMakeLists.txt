@@ -1,3 +1,4 @@
+#IF lhapdf-config DOESN'T WORK FOR YOU, CHECK THE TWO COMMENTS BELOW
 cmake_minimum_required(VERSION 3.10)
 
 project(mcaa CXX)
@@ -31,15 +32,14 @@ target_compile_options(mcaa PUBLIC
 
 target_include_directories(mcaa PUBLIC 
 	"${PROJECT_BINARY_DIR}"
-	"${lhapdf_incdir}"
+	"${lhapdf_incdir}" #REPLACE THIS WITH THE PATH TO THE DIRECTORY OF LHAPDF HEADER FILES (.h)!!!
 )
 
 find_package(Boost REQUIRED)
 find_package(GSL REQUIRED)
 
 target_link_directories(mcaa PUBLIC 
-	"${lhapdf_libdir}"
-	"/usr/local/lib" #TODO INCLUDE BOOST NORMALLY
+	"${lhapdf_libdir}" #REPLACE THIS WITH THE PATH TO THE DIRECTORY OF LHAPDF LIBRARY FILES (.so)!!!
 )
 
 target_link_libraries(mcaa PUBLIC 
