@@ -4,6 +4,7 @@ add_library(
 	hcubature.cpp
 	histo.cpp
 	linear_interpolator.cpp
+	mcaa.cpp
 	nn_coll.cpp
 	nucleus_generator.cpp
 	pqcd.cpp

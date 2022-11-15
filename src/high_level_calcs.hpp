@@ -277,12 +277,12 @@ public:
         const double &mand_s,
         const double &sqrt_s,
         const double &kt02, 
-        const double &kt0,
+        const double &kt0, 
+        const double &power_law,
         pqcd::sigma_jet_params jet_params
     ) ->
     std::tuple
     <
-        double,
         double,
         variant_sigma_jet,
         std::optional<std::vector<double> >,
@@ -293,7 +293,6 @@ public:
         const bool use_npdfs = (jet_params.d_params.projectile_with_npdfs 
                                 || jet_params.d_params.target_with_npdfs);
         const bool spatial_pdfs = jet_params.d_params.npdfs_spatial;
-        double power_law = 0;
         double dijet_norm = 0;
 
         if //proton PDFs
@@ -303,8 +302,6 @@ public:
         {
             if (!reduce_nucleon_energies) //Only one sigma_jet
             {
-                power_law = 2.5;
-
                 std::cout<<"Calculating sigma_jet..."<<std::flush;
                 double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
                 std::cout<<"done!"<<std::endl;
@@ -319,7 +316,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         variant_sigma_jet(sigma_jet),
                         std::nullopt,
                         variant_envelope_max(envelope_maximum),
@@ -328,8 +324,6 @@ public:
             }
             else //sigma_jet depends on energy
             {
-                power_law = 2.8;
-
                 std::cout<<"Calculating sigma_jets..."<<std::flush;
                 auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
                 auto sigma_jet = linear_interpolator(mand_ss, sigmas);
@@ -350,7 +344,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         variant_sigma_jet(sigma_jet),
                         mand_ss,
                         variant_envelope_max(envelope_maximum),
@@ -365,8 +358,6 @@ public:
         {
             if (!reduce_nucleon_energies) //Only one sigma_jet
             {
-                power_law = 2.2;
-
                 std::cout<<"Calculating sigma_jet..."<<std::flush;
                 double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
                 std::cout<<"done!"<<std::endl;
@@ -381,7 +372,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         variant_sigma_jet(sigma_jet),
                         std::nullopt,
                         variant_envelope_max(envelope_maximum),
@@ -390,8 +380,6 @@ public:
             }
             else //sigma_jet depends on energy
             {
-                power_law = 2.2;
-
                 std::cout<<"Calculating sigma_jets..."<<std::flush;
                 auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
                 auto sigma_jet = linear_interpolator(mand_ss, sigmas);
@@ -412,7 +400,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         variant_sigma_jet(sigma_jet),
                         mand_ss,
                         variant_envelope_max(envelope_maximum),
@@ -424,8 +411,6 @@ public:
         {
             if (!reduce_nucleon_energies && read_sigmajets_from_file) //sigma_jet does not depend on energy
             {
-                power_law = 2.0;
-
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
                 variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial("sigma_jet_grid_spatial.dat");
                 std::cout<<"done!"<<std::endl;
@@ -444,7 +429,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         std::move(sigma_jet),
                         std::nullopt,
                         variant_envelope_max(envelope_maximum),
@@ -453,8 +437,6 @@ public:
             }
             else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
             {
-                power_law = 2.0;
-
                 double tolerance=0.01,
                     upper_sumTpp_limit=0.61, 
                     lower_sumTpp_limit=0.01;
@@ -489,7 +471,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         std::move(sigma_jet),
                         std::nullopt,
                         variant_envelope_max(envelope_maximum),
@@ -498,8 +479,6 @@ public:
             }
             else if (read_sigmajets_from_file)//sigma_jet depends on energy
             {
-                power_law = 2.0;
-
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
                 variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial_MC("sigma_jet_grid_spatial_MC.dat");
                 std::cout<<"done!"<<std::endl;
@@ -524,7 +503,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         std::move(sigma_jet),
                         std::nullopt,
                         variant_envelope_max(envelope_maximum),
@@ -533,8 +511,6 @@ public:
             }
             else //sigma_jet depends on energy
             {
-                power_law = 2.0;
-
                 double tolerance=0.02,
                     upper_sumTpp_limit=0.61, 
                     lower_sumTpp_limit=0.01;
@@ -573,7 +549,6 @@ public:
                 return std::make_tuple
                     (
                         dijet_norm,
-                        power_law,
                         std::move(sigma_jet),
                         std::nullopt,
                         variant_envelope_max(envelope_maximum),

@@ -394,7 +394,7 @@ auto pqcd::generate_2_to_2_scatt
             std::cout<<"y2 = "<<y2<<std::endl;
             std::cout<<"total_xsection = "<<total_xsection<<std::endl;
             std::cout<<"limit = "<<(envelope_maximum * pow(kt, -power_law))<<std::endl<<std::endl;
-            //std::cout<<"Check the power-law behaviour"<<std::endl;
+            std::cout<<"Maybe check the power-law behaviour."<<std::endl;
 
             std::cout<<"Changing the envelope_maximum from "<<envelope_maximum;
             {
