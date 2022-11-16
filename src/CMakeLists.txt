@@ -32,7 +32,7 @@ target_compile_features(Parts PUBLIC cxx_std_20)
 
 target_compile_options(Parts PUBLIC
 	-Wall
-	-fconcepts
+	#-fconcepts #COMMENT THIS IF YOU USE CLANG
 )
 
 find_package(Boost REQUIRED)

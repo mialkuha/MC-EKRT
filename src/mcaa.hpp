@@ -38,7 +38,53 @@
 class mcaa
 {
 public:
+    // PUBLIC ATTRIBUTES //////////////////////////////////////////////////////////////////////////////////////////////
+    // technical flags
+    bool calculate_end_state{true};        // false=no jets will be calculated, only collisions
+    bool calculate_tata{true};             // if TA(x)TA(x) should be calculated for each dijet (takes time)
+    bool deplete_nucleons{false};          // probably always false here, kept for testing purposes for now
+    bool end_state_filtering{true};        // false=no any filtering in the end state
+    bool is_AA{true};                      // if the run is nucleus-nucleus
+    bool is_pA{false};                     // if the run is proton-nucleus
+    bool is_pp{false};                     // if the run is proton-proton
+    bool nPDFs{true};                      // if there should be nuclear corrections in nucleus' PDFs
+    bool MC_Glauber{true};                 // if true, nucleon-nucleon collisions are decided like with hard spheres
+    bool mom_cons{true};                   // if the momentum should be conserved
+    bool read_sigmajets_from_file{false};  // if the sigma_jets are precalculated
+    bool reduce_nucleon_energies{false};   // momentum conservation by reducing nucleon energies after each collision. Breaks factorization
+    bool saturation{true};                 // if EKRT saturation is enforced
+    bool save_endstate_jets{true};         // if all the jets should be saved in binary (see jet_reader.cpp)
+    bool save_events_plaintext{false};     // if all the jets should be saved in plaintext
+    bool sigma_inel_from_sigma_jet{true};  // is sigma_inel static or from eikonal model
+    bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
+    bool verbose{false};                   // lots of printing all around
+    // simulation parameters 
+    std::string name{"example_name"};      // name of the run, affects output filenames and such 
+    uint_fast32_t desired_N_events{500};   // how many events should be simulated
+    double b_max{20.0};                    // (fm) maximum of the impact parameter
+    double b_min{0.0};                     // (fm) minimum of the impact parameter 
+    double K_factor{1.0};                  // pQCD K-factor to account for the higher order corrections
+    double kt0{1.0};                       // (GeV) jet p_T lower cutoff
+    double kt02{1.0};                      // (GeV^2) p_T lower cutoff squared
+    double M_factor{2.5};                  // saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
+    double nn_min_dist{0.4};               // (fm) minimum distance between the nucleons in a nucleus
+    double mand_s{5020*5020};              // (GeV^2) mandelstam s for the hard process 
+    double proton_width{0.573};            // (fm) proton width 
+    double proton_width_2{0.573*0.573};    // (fm^2) proton width squared 
+    double rad_max{30.0};                  // (fm) nucleons' maximum distance from the center of the nucleus
+    double rad_min{0.0};                   // (fm) nucleons' minimum distance from the center of the nucleus
+    double sigma_inel{70.0};               // (mb) inelastic cross section of the event
+    double sqrt_s{5020};                   // (GeV) sqrt(s) for the hard process 
 
+
+    // PUBLIC METHODS /////////////////////////////////////////////////////////////////////////////////////////////////
+    /**
+     * @brief Construct a new mcaa object, some of the parameters
+     * are taken from a parameter file. See "params_template" for 
+     * an example file.
+     * 
+     * @param initfile input parameter file name
+     */
     mcaa(const std::string &initfile);
 
     /**
@@ -74,42 +120,25 @@ public:
     ) noexcept -> double;
 
     /**
-     * @brief TODOTODO
+     * @brief Runs the simulator with the given parameters.
      * 
      */
     auto run() -> void;
 
-// PRIVATE ///////////////////////////////////////////////////////////
-private:
-    // FIELDS /////////////////////////////
-    bool verbose{false};                      //lots of printing all around
-    bool mom_cons{false};                     //if the momentum should be conserved
-    bool saturation{false};                   //if EKRT saturation is enforced
-    bool deplete_nucleons{false};             //TODO explanation 
-    bool is_AA{false};             //TODO explanation 
-    bool is_pA{false};             //TODO explanation 
-    bool is_pp{false};             //TODO explanation 
-    bool nPDFs{false};             //TODO explanation 
-    bool snPDFs{false};             //TODO explanation 
-    bool MC_Glauber{false};             //TODO explanation 
-    std::string name{""};             //TODO explanation 
-    uint_fast32_t desired_N_events{1};
-    double K_factor{1.0};                     //factor for the saturation criterion
-    double M_factor{2.0};                     //factor for the saturation criterion
-    double kt0{1.0};                          //k_T lower cutoff for end state jets
-    double kt02{1.0};                         //k_T lower cutoff squared
-    double sqrt_s{5020};                      //sqrt(s) for the hard process (GeV^2)
-    double mand_s{5020*5020};                 //mandelstam s for the hard process (GeV^2)
-    double proton_width{1};               //proton width (fm)
-    double proton_width_2{1};               //proton width (fm)
-    double b_min{0};           //TODO explanation 
-    double b_max{0};           //TODO explanation 
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf{}; //pointer to the LHAPDF PDF-object of the proton PDF
-    pqcd::diff_sigma::params diff_params;
-    pqcd::sigma_jet_params jet_params; //the struct of jet parameters
-    std::function<double(const double&)> Tpp{nullptr}; //nucleon overlap function
 
-    // STRUCTS ////////////////////////////
+// PRIVATE ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+private:
+    // PRIVATE ATTRIBUTES /////////////////////////////////////////////////////////////////////////////////////////////
+    std::shared_ptr<LHAPDF::GridPDF> p_pdf{};     // pointer to the LHAPDF PDF-object of the proton PDF
+    std::function<double(const double&)> Tpp{nullptr}; // nucleon overlap function
+    std::function<double(const double&)> rad_pdf{nullptr}; // radial nucleon density function of the nucleus
+    double power_law{2.0};                        // parameter for the envelope function: sigma_jet < A*pT^(-power_law)
+    pqcd::diff_sigma::params diff_params;         // the struct of pQCD event parameters
+    pqcd::sigma_jet_params jet_params;            // the struct of sigma_jet parameters
+    nucleus_generator::nucleus_params nuc_params; // the struct of parameters for the nucleus generation
+
+
+    // PRIVATE STRUCTS ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
      * @brief struct for the end state filtering functions. In the constructor 
      * calculates the formation time t0 = y/max(u,t) = (1/Q)*(E/Q) (in the collider frame) 
@@ -137,7 +166,7 @@ private:
     };
 
     
-    // FUNCTIONS /////////////////////////////
+    // PRIVATE METHODS ////////////////////////////////////////////////////////////////////////////////////////////////
     /**
     * @brief Checks if the candidate circle overlaps with the previous circles. If
     * it does not, add it to the collection of accepted circles.
@@ -149,7 +178,7 @@ private:
     * @return true The circle was accepted and added to the collection.
     * @return false The circle was not accepted.
     */
-    auto check_and_place_circle_among_others
+    static auto check_and_place_circle_among_others
     (
         std::tuple<double, double, double, uint_fast16_t> cand_circle, 
         std::vector<std::tuple<double, double, double, uint_fast16_t> > &final_circles
@@ -179,7 +208,6 @@ private:
      * @param binary_collisions The set of (unphysical) pQCD final states
      * @param filtered_scatterings The output, fully filtered dijets
      * @param random_generator Random generator object
-     * @param calculate_tata If TA(x)TA(x) should be calculated for each dijet (takes time)
      * @param pro Projectile nucleus' nucleon information
      * @param tar Target nucleus' nucleon information
      */
@@ -188,7 +216,6 @@ private:
         std::vector<nn_coll> &binary_collisions, 
         std::vector<dijet_with_coords> &filtered_scatterings,
         std::shared_ptr<std::mt19937> random_generator,
-        const bool calculate_tata = true,
         const std::vector<nucleon> &pro = {}, 
         const std::vector<nucleon> &tar = {}
     ) noexcept -> void;

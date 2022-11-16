@@ -19,14 +19,33 @@ public:
     struct nucleus_params 
     {
          //Pb by default
-        const uint_fast16_t NA{208};
-        const uint_fast16_t ZA{82};
-        const uint_fast16_t NB{208};
-        const uint_fast16_t ZB{82};
+        uint_fast16_t A{208};
+        uint_fast16_t ZA{82};
+        uint_fast16_t B{208};
+        uint_fast16_t ZB{82};
          //Overall params
-        const double min_distance{0.4};
-        const bool shift_cms{true};
-        const bool correct_overlap_bias{true};
+        double min_distance{0.4};
+        bool shift_cms{true};
+        bool correct_overlap_bias{true};
+
+        explicit nucleus_params
+        (
+          auto A_, 
+          auto ZA_,     
+          auto B_,  
+          auto ZB_,      
+          auto min_distance_,    
+          auto shift_cms_,        
+          auto correct_overlap_bias_          
+        ) noexcept
+        : A(A_), 
+          ZA(ZA_), 
+          B(B_), 
+          ZB(ZB_), 
+          min_distance(min_distance_), 
+          shift_cms(shift_cms_),
+          correct_overlap_bias(correct_overlap_bias_)
+        {}
     };
     static std::vector<nucleon> generate_nucleus(const nucleus_params & params, const bool &target, const double & mom, 
         const double & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler);

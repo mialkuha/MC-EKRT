@@ -610,7 +610,7 @@ public:
             if (AA_params.mc_glauber_mode)
             {
                 // "ball" diameter = distance at which two nucleons interact
-                const double d2 = AA_params.sigma_inel_for_glauber/(M_PI*10); // in fm^2
+                const double d2 = AA_params.sigma_inel/(M_PI*10); // in fm^2
                 const double dij2 = newpair.getcr_bsquared();
                 
                 if (dij2 > d2) //no collision

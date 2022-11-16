@@ -69,7 +69,7 @@ struct AA_collision_params
   bool spatial_pdfs;
   bool calculate_end_state;
   bool reduce_nucleon_energies;
-  double sigma_inel_for_glauber;
+  double sigma_inel;
   const std::function<double(const double&)> Tpp;
   B2_normalization_mode normalize_to;
   double sqrt_s;

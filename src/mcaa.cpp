@@ -6,76 +6,141 @@ mcaa::mcaa
 (
     const std::string &initfile
 ) 
-: verbose(false),
-  diff_params(false,false,false,false,false,1,1,1u,1u,1u,1u),
-  jet_params(this->diff_params,pqcd::scaled_from_kt,1,false)
+: diff_params(false,false,false,false,false,1,1,1u,1u,1u,1u),
+  jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
+  nuc_params(1u,1u,1u,1u,1.0,false,false)
 {
     auto 
     [
-        name_postfix,
-        g_is_pp,
-        g_is_pa,
-        g_is_aa,
-        g_use_npdfs,
-        g_use_snpdfs,
-        g_is_mom_cons,
-        g_are_ns_depleted,
-        g_is_saturation,
-        g_is_mc_glauber,
-        N_events,
-        g_b_min,
-        g_b_max,
-        pt0,
-        g_K_factor,
-        K_sat
+        p_name,
+        p_n_events,
+        p_b_max,
+        p_b_min,
+        p_K_factor,
+        p_kt0,
+        p_M_factor,
+        p_nn_min_dist,
+        p_proton_width,
+        p_rad_max,
+        p_rad_min,
+        p_sigma_inel,
+        p_sqrt_s,
+        p_calculate_end_state,
+        p_calculate_tata,
+        p_are_ns_depleted,
+        p_end_state_filtering,
+        p_is_AA,
+        p_is_pA,
+        p_is_pp,
+        p_use_npdfs,
+        p_is_mc_glauber,
+        p_is_mom_cons,
+        p_read_sigmajets_from_file,
+        p_reduce_nucleon_energies,
+        p_is_saturation,
+        p_save_endstate_jets,
+        p_save_events_plaintext,
+        p_sigma_inel_from_sigma_jet,
+        p_use_snpdfs
     ] = io::read_conf(initfile);
-    this->name = name_postfix;
-    this->is_pp = g_is_pp;
-    this->is_pA = g_is_pa;
-    this->is_AA = g_is_aa;
-    this->nPDFs = g_use_npdfs;
-    this->snPDFs = g_use_snpdfs;
-    this->mom_cons = g_is_mom_cons;
-    this->deplete_nucleons = g_are_ns_depleted;
-    this->saturation = g_is_saturation;
-    this->MC_Glauber = g_is_mc_glauber;
-    this->desired_N_events = N_events;
-    this->b_min = g_b_min;
-    this->b_max = g_b_max;
-    this->kt0 = pt0;
-    this->kt02 = pow(pt0, 2);
-    this->K_factor = g_K_factor;
-    this->M_factor = K_sat;
-    this->proton_width = 0.573;
-    this->proton_width_2 = pow(this->proton_width, 2);
+
+    this->calculate_end_state        = p_calculate_end_state; 
+    this->calculate_tata             = p_calculate_tata; 
+    this->deplete_nucleons           = p_are_ns_depleted; 
+    this->end_state_filtering        = p_end_state_filtering; 
+    this->is_AA                      = p_is_AA; 
+    this->is_pA                      = p_is_pA; 
+    this->is_pp                      = p_is_pp; 
+    this->nPDFs                      = p_use_npdfs; 
+    this->MC_Glauber                 = p_is_mc_glauber; 
+    this->mom_cons                   = p_is_mom_cons; 
+    this->read_sigmajets_from_file   = p_read_sigmajets_from_file; 
+    this->reduce_nucleon_energies    = p_reduce_nucleon_energies; 
+    this->saturation                 = p_is_saturation; 
+    this->save_endstate_jets         = p_save_endstate_jets; 
+    this->save_events_plaintext      = p_save_events_plaintext; 
+    this->sigma_inel_from_sigma_jet  = p_sigma_inel_from_sigma_jet; 
+    this->snPDFs                     = p_use_snpdfs;
+    this->name                       = p_name;
+    this->desired_N_events           = p_n_events;
+    this->b_max                      = p_b_max;
+    this->b_min                      = p_b_min;
+    this->K_factor                   = p_K_factor;
+    this->kt0                        = p_kt0;
+    this->M_factor                   = p_M_factor;
+    this->nn_min_dist                = p_nn_min_dist;
+    this->proton_width               = p_proton_width;
+    this->rad_max                    = p_rad_max;
+    this->rad_min                    = p_rad_min;
+    this->sigma_inel                 = p_sigma_inel;
+    this->sqrt_s                     = p_sqrt_s;
+
+    this->verbose                    = false;
+    this->kt02                       = p_kt0*p_kt0;
+    this->mand_s                     = p_sqrt_s*p_sqrt_s;
+    this->proton_width_2             = p_proton_width*p_proton_width;
+
+    this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
+
     this->Tpp =  std::function<double(const double&)>({[proton_width_2=this->proton_width_2](const double &bsquared)
     {
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-    }}); 
-    this->sqrt_s                 = 5020;//GeV
-    this->mand_s                 = pow(sqrt_s, 2);//GeV^2
-    this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
+    }});
+
+    this->rad_pdf = std::function<double(const double&)>({[](const double & x)
+    {
+        return x*x/(1+exp((x-6.624)/0.549));
+    }});
+
+    // Parameter for the envelope function:
+    // sigma_jet < A*pT^(-power_law)
+    // Larger number == faster simulation, but the
+    // inequality must hold for the results to be correct.
+    // These are just some values, experiment freely,
+    // the simulation will tell if the inequality breaks.
+    if (!this->nPDFs) //free proton PDFs 
+    {
+        this->power_law = 2.8;
+    }
+    else if (!this->snPDFs) //nPDFs
+    {
+        this->power_law = 2.2;
+    }
+    else //spatial nPDFs
+    {
+        this->power_law = 2.0;
+    }
     
     this->diff_params = pqcd::diff_sigma::params(
-    /*projectile_with_npdfs=    */(g_is_aa && g_use_npdfs),
-    /*target_with_npdfs=        */(!g_is_pp && g_use_npdfs),
+    /*projectile_with_npdfs=    */(p_is_AA && p_use_npdfs),
+    /*target_with_npdfs=        */(!p_is_pp && p_use_npdfs),
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
-    /*npdfs_spatial=            */g_use_snpdfs,
+    /*npdfs_spatial=            */p_use_snpdfs,
     /*npdf_setnumber=           */1,
     /*K_factor=                 */K_factor,
-    /*A=                        */(g_is_aa)? 208u : 1u, //Pb 
-    /*B=                        */(g_is_pp)? 1u : 208u, //Pb
-    /*ZA=                       */(g_is_aa)? 82u : 1u,  //Pb
-    /*ZB=                       */(g_is_pp)? 1u : 82u   //Pb
+    /*A=                        */(p_is_AA)? 208u : 1u, //Pb 
+    /*B=                        */(p_is_pp)? 1u : 208u, //Pb
+    /*ZA=                       */(p_is_AA)? 82u : 1u,  //Pb
+    /*ZB=                       */(p_is_pp)? 1u : 82u   //Pb
     /*p_n_pdf=                  */
     /*rA_spatial=               */
     /*rB_spatial=               */);
+
     this->jet_params = pqcd::sigma_jet_params(
     /*d_params=                 */this->diff_params,
     /*scale_choice=             */pqcd::scaled_from_kt,
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
+
+    this->nuc_params = nucleus_generator::nucleus_params(
+    /* .A=                      */(this->is_AA)? 208u : 1u,
+    /* .ZA=                     */(this->is_AA)? 82u : 1u,  
+    /* .B=                      */(this->is_pp)? 1u : 208u, 
+    /* .ZB=                     */(this->is_pp)? 1u : 82u,  
+    /* .min_distance=           */p_nn_min_dist, 
+    /* .shift_cms=              */true, 
+    /* .correct_overlap_bias=   */true);
 }
 
 auto mcaa::fit_sigma_jet_pt0_cutoff
@@ -175,7 +240,6 @@ auto mcaa::filter_end_state
     std::vector<nn_coll> &binary_collisions, 
     std::vector<dijet_with_coords> &filtered_scatterings,
     std::shared_ptr<std::mt19937> random_generator,
-    const bool calculate_tata,
     const std::vector<nucleon> &pro, 
     const std::vector<nucleon> &tar
 ) noexcept -> void
@@ -274,13 +338,13 @@ auto mcaa::filter_end_state
 
             auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*this->M_factor*FMGEV), 1);
 
-            if (!this->check_and_place_circle_among_others(std::move(cand_circle), final_circles))
+            if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles))
             {
                 continue; //Did not fit into saturated PS --> discard
             }
         }
 
-        if (calculate_tata)
+        if (this->calculate_tata)
         {
             nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
             tata = calcs::calculate_sum_tpp(dummy, pro, this->Tpp) * calcs::calculate_sum_tpp(dummy, tar, this->Tpp);
@@ -311,34 +375,17 @@ void abort_handler(int num)
 
 auto mcaa::run() -> void
 {
+    std::cout<<std::endl<<"Doing the run "<<this->name<<std::endl;
+
     if (this->verbose) std::cout<<"Initializing..."<<std::flush;
     
-    //General parameters for the simulation
-    const bool    read_sigmajets_from_file  = false,
-                  end_state_filtering       = true, 
-                  sigma_inel_from_sigma_jet = true, 
-                  save_endstate_jets        = true,
-                  save_events_plaintext     = false,
-                  calculate_end_state       = true,
-                  calculate_tata            = true,
-                  reduce_nucleon_energies   = false;
-
-    uint_fast32_t AA_events_done            = 0;
+    uint_fast32_t AA_events_done = 0;
     std::mutex AA_events_mutex;
-
-    std::cout<<std::endl<<std::endl<<"Doing the run "<<this->name<<std::endl;
 
     //auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(1));
     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
-    //Parameters for the nuclei
-    const double rad_min=0,
-                 rad_max=30;
-    const std::function<double(const double&)> rad_pdf{[](const double & x)
-    {
-        return x*x/(1+exp((x-6.624)/0.549));
-    }};
     auto radial_sampler{std::make_shared<ars>(rad_pdf, rad_min, rad_max)};
     //The adaptive algorithm in the sampler is not thread-safe,
     //so to run the program multithreaded let's first saturate the sampler
@@ -346,41 +393,6 @@ auto mcaa::run() -> void
     {
         radial_sampler->throw_one(*eng);
     } while (radial_sampler->is_adaptive());
-
-    nucleus_generator::nucleus_params nuc_params = 
-    {
-        /* .NA=                   */(this->is_AA)? 208u : 1u,
-        /* .ZA=                   */(this->is_AA)? 82u : 1u,  
-        /* .NB=                   */(this->is_pp)? 1u : 208u, 
-        /* .ZB=                   */(this->is_pp)? 1u : 82u,  
-        /* .min_distance=         */0.4, 
-        /* .shift_cms=            */true, 
-        /* .correct_overlap_bias= */true
-    };
-    
-    //Parameters for the hard collisions
-    double sigma_inel_for_glauber       = 70;//mb
-    double ylim                         = static_cast<double>(log(this->sqrt_s / this->kt0));
-    
-    // Parameter for the envelope function:
-    // sigma_jet < A*pT^(-power_law)
-    double power_law = 0.0;
-    // Larger number == faster simulation, but the
-    // inequality must hold for the results to be correct.
-    // These are just some values, experiment freely,
-    // the simulation will tell if the inequality breaks.
-    if (!this->nPDFs) //free proton PDFs 
-    {
-        power_law = 2.8;
-    }
-    else if (!this->snPDFs) //nPDFs
-    {
-        power_law = 2.2;
-    }
-    else //spatial nPDFs
-    {
-        power_law = 2.0;
-    }
 
     std::vector<io::Coll> collisions_for_reporting;
     std::vector<io::Coll> collisions_for_reporting_midrap;
@@ -391,11 +403,11 @@ auto mcaa::run() -> void
     {
         kt_bins.push_back(ktdummy);
     }
+    
+    double ylim = static_cast<double>(log(this->sqrt_s / this->kt0));
     const std::vector<double> y_bins{helpers::linspace(-ylim, ylim, 40u)};
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
-
-    //sigma_jet parameters
 
     auto
     [
@@ -407,24 +419,23 @@ auto mcaa::run() -> void
     ] = 
     calcs::prepare_sigma_jets
     (
-        reduce_nucleon_energies,
-        read_sigmajets_from_file,
+        this->reduce_nucleon_energies,
+        this->read_sigmajets_from_file,
         this->p_pdf, 
         this->mand_s,
         this->sqrt_s,
         this->kt02, 
         this->kt0,
-        power_law,
+        this->power_law,
         this->jet_params
     );
-    
-    if (sigma_inel_from_sigma_jet)
+    if (this->sigma_inel_from_sigma_jet)
     {
         auto dummy = std::get<double>(sigma_jet) / (4 * M_PI * this->proton_width_2);
         dummy = dummy / 10; //mb -> fm²
 
-        sigma_inel_for_glauber = (4 * M_PI * proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
-        std::cout<<"sigma_inel = "<<sigma_inel_for_glauber<<std::endl;
+        this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
+        std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
     }
 
     AA_collision_params coll_params
@@ -433,9 +444,9 @@ auto mcaa::run() -> void
     /*pp_scattering=            */this->is_pp,
     /*pA_scattering=            */this->is_pA,
     /*spatial_pdfs=             */this->snPDFs,
-    /*calculate_end_state=      */calculate_end_state,
-    /*reduce_nucleon_energies=  */reduce_nucleon_energies,
-    /*sigma_inel_for_glauber=   */sigma_inel_for_glauber,
+    /*calculate_end_state=      */this->calculate_end_state,
+    /*reduce_nucleon_energies=  */this->reduce_nucleon_energies,
+    /*sigma_inel=               */this->sigma_inel,
     /*Tpp=                      */this->Tpp,
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
@@ -518,8 +529,12 @@ auto mcaa::run() -> void
     std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
     std::atomic<uint_fast64_t> running_count{desired_N_events};
 
-    std::signal(SIGINT, abort_handler);
 
+    //--------------------------------------------//
+    // THESE ARE A HACK TO SAVE THE WORK THIS FAR //
+    // IN THE CASE OF A UNEXPECTED TERMINATION    //
+    //--------------------------------------------//
+    std::signal(SIGINT, abort_handler);
     std::set_terminate([](){
         std::cout << std::endl << "Unhandled exception" << std::endl;
         g_bug_bool = true;
@@ -532,15 +547,9 @@ auto mcaa::run() -> void
             std::execution::par, 
             event_indexes.begin(), 
             event_indexes.end(), 
-            [&,b_max=this->b_max,
-             verbose=this->verbose,
-             g_is_mom_cons=this->mom_cons,
-             g_is_saturation=this->saturation,
-             g_are_ns_depleted=this->deplete_nucleons,
+            [&,verbose=this->verbose,
              &sigma_jet=sigma_jet,
-             &power_law=power_law,
              &envelope_maximum=envelope_maximum,
-             K_sat=this->M_factor,
              &colls_scatterings=colls_scatterings
             ](const uint_fast64_t index) 
             {
@@ -551,6 +560,8 @@ auto mcaa::run() -> void
                     std::vector<nn_coll> binary_collisions;
                     std::vector<dijet_with_coords> filtered_scatterings;
                     double impact_parameter;
+                    double b_min2 = this->b_min*this->b_min;
+                    double b_max2 = this->b_max*this->b_max;
 
                     std::vector<nucleon> pro, tar;
                     uint_fast16_t times_discarded = 0;
@@ -562,11 +573,11 @@ auto mcaa::run() -> void
                         //so that a collision is probable
                         bool bugged, probably_collided;
                         // "ball" diameter = distance at which two nucleons interact in MC Glauber
-                        const double d2 = sigma_inel_for_glauber/(M_PI*10.0); // in fm^2
+                        const double d2 = this->sigma_inel/(M_PI*10.0); // in fm^2
                         do //while (!probably_collided || bugged)  
                         {
                             //B^2 from a uniform distribution
-                            impact_parameter = sqrt(b_min*b_min + unirand(*eng)*(b_max*b_max-b_min*b_min));
+                            impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
                     
                             times_discarded++;
                             if (times_discarded > 1000)
@@ -583,8 +594,8 @@ auto mcaa::run() -> void
                             {
                                 auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
                                 (
-                                    nuc_params, 
-                                    sqrt_s, 
+                                    this->nuc_params, 
+                                    this->sqrt_s, 
                                     impact_parameter, 
                                     eng, 
                                     radial_sampler, 
@@ -632,10 +643,10 @@ auto mcaa::run() -> void
                             unirand, 
                             eng, 
                             coll_params, 
-                            jet_params,
-                            kt0,
-                            p_pdf,
-                            power_law,
+                            this->jet_params,
+                            this->kt0,
+                            this->p_pdf,
+                            this->power_law,
                             envelope_maximum,
                             verbose
                         );
@@ -654,14 +665,12 @@ auto mcaa::run() -> void
                     }
                     else if (end_state_filtering)
                     {
-                        double max_overlap = K_sat;
                         double sum_E = 0;
                         this->filter_end_state
                         (
                             binary_collisions, 
                             filtered_scatterings, 
                             eng,
-                            calculate_tata,
                             pro,
                             tar
                         );
@@ -851,10 +860,10 @@ auto mcaa::run() -> void
     std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
                                               
     glauber_report_file.open(g_name, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting, sigma_inel_for_glauber, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
+    io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
     glauber_report_file.open(g_name_midrap, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap, sigma_inel_for_glauber, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
+    io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
 
 

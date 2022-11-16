@@ -27,7 +27,7 @@ target_compile_features(mcaa PUBLIC cxx_std_20)
 
 target_compile_options(mcaa PUBLIC
 	-Wall
-	-fconcepts
+	#-fconcepts #COMMENT THIS IF YOU USE CLANG
 )
 
 target_include_directories(mcaa PUBLIC 

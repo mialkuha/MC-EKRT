@@ -9,7 +9,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
 {
     std::vector<nucleon> generated_nucleus;
     std::vector<coords> generated_coords;
-    auto N = (target) ? params.NB : params.NA;
+    auto N = (target) ? params.B : params.A;
     generated_nucleus.reserve(N);
     generated_coords.reserve(N);
 

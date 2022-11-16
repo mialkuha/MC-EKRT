@@ -738,22 +738,36 @@ public:
     {
         std::ifstream input(filename);
         
-        std::string name;
-        bool is_pp              = false;
-        bool is_pa              = false;
-        bool is_aa              = true;
-        bool use_npdfs          = false;
-        bool use_snpdfs         = false;
-        bool is_mom_cons        = false;
-        bool are_ns_depleted    = false;
-        bool is_saturation      = false;
-        bool is_mc_glauber      = false;
-        uint_fast32_t n_events  = 10000;
-        double b_min            = 0;//fm
-        double b_max            = 20;//fm
-        double pt0              = 2.728321;//GeV
-        double K_factor         = 1.0;
-        double K_sat            = 1.0;
+        std::string name{"example_name"};
+        uint_fast32_t n_events{500};
+        double b_max{20.0};
+        double b_min{0.0};
+        double K_factor{1.0};
+        double kt0{1.0};
+        double M_factor{2.5};
+        double nn_min_dist{0.4};
+        double proton_width{0.573};
+        double rad_max{30.0};
+        double rad_min{0.0};
+        double sigma_inel{70.0};
+        double sqrt_s{5020.0};
+        bool calculate_end_state{true};
+        bool calculate_tata{true};
+        bool are_ns_depleted{false};
+        bool end_state_filtering{true};
+        bool is_AA{true};
+        bool is_pA{false};
+        bool is_pp{false};
+        bool use_npdfs{true};
+        bool is_mc_glauber{true};
+        bool is_mom_cons{true};
+        bool read_sigmajets_from_file{false};
+        bool reduce_nucleon_energies{false};
+        bool is_saturation{true};
+        bool save_endstate_jets{true};
+        bool save_events_plaintext{false};
+        bool sigma_inel_from_sigma_jet{true};
+        bool use_snpdfs{false};
 
         uint_fast16_t count = 0;
 
@@ -771,65 +785,125 @@ public:
                 {
                     line_stream >> name;
                 }
-                else if (param_name == "is_pp")
-                {
-                    line_stream >> std::boolalpha >> is_pp;
-                }
-                else if (param_name == "is_pa")
-                {
-                    line_stream >> std::boolalpha >> is_pa;
-                }
-                else if (param_name == "is_aa")
-                {
-                    line_stream >> std::boolalpha >> is_aa;
-                }
-                else if (param_name == "use_npdfs")
-                {
-                    line_stream >> std::boolalpha >> use_npdfs;
-                }
-                else if (param_name == "use_snpdfs")
-                {
-                    line_stream >> std::boolalpha >> use_snpdfs;
-                }
-                else if (param_name == "is_mom_cons")
-                {
-                    line_stream >> std::boolalpha >> is_mom_cons;
-                }
-                else if (param_name == "are_ns_depleted")
-                {
-                    line_stream >> std::boolalpha >> are_ns_depleted;
-                }
-                else if (param_name == "is_saturation")
-                {
-                    line_stream >> std::boolalpha >> is_saturation;
-                }
-                else if (param_name == "is_mc_glauber")
-                {
-                    line_stream >> std::boolalpha >> is_mc_glauber;
-                }
                 else if (param_name == "n_events")
                 {
                     line_stream >> n_events;
-                }
-                else if (param_name == "b_min")
-                {
-                    line_stream >> b_min;
                 }
                 else if (param_name == "b_max")
                 {
                     line_stream >> b_max;
                 }
-                else if (param_name == "pt0")
+                else if (param_name == "b_min")
                 {
-                    line_stream >> pt0;
+                    line_stream >> b_min;
                 }
                 else if (param_name == "K_factor")
                 {
                     line_stream >> K_factor;
                 }
-                else if (param_name == "K_sat")
+                else if (param_name == "kt0")
                 {
-                    line_stream >> K_sat;
+                    line_stream >> kt0;
+                }
+                else if (param_name == "M_factor")
+                {
+                    line_stream >> M_factor;
+                }
+                else if (param_name == "nn_min_dist")
+                {
+                    line_stream >> nn_min_dist;
+                }
+                else if (param_name == "proton_width")
+                {
+                    line_stream >> proton_width;
+                }
+                else if (param_name == "rad_max")
+                {
+                    line_stream >> rad_max;
+                }
+                else if (param_name == "rad_min")
+                {
+                    line_stream >> rad_min;
+                }
+                else if (param_name == "sigma_inel")
+                {
+                    line_stream >> sigma_inel;
+                }
+                else if (param_name == "sqrt_s")
+                {
+                    line_stream >> sqrt_s;
+                }
+                else if (param_name == "calculate_end_state")
+                {
+                    line_stream >> std::boolalpha >> calculate_end_state;
+                }
+                else if (param_name == "calculate_tata")
+                {
+                    line_stream >> std::boolalpha >> calculate_tata;
+                }
+                else if (param_name == "are_ns_depleted")
+                {
+                    line_stream >> std::boolalpha >> are_ns_depleted;
+                }
+                else if (param_name == "end_state_filtering")
+                {
+                    line_stream >> std::boolalpha >> end_state_filtering;
+                }
+                else if (param_name == "is_aa")
+                {
+                    line_stream >> std::boolalpha >> is_AA;
+                }
+                else if (param_name == "is_pa")
+                {
+                    line_stream >> std::boolalpha >> is_pA;
+                }
+                else if (param_name == "is_pp")
+                {
+                    line_stream >> std::boolalpha >> is_pp;
+                }
+                else if (param_name == "use_npdfs")
+                {
+                    line_stream >> std::boolalpha >> use_npdfs;
+                }
+                else if (param_name == "is_mc_glauber")
+                {
+                    line_stream >> std::boolalpha >> is_mc_glauber;
+                }
+                else if (param_name == "is_mom_cons")
+                {
+                    line_stream >> std::boolalpha >> is_mom_cons;
+                }
+                else if (param_name == "read_sigmajets_from_file")
+                {
+                    line_stream >> std::boolalpha >> read_sigmajets_from_file;
+                }
+                else if (param_name == "reduce_nucleon_energies")
+                {
+                    line_stream >> std::boolalpha >> reduce_nucleon_energies;
+                }
+                else if (param_name == "is_saturation")
+                {
+                    line_stream >> std::boolalpha >> is_saturation;
+                }
+                else if (param_name == "save_endstate_jets")
+                {
+                    line_stream >> std::boolalpha >> save_endstate_jets;
+                }
+                else if (param_name == "save_events_plaintext")
+                {
+                    line_stream >> std::boolalpha >> save_events_plaintext;
+                }
+                else if (param_name == "sigma_inel_from_sigma_jet")
+                {
+                    line_stream >> std::boolalpha >> sigma_inel_from_sigma_jet;
+                }
+                else if (param_name == "use_snpdfs")
+                {
+                    line_stream >> std::boolalpha >> use_snpdfs;
+                }
+                else
+                {
+                    continue;
                 }
                 count++;
             }
@@ -845,21 +919,35 @@ public:
         return std::make_tuple
                 (
                     name,
-                    is_pp,
-                    is_pa,
-                    is_aa,
-                    use_npdfs,
-                    use_snpdfs,
-                    is_mom_cons,
-                    are_ns_depleted,
-                    is_saturation,
-                    is_mc_glauber,
                     n_events,
-                    b_min,
                     b_max,
-                    pt0,
+                    b_min,
                     K_factor,
-                    K_sat
+                    kt0,
+                    M_factor,
+                    nn_min_dist,
+                    proton_width,
+                    rad_max,
+                    rad_min,
+                    sigma_inel,
+                    sqrt_s,
+                    calculate_end_state,
+                    calculate_tata,
+                    are_ns_depleted,
+                    end_state_filtering,
+                    is_AA,
+                    is_pA,
+                    is_pp,
+                    use_npdfs,
+                    is_mc_glauber,
+                    is_mom_cons,
+                    read_sigmajets_from_file,
+                    reduce_nucleon_energies,
+                    is_saturation,
+                    save_endstate_jets,
+                    save_events_plaintext,
+                    sigma_inel_from_sigma_jet,
+                    use_snpdfs
                 );
     }
 
