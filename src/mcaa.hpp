@@ -120,7 +120,10 @@ public:
     ) noexcept -> double;
 
     /**
-     * @brief Runs the simulator with the given parameters.
+     * @brief Runs the simulator with the given parameters. The reporting is
+     * also built in this function, so that if one would like to change the 
+     * outputs for example, this is the function to modify. This is done to
+     * keep in memory only the things that are actually needed.
      * 
      */
     auto run() -> void;

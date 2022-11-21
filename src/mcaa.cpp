@@ -542,6 +542,11 @@ auto mcaa::run() -> void
 
     try
     {
+        //----------------------------------------------------------------//
+        // THIS IS THE PARALLELLIZED MAIN LOOP FOR ALL OF THE EVENTS      //
+        // INCLUDES NUCLEUS GENERATION, COLLISION CALCULATIONS, FILTERING //
+        // AND OBSERVABLE CALCULATIONS                                    //
+        //----------------------------------------------------------------//
         std::find_if
         (
             std::execution::par, 

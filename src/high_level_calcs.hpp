@@ -37,7 +37,16 @@ using variant_envelope_max = std::variant<linear_interpolator, double>;
 
 class calcs
 {
-public:    
+public:
+    /**
+     * @brief Finds the maximum of the differential sigma_jet in terms of pT, y1 and y2. 
+     * 
+     * @param kt 
+     * @param sqrt_s 
+     * @param p_pdf 
+     * @param params 
+     * @return auto 
+     */
     static auto find_max_dsigma
     (
         const double &kt, 
