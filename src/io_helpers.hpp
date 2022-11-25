@@ -763,6 +763,7 @@ public:
         bool is_mom_cons{true};
         bool read_sigmajets_from_file{false};
         bool reduce_nucleon_energies{false};
+        bool proton_width_static{false};
         bool is_saturation{true};
         bool save_endstate_jets{true};
         bool save_events_plaintext{false};
@@ -881,6 +882,10 @@ public:
                 {
                     line_stream >> std::boolalpha >> reduce_nucleon_energies;
                 }
+                else if (param_name == "proton_width_static")
+                {
+                    line_stream >> std::boolalpha >> proton_width_static;
+                }
                 else if (param_name == "is_saturation")
                 {
                     line_stream >> std::boolalpha >> is_saturation;
@@ -943,6 +948,7 @@ public:
                     is_mom_cons,
                     read_sigmajets_from_file,
                     reduce_nucleon_energies,
+                    proton_width_static,
                     is_saturation,
                     save_endstate_jets,
                     save_events_plaintext,

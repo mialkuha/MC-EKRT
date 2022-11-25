@@ -52,6 +52,7 @@ public:
     bool mom_cons{true};                   // if the momentum should be conserved
     bool read_sigmajets_from_file{false};  // if the sigma_jets are precalculated
     bool reduce_nucleon_energies{false};   // momentum conservation by reducing nucleon energies after each collision. Breaks factorization
+    bool proton_width_static{false};       // if the proton width should be a static value or depend on sqrt(s)
     bool saturation{true};                 // if EKRT saturation is enforced
     bool save_endstate_jets{true};         // if all the jets should be saved in binary (see jet_reader.cpp)
     bool save_events_plaintext{false};     // if all the jets should be saved in plaintext
@@ -69,8 +70,8 @@ public:
     double M_factor{2.5};                  // saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
     double nn_min_dist{0.4};               // (fm) minimum distance between the nucleons in a nucleus
     double mand_s{5020*5020};              // (GeV^2) mandelstam s for the hard process 
-    double proton_width{0.573};            // (fm) proton width 
-    double proton_width_2{0.573*0.573};    // (fm^2) proton width squared 
+    double proton_width{0.573};            // (fm) proton width
+    double proton_width_2{0.573*0.573};    // (fm^2) proton width squared
     double rad_max{30.0};                  // (fm) nucleons' maximum distance from the center of the nucleus
     double rad_min{0.0};                   // (fm) nucleons' minimum distance from the center of the nucleus
     double sigma_inel{70.0};               // (mb) inelastic cross section of the event
@@ -216,6 +217,9 @@ private:
      */
     auto filter_end_state
     (
+    uint_fast64_t &nall,
+    uint_fast64_t &nmc,
+    uint_fast64_t &nsat,
         std::vector<nn_coll> &binary_collisions, 
         std::vector<dijet_with_coords> &filtered_scatterings,
         std::shared_ptr<std::mt19937> random_generator,
