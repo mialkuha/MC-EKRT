@@ -421,7 +421,7 @@ public:
             if (!reduce_nucleon_energies && read_sigmajets_from_file) //sigma_jet does not depend on energy
             {
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
-                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial("sigma_jet_grid_spatial.dat");
+                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial("sigma_jet_grid_spatial.dat", jet_params.d_params.K_factor);
                 std::cout<<"done!"<<std::endl;
 
                 auto other_params = jet_params;
@@ -446,7 +446,7 @@ public:
             }
             else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
             {
-                double tolerance=0.01,
+                double tolerance=0.1,
                     upper_sumTpp_limit=0.61, 
                     lower_sumTpp_limit=0.01;
 
@@ -1306,7 +1306,8 @@ private:
 
     static auto read_sigma_jets_spatial
     (
-        const std::string &filename
+        const std::string &filename,
+        const double &K_factor
     ) noexcept -> InterpMultilinear<2, double>
     {
 
@@ -1369,7 +1370,7 @@ private:
                 line_stream = std::istringstream(line);
                 while (line_stream >> sigma_jet)
                 {
-                    f_values[i*dim_Ns[1] + j] = sigma_jet;
+                    f_values[i*dim_Ns[1] + j] = K_factor*sigma_jet;
                     j++;
                 }
                 j=0;
@@ -1695,11 +1696,13 @@ private:
             }
         );
         
+        double K_fac = jet_params.d_params.K_factor;
+
         for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
         {
             for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
             {
-                sigma_jet_grid_file << f_values[i*rad + j] << ' ';
+                sigma_jet_grid_file << f_values[i*rad + j]/K_fac<< ' ';
             }
             sigma_jet_grid_file << std::endl;
         }
