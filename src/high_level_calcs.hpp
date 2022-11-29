@@ -586,7 +586,7 @@ public:
         const bool &verbose
     ) noexcept -> void
     {
-        uint_fast32_t n_pairs = 0, mombroke = 0, nof_softs = 0;
+        uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
         
         std::vector<std::tuple<nucleon* const, nucleon* const> > binary_pairs;
         
@@ -606,6 +606,12 @@ public:
         for (auto & ind : pair_indexes)
         {
             auto & [A, B] = binary_pairs[ind];
+
+            if (AA_params.use_nn_b2_max && A->calculate_bsquared(*B) > AA_params.nn_b2_max)
+            {
+                skipped++;
+                continue;
+            }
             
             n_pairs++;
             if ((A->mom < AA_params.energy_threshold) || (B->mom < AA_params.energy_threshold))
@@ -732,10 +738,10 @@ public:
                 binary_collisions.push_back(std::move(newpair));
             }
         }
-        
+
         if (verbose)
         {
-            std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , double threshold broke " << mombroke << " times" << std::endl;
+            std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , double threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
         }
     }
 
@@ -810,7 +816,7 @@ public:
             auto & [A, sum_tppa] = A_pair;
             auto & [B, sum_tppb] = B_pair;
 
-            if (A->calculate_bsquared(*B) > 35.)
+            if (AA_params.use_nn_b2_max && A->calculate_bsquared(*B) > AA_params.nn_b2_max)
             {
                 skipped++;
                 continue;
@@ -824,95 +830,164 @@ public:
             }
 
             nn_coll newpair(A, B, 2 * sqrt(A->mom * B->mom));
-            double sigma_jet;
-            if (AA_params.reduce_nucleon_energies) 
+            
+            if (AA_params.mc_glauber_mode)
             {
-                array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
-                sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
-            }
-            else
-            {
-                array<double,2> args{*sum_tppa, *sum_tppb};
-                sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
-                //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
-            }
+                // "ball" diameter = distance at which two nucleons interact
+                const double d2 = AA_params.sigma_inel/(M_PI*10); // in fm^2
+                const double dij2 = newpair.getcr_bsquared();
                 
-            newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
-
-            if (verbose)
-            {
-                std::cout << "<T_pp>_i= " << *sum_tppa << ", <T_pp>_j= " << *sum_tppb << ", sigma_jet= " 
-                        << sigma_jet <<  ", sigma_inel_eff= " << newpair.getcr_effective_inel_xsect() 
-                        << ", sigma_tot_eff= " << newpair.getcr_effective_tot_xsect() << std::endl;
-            }
-
-            auto ran = unirand(*eng)*M_PI;
-                
-            if (ran > newpair.getcr_effective_inel_xsect())
-            {
-                if (ran > newpair.getcr_effective_tot_xsect())
+                if (dij2 > d2) //no collision
                 {
                     continue;
                 }
-                nof_softs++;
-                continue;
+                //collision
+                if (AA_params.calculate_end_state)
+                {
+                    double sigma_jet;
+                    double envelope_maximum;
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
+                        sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
+                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
+                    }
+                    else //Single sigma_jet
+                    {
+                        array<double,2> args{*sum_tppa, *sum_tppb};
+                        sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
+                        //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
+                        envelope_maximum = std::get<double>(envelope_maximums);
+                    }
+
+                    const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                        NB = dsigma_params.d_params.B;
+                    //c=A*(R-1)/TAA(0)
+                    const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                                intA = 1.0 - scaA;
+                    const std::function<double(double const&)> 
+                        rA_spatial_ = [&](double const &r)
+                            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+
+                    const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                                intB = 1.0 - scaB;
+                    const std::function<double(double const&)> 
+                        rB_spatial_ = [&](double const &r)
+                            {return r*scaB + intB;};
+
+                    dsigma_params.d_params.rA_spatial = rA_spatial_;
+                    dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    
+                    pqcd::generate_bin_NN_coll
+                    (
+                        newpair, 
+                        sigma_jet, 
+                        AA_params.Tpp(newpair.getcr_bsquared()), 
+                        kt0,
+                        unirand, 
+                        eng,
+                        p_p_pdf,
+                        dsigma_params,
+                        power_law,
+                        envelope_maximum
+                    );
+                    
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    }
+                    else
+                    {
+                        newpair.push_end_states_to_collider_frame();
+                    }
+                }
+                newpair.wound();
+                binary_collisions.push_back(std::move(newpair));
             }
-            if (AA_params.calculate_end_state)
+            else
             {
-                double envelope_maximum;
-
-                if (AA_params.reduce_nucleon_energies)
+                double sigma_jet;
+                if (AA_params.reduce_nucleon_energies) 
                 {
-                    envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
+                    array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
+                    sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
                 }
                 else
                 {
-                    envelope_maximum = std::get<double>(envelope_maximums);
+                    array<double,2> args{*sum_tppa, *sum_tppb};
+                    sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
+                    //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                 }
-
-                const uint_fast16_t NA = dsigma_params.d_params.A, 
-                                    NB = dsigma_params.d_params.B;
-                //c=A*(R-1)/TAA(0)
-                const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                             intA = 1.0 - scaA;
-                const std::function<double(double const&)> 
-                    rA_spatial_ = [&](double const &r)
-                        {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
-
-                const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                             intB = 1.0 - scaB;
-                const std::function<double(double const&)> 
-                    rB_spatial_ = [&](double const &r)
-                        {return r*scaB + intB;};
-
-                dsigma_params.d_params.rA_spatial = rA_spatial_;
-                dsigma_params.d_params.rB_spatial = rB_spatial_;
-
-                pqcd::generate_bin_NN_coll
-                (
-                    newpair, 
-                    sigma_jet, 
-                    AA_params.Tpp(newpair.getcr_bsquared()), 
-                    kt0,
-                    unirand, 
-                    eng,
-                    p_p_pdf,
-                    dsigma_params,
-                    power_law,
-                    envelope_maximum
-                );
-
-                if (AA_params.reduce_nucleon_energies)
+                    
+                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
+                auto ran = unirand(*eng)*M_PI;
+                    
+                if (ran > newpair.getcr_effective_inel_xsect())
                 {
-                    newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    if (ran > newpair.getcr_effective_tot_xsect())
+                    {
+                        continue;
+                    }
+                    nof_softs++;
+                    continue;
                 }
-                else
+                if (AA_params.calculate_end_state)
                 {
-                    newpair.push_end_states_to_collider_frame();
+                    double envelope_maximum;
+
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
+                    }
+                    else
+                    {
+                        envelope_maximum = std::get<double>(envelope_maximums);
+                    }
+
+                    const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                        NB = dsigma_params.d_params.B;
+                    //c=A*(R-1)/TAA(0)
+                    const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                                intA = 1.0 - scaA;
+                    const std::function<double(double const&)> 
+                        rA_spatial_ = [&](double const &r)
+                            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+
+                    const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                                intB = 1.0 - scaB;
+                    const std::function<double(double const&)> 
+                        rB_spatial_ = [&](double const &r)
+                            {return r*scaB + intB;};
+
+                    dsigma_params.d_params.rA_spatial = rA_spatial_;
+                    dsigma_params.d_params.rB_spatial = rB_spatial_;
+
+                    pqcd::generate_bin_NN_coll
+                    (
+                        newpair, 
+                        sigma_jet, 
+                        AA_params.Tpp(newpair.getcr_bsquared()), 
+                        kt0,
+                        unirand, 
+                        eng,
+                        p_p_pdf,
+                        dsigma_params,
+                        power_law,
+                        envelope_maximum
+                    );
+
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    }
+                    else
+                    {
+                        newpair.push_end_states_to_collider_frame();
+                    }
                 }
+                newpair.wound();
+                binary_collisions.push_back(std::move(newpair));
             }
-            newpair.wound();
-            binary_collisions.push_back(std::move(newpair));
         }
 
         if (verbose)

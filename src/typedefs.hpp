@@ -69,11 +69,13 @@ struct AA_collision_params
   bool spatial_pdfs;
   bool calculate_end_state;
   bool reduce_nucleon_energies;
+  bool use_nn_b2_max;
   double sigma_inel;
   const std::function<double(const double&)> Tpp;
   B2_normalization_mode normalize_to;
   double sqrt_s;
   double energy_threshold;
+  double nn_b2_max;
 };
 
 struct coords {
@@ -144,7 +146,7 @@ struct coords {
 
   friend std::ostream& operator<<(std::ostream& os, const coords& co)
   {
-    os << '{' << co.x << ", " << co.y << ", " << co.z<<'}';
+    os << co.x << "," << co.y << "," << co.z;
     return os;
   }
 };

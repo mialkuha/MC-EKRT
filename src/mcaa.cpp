@@ -457,6 +457,24 @@ auto mcaa::run() -> void
         std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
     }
 
+    bool use_nn_b2_max = true; //TODO GET RID OF MAGIC NUMBERS
+    double tpp_min = 1e-8; //TODO GET RID OF MAGIC NUMBERS
+
+    double nn_b2_max = 1.0;
+    if (use_nn_b2_max)
+    {
+        double dummy = 0; //not needed here
+        auto difference_to_target = [tpp_min, tpp=(this->Tpp)](const double &b2)
+        {
+            return tpp_min - tpp(b2);
+        };
+        helpers::secant_method(&nn_b2_max, difference_to_target, tpp_min, &dummy);
+        if (this->verbose)
+        {
+            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp(nn_b2_max)<<std::endl;
+        }
+    }
+
     AA_collision_params coll_params
     {
     /*mc_glauber_mode=          */this->MC_Glauber,
@@ -465,11 +483,13 @@ auto mcaa::run() -> void
     /*spatial_pdfs=             */this->snPDFs,
     /*calculate_end_state=      */this->calculate_end_state,
     /*reduce_nucleon_energies=  */this->reduce_nucleon_energies,
+    /*use_nn_b2_max=            */use_nn_b2_max,
     /*sigma_inel=               */this->sigma_inel,
     /*Tpp=                      */this->Tpp,
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
-    /*energy_threshold=         */this->kt0
+    /*energy_threshold=         */this->kt0,
+    /*nn_b2_max=                */nn_b2_max
     };
 
     if (this->verbose) std::cout<<"Done!"<<std::endl;
