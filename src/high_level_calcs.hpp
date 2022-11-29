@@ -432,7 +432,7 @@ public:
 
                 std::cout<<"Calculating envelope..."<<std::flush;
                 auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                double envelope_maximum = (max_dsigma + fabs(err))*1.05*pow(kt0,power_law);
+                double envelope_maximum = 2*(max_dsigma + fabs(err))*1.05*pow(kt0,power_law);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple

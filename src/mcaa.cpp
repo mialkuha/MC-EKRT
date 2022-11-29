@@ -448,9 +448,18 @@ auto mcaa::run() -> void
         this->power_law,
         this->jet_params
     );
-    if (this->sigma_inel_from_sigma_jet)
+    if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
     {
+
         auto dummy = std::get<double>(sigma_jet) / (4 * M_PI * this->proton_width_2);
+        dummy = dummy / 10; //mb -> fm²
+
+        this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
+        std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
+    }
+    else if (this->sigma_inel_from_sigma_jet)
+    {
+        auto dummy = dijet_norm / (4 * M_PI * this->proton_width_2);
         dummy = dummy / 10; //mb -> fm²
 
         this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
