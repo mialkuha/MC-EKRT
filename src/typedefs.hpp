@@ -26,6 +26,20 @@ struct dijet_specs
     particle_id final2{0};
 };
 
+struct envelope_func
+{
+    double min_kt{0};
+    double norm1{0};
+    double norm2{0};
+    double power{0};
+    double switch_kt{0};
+    double prim_integ_constant{0};
+    double prim_switch_y{0};
+    const std::function<double(const double&)> func;
+    const std::function<double(const double&)> prim;
+    const std::function<double(const double&)> prim_inv;
+};
+
 struct xsection_id
 {
   double sigma;

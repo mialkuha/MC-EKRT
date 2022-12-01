@@ -433,6 +433,101 @@ auto pqcd::generate_2_to_2_scatt
     return event;
 }
 
+auto pqcd::generate_2_to_2_scatt
+(
+    const double &sqrt_s,
+    const double &kt_min,
+    const double &kt_max,
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    pqcd::sigma_jet_params params,
+    const double &power_law,
+    envelope_func &env_func
+) noexcept -> dijet_specs
+{
+    dijet_specs event;
+
+    double y1_min, y1_max, y2_min, y2_max, y1, y2;
+    double kt;
+    double rand[4];
+    double ratio;
+    bool is_below = false;
+    
+    y1_min = static_cast<double>(-log(sqrt_s / kt_min));
+    y1_max = static_cast<double>( log(sqrt_s / kt_min));
+    y2_min = static_cast<double>(-log(sqrt_s / kt_min));
+    y2_max = static_cast<double>( log(sqrt_s / kt_min));
+
+    while (!is_below)
+    {
+        for (auto & r : rand)
+        {
+            r = unirand(*eng);
+        }
+
+        //kT with importance sampling:
+        //If kT follows the distribution f(x), then take an envelope g(x) s.t. f(x)<=g(x) everywhere.
+        //g(x) has a primitive G(x) and that has an inverse Ginv(x).
+        //Now take x = Ginv( G(kt_min) + R1*(G(kt_max) - G(kt_min)) ),
+        //and accept kt=x if f(x)>R2*g(x), where R1 and R2 are random numbers
+        kt = env_func.prim_inv(env_func.prim(kt_min) + rand[0]*( env_func.prim(kt_max) - env_func.prim(kt_min) ));
+        
+        //ys from uniform distribution
+        y1 = y1_min + rand[1]*(y1_max - y1_min);
+        y2 = y2_min + rand[2]*(y2_max - y2_min);
+
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params);
+
+        double total_xsection = 0;
+
+        for (auto xsect : xsection)
+        {
+            total_xsection += xsect.sigma;
+        }
+
+        ratio = total_xsection / env_func.func(kt);
+
+        if (ratio > 1)
+        {
+            std::cout<<std::endl<<"Limiting function smaller than cross section!!"<<std::endl;
+            std::cout<<"kT = "<<kt<<std::endl;
+            std::cout<<"y1 = "<<y1<<std::endl;
+            std::cout<<"y2 = "<<y2<<std::endl;
+            std::cout<<"total_xsection = "<<total_xsection<<std::endl;
+            std::cout<<"limit = "<<env_func.func(kt)<<std::endl<<std::endl;
+            std::cout<<"Maybe check the power-law behaviour."<<std::endl;
+            continue;
+        }
+
+        if (ratio > rand[3])
+        {
+            is_below = true;
+            double rand_xsect = total_xsection * unirand(*eng);
+            double sum = 0;
+            
+            for (auto xsect : xsection)
+            {
+                sum += xsect.sigma;
+                if (sum > rand_xsect)
+                {
+                    event.init1 = xsect.init1;
+                    event.init2 = xsect.init2;
+                    event.final1 = xsect.final1;
+                    event.final2 = xsect.final2;
+                    break;
+                }
+            }
+        }
+    }
+
+    event.kt = kt;
+    event.y1 = y1;
+    event.y2 = y2;
+
+    return event;
+}
+
 auto pqcd::generate_bin_NN_coll
 (
     nn_coll &coll,
@@ -466,6 +561,43 @@ auto pqcd::generate_bin_NN_coll
             params,
             power_law,
             envelope_maximum
+        ));
+    }
+}
+
+auto pqcd::generate_bin_NN_coll
+(
+    nn_coll &coll,
+    const double &sigma_jet,
+    const double &Tpp_b,
+    const double &kt0,
+    std::uniform_real_distribution<double> unirand, 
+    std::shared_ptr<std::mt19937> eng,
+    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    pqcd::sigma_jet_params params,
+    const double &power_law,
+    envelope_func &env_func
+) noexcept -> void
+{
+    //First generate the number of produced dijets from zero-truncated Poissonian distribution
+    uint_fast8_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
+    coll.dijets.reserve(nof_dijets);
+
+    const double sqrt_s = coll.getcr_sqrt_s();
+
+    for (uint_fast8_t i=0; i < nof_dijets; i++)
+    {
+        coll.dijets.push_back(pqcd::generate_2_to_2_scatt
+        (
+            sqrt_s,
+            kt0,
+            sqrt_s / 2.0,
+            unirand,
+            eng,
+            p_p_pdf,
+            params,
+            power_law,
+            env_func
         ));
     }
 }

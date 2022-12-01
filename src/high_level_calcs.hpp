@@ -33,7 +33,7 @@
 #include "typedefs.hpp"
 
 using variant_sigma_jet = std::variant<InterpMultilinear<3, double>, InterpMultilinear<2, double>, linear_interpolator, double>;
-using variant_envelope_max = std::variant<linear_interpolator, double>;
+using variant_envelope_pars = std::variant<linear_interpolator, envelope_func>;
 
 class calcs
 {
@@ -41,7 +41,7 @@ public:
     /**
      * @brief Finds the maximum of the differential sigma_jet in terms of pT, y1 and y2. 
      * 
-     * @param kt 
+     * @param kt
      * @param sqrt_s 
      * @param p_pdf 
      * @param params 
@@ -53,7 +53,7 @@ public:
         const double &sqrt_s,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
         pqcd::sigma_jet_params params
-    ) noexcept
+    ) noexcept -> std::tuple<double,double>
     {
         double max_dsigma;
         double error_est;
@@ -131,7 +131,163 @@ public:
 
         return std::make_tuple(std::move(max_dsigma), std::move(error_est));
     }
+ 
+    /**
+     * @brief Calculates the envelope function, its primitive and its primitives
+     * inverse for dsigma_jet/dkt.
+     * The envelope is of the form
+     * f(kt) = norm1/kt             if  kt <= switch_kt,
+     * f(kt) = norm2*kt^power       if  kt >  switch_kt,
+     * if kt0 < 2.0. If kt0 >= 2.0, the ~1/kt part is not needed.
+     * 
+     * @param kt0 k_T cutoff value for the dsigma (GeV)
+     * @param sqrt_s sqrt(s) for the dsigma (GeV)
+     * @param p_pdf LHAPDF PDF object to calculate the dsigma with
+     * @param jet_params collection of parameters for the dsigma 
+     * @return auto an object holding the envelope function and its inverse
+     */
+    static auto calculate_envelope_params
+    (
+        const double &kt0, 
+        const double &sqrt_s,
+        std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+        pqcd::sigma_jet_params jet_params
+    ) noexcept
+    {
+        // How tight we want the envelope to be, lower values == faster but more prone to error
+        double extra = 1.05;
 
+        double env_min_kt=kt0;
+        double env_norm1=0;
+        double env_norm2=0;
+        double env_power=0;
+        double env_switch_kt=0;
+        double env_prim_integ_constant{0};
+        double env_prim_switch_y{0};
+        std::function<double(const double&)> env_func;
+        std::function<double(const double&)> env_prim;
+        std::function<double(const double&)> env_prim_inv;
+
+
+        if (kt0 < 2.0)
+        {
+            //Calculate the normalization for the ~1/kt part
+            double dummy_kt0 = 1.0;
+            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params);
+            env_norm1 = (max_dsigma + fabs(err)) * extra;
+
+            //Calculate parameters for the a*kt^b part
+            double kt1 = 2.0;
+            double kt2 = 3.0;
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
+            double logkt1 = std::log(kt1);
+            double logkt2 = std::log(kt2);
+            double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
+            double logy2 = std::log((max_dsigma2 + fabs(err2)) * extra);
+            env_norm2 = std::exp(-(logkt2*logy1 - logkt1*logy2)/(logkt1 - logkt2)); 
+            env_power = (logy1 - logy2)/(logkt1 - logkt2); 
+
+            //Calculate the location of the knee
+            env_switch_kt = std::pow(env_norm2/env_norm1, -1/(1+env_power));
+
+            env_func = [ktx=env_switch_kt, A=env_norm1, a=env_norm2, b=env_power](const double &kt)
+            {
+                if (kt <= ktx)
+                {
+                    return A/kt;
+                }
+                else
+                {
+                    return a*std::pow(kt,b);
+                }
+            };
+
+            //Calculate the primitive for the envelope
+            //The integration constant to make the primitive continuous
+            auto dummy_a = (env_norm2/(1+env_power))*std::pow(env_switch_kt,1+env_power);
+            auto dummy_b = env_norm1*std::log(env_switch_kt/env_min_kt);
+            env_prim_integ_constant = dummy_a - dummy_b;
+
+            env_prim = [ktx=env_switch_kt, A=env_norm1, a=env_norm2, b=env_power, lb=env_min_kt, c=env_prim_integ_constant]
+            (const double &kt)
+            {
+                if (kt <= ktx)
+                {
+                    return A*std::log(kt/lb);
+                }
+                else
+                {
+                    return (a/(1+b))*std::pow(kt,1+b) - c;
+                }
+            };
+
+            //Calculate the inverse of the primitive
+            env_prim_switch_y = env_prim(env_switch_kt);
+
+            env_prim_inv = [sx=env_prim_switch_y, A=env_norm1, a=env_norm2, b=env_power, lb=env_min_kt, c=env_prim_integ_constant]
+            (const double &s)
+            {
+                if (s <= sx)
+                {
+                    return lb*std::exp(s/A);
+                }
+                else
+                {
+                    return std::pow((c+s)*(1+b)/a, 1.0/(1+b));
+                }
+            };
+        }
+        else //If kt0>2.0, we don't need the ~1/kt part
+        {
+            //Calculate parameters for the a*kt^b part
+            double kt1 = env_min_kt;
+            double kt2 = env_min_kt + 1.0;
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
+            double logkt1 = std::log(kt1);
+            double logkt2 = std::log(kt2);
+            double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
+            double logy2 = std::log((max_dsigma2 + fabs(err2)) * extra);
+            env_norm2 = std::exp(-(logkt2*logy1 - logkt1*logy2)/(logkt1 - logkt2)); 
+            env_power = (logy1 - logy2)/(logkt1 - logkt2); 
+
+            env_func = [a=env_norm2, b=env_power](const double &kt)
+            {
+                return a*std::pow(kt,b);
+            };
+
+            //Calculate the primitive for the envelope
+            //The integration constant so that G(kt0)=0
+            env_prim_integ_constant = (env_norm2/(1+env_power))*std::pow(env_min_kt,1+env_power);
+
+            env_prim = [a=env_norm2, b=env_power, c=env_prim_integ_constant](const double &kt)
+            {
+                return (a/(1+b))*std::pow(kt,1+b) - c;
+            };
+
+            //Calculate the inverse of the primitive
+            env_prim_inv = [a=env_norm2, b=env_power, c=env_prim_integ_constant](const double &s)
+            {
+                return std::pow((c+s)*(1+b)/a, 1.0/(1+b));
+            };
+        }
+
+        return envelope_func
+            {
+                env_min_kt,
+                env_norm1,
+                env_norm2,
+                env_power,
+                env_switch_kt,
+                env_prim_integ_constant,
+                env_prim_switch_y,
+                env_func,
+                env_prim,
+                env_prim_inv
+            };
+    }
+    
     static auto calculate_sigma_jets_for_MC
     (
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
@@ -295,7 +451,7 @@ public:
         double,
         variant_sigma_jet,
         std::optional<std::vector<double> >,
-        variant_envelope_max,
+        variant_envelope_pars,
         std::optional<std::vector<double> >
     >
     {
@@ -318,8 +474,7 @@ public:
                 dijet_norm = sigma_jet;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                double envelope_maximum = 2*(max_dsigma + fabs(err))*pow(kt0,power_law);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -327,7 +482,7 @@ public:
                         dijet_norm,
                         variant_sigma_jet(sigma_jet),
                         std::nullopt,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(env_params),
                         std::nullopt
                     );
             }
@@ -355,7 +510,7 @@ public:
                         dijet_norm,
                         variant_sigma_jet(sigma_jet),
                         mand_ss,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(envelope_maximum),
                         sqrt_ss
                     );
             }
@@ -374,8 +529,7 @@ public:
                 dijet_norm = sigma_jet;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                double envelope_maximum = 4*(max_dsigma + fabs(err))*pow(kt0,power_law);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -383,7 +537,7 @@ public:
                         dijet_norm,
                         variant_sigma_jet(sigma_jet),
                         std::nullopt,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(env_params),
                         std::nullopt
                     );
             }
@@ -411,7 +565,7 @@ public:
                         dijet_norm,
                         variant_sigma_jet(sigma_jet),
                         mand_ss,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(envelope_maximum),
                         sqrt_ss
                     );
             }
@@ -431,8 +585,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                double envelope_maximum = 2*(max_dsigma + fabs(err))*1.05*pow(kt0,power_law);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -440,7 +593,7 @@ public:
                         dijet_norm,
                         std::move(sigma_jet),
                         std::nullopt,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(env_params),
                         std::nullopt
                     );
             }
@@ -473,8 +626,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto [max_dsigma, err] = calcs::find_max_dsigma(kt0, sqrt_s, p_pdf, jet_params);
-                double envelope_maximum = (max_dsigma + fabs(err))*1.05*pow(kt0,power_law);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -482,7 +634,7 @@ public:
                         dijet_norm,
                         std::move(sigma_jet),
                         std::nullopt,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(env_params),
                         std::nullopt
                     );
             }
@@ -514,7 +666,7 @@ public:
                         dijet_norm,
                         std::move(sigma_jet),
                         std::nullopt,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(envelope_maximum),
                         sqrt_ss
                     );
             }
@@ -560,7 +712,7 @@ public:
                         dijet_norm,
                         std::move(sigma_jet),
                         std::nullopt,
-                        variant_envelope_max(envelope_maximum),
+                        variant_envelope_pars(envelope_maximum),
                         sqrt_ss
                     );
             }
@@ -582,7 +734,7 @@ public:
         const double &kt0,
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
-        variant_envelope_max &envelope_maximums,
+        variant_envelope_pars &env_func,
         const bool &verbose
     ) noexcept -> void
     {
@@ -636,31 +788,43 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double sigma_jet;
-                    double envelope_maximum;
                     if (AA_params.reduce_nucleon_energies)
                     {
                         sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
-                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
+                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                    
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            envelope_maximum
+                        );
                     }
                     else //Single sigma_jet
                     {
                         sigma_jet = std::get<double>(sigma_jets);
-                        envelope_maximum = std::get<double>(envelope_maximums);
+                        auto env_func_ = std::get<envelope_func>(env_func);
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            env_func_
+                        );
                     }
-                    
-                    pqcd::generate_bin_NN_coll
-                    (
-                        newpair, 
-                        sigma_jet, 
-                        AA_params.Tpp(newpair.getcr_bsquared()), 
-                        kt0,
-                        unirand, 
-                        eng,
-                        p_p_pdf,
-                        dsigma_params,
-                        power_law,
-                        envelope_maximum
-                    );
                     
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -701,29 +865,41 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double envelope_maximum;
-                    
                     if (AA_params.reduce_nucleon_energies)
                     {
-                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
-                    }
-                    else
-                    {
-                        envelope_maximum = std::get<double>(envelope_maximums);
-                    }
+                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
                     
-                    pqcd::generate_bin_NN_coll
-                    (
-                        newpair, 
-                        sigma_jet, 
-                        AA_params.Tpp(newpair.getcr_bsquared()), 
-                        kt0,
-                        unirand, 
-                        eng,
-                        p_p_pdf,
-                        dsigma_params,
-                        power_law,
-                        envelope_maximum
-                    );
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            envelope_maximum
+                        );
+                    }
+                    else //Single sigma_jet
+                    {
+                        auto env_func_ = std::get<envelope_func>(env_func);
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            env_func_
+                        );
+                    }
                     
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -760,7 +936,7 @@ public:
         const double &kt0,
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
-        variant_envelope_max &envelope_maximums,
+        variant_envelope_pars &env_func,
         const bool &verbose
     ) noexcept -> void
     {
@@ -845,19 +1021,16 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double sigma_jet;
-                    double envelope_maximum;
                     if (AA_params.reduce_nucleon_energies)
                     {
                         array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
                         sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
-                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
                     }
                     else //Single sigma_jet
                     {
                         array<double,2> args{*sum_tppa, *sum_tppb};
                         sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
                         //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
-                        envelope_maximum = std::get<double>(envelope_maximums);
                     }
 
                     const uint_fast16_t NA = dsigma_params.d_params.A, 
@@ -877,21 +1050,42 @@ public:
 
                     dsigma_params.d_params.rA_spatial = rA_spatial_;
                     dsigma_params.d_params.rB_spatial = rB_spatial_;
-                    
-                    pqcd::generate_bin_NN_coll
-                    (
-                        newpair, 
-                        sigma_jet, 
-                        AA_params.Tpp(newpair.getcr_bsquared()), 
-                        kt0,
-                        unirand, 
-                        eng,
-                        p_p_pdf,
-                        dsigma_params,
-                        power_law,
-                        envelope_maximum
-                    );
-                    
+
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            envelope_maximum
+                        );
+                    }
+                    else
+                    {
+                        auto env_func_ = std::get<envelope_func>(env_func);
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            env_func_
+                        );
+                    }
+
                     if (AA_params.reduce_nucleon_energies)
                     {
                         newpair.reduce_energy_and_push_end_states_to_collider_frame();
@@ -933,17 +1127,6 @@ public:
                 }
                 if (AA_params.calculate_end_state)
                 {
-                    double envelope_maximum;
-
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        envelope_maximum = std::get<linear_interpolator>(envelope_maximums).value_at(newpair.getcr_sqrt_s());
-                    }
-                    else
-                    {
-                        envelope_maximum = std::get<double>(envelope_maximums);
-                    }
-
                     const uint_fast16_t NA = dsigma_params.d_params.A, 
                                         NB = dsigma_params.d_params.B;
                     //c=A*(R-1)/TAA(0)
@@ -962,19 +1145,40 @@ public:
                     dsigma_params.d_params.rA_spatial = rA_spatial_;
                     dsigma_params.d_params.rB_spatial = rB_spatial_;
 
-                    pqcd::generate_bin_NN_coll
-                    (
-                        newpair, 
-                        sigma_jet, 
-                        AA_params.Tpp(newpair.getcr_bsquared()), 
-                        kt0,
-                        unirand, 
-                        eng,
-                        p_p_pdf,
-                        dsigma_params,
-                        power_law,
-                        envelope_maximum
-                    );
+                    if (AA_params.reduce_nucleon_energies)
+                    {
+                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            envelope_maximum
+                        );
+                    }
+                    else
+                    {
+                        auto env_func_ = std::get<envelope_func>(env_func);
+                        pqcd::generate_bin_NN_coll
+                        (
+                            newpair, 
+                            sigma_jet, 
+                            AA_params.Tpp(newpair.getcr_bsquared()), 
+                            kt0,
+                            unirand, 
+                            eng,
+                            p_p_pdf,
+                            dsigma_params,
+                            power_law,
+                            env_func_
+                        );
+                    }
 
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -1009,7 +1213,7 @@ public:
         const double &kt0,
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
-        variant_envelope_max &envelope_maximums,
+        variant_envelope_pars &env_func,
         const bool &verbose
     ) noexcept -> void
     {
@@ -1028,7 +1232,7 @@ public:
                 kt0,
                 p_p_pdf,
                 power_law,
-                envelope_maximums,
+                env_func,
                 verbose
             );
         }
@@ -1047,7 +1251,7 @@ public:
                 kt0,
                 p_p_pdf,
                 power_law,
-                envelope_maximums,
+                env_func,
                 verbose
             );
         }

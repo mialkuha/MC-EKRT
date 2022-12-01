@@ -303,6 +303,19 @@ public:
         double &envelope_maximum
       ) noexcept -> dijet_specs;
 
+    static auto generate_2_to_2_scatt
+      (
+        const double &sqrt_s,
+        const double &kt_min,
+        const double &kt_max,
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        pqcd::sigma_jet_params params,
+        const double &power_law,
+        envelope_func &env_func
+      ) noexcept -> dijet_specs;
+
     static auto generate_bin_NN_coll
       (
         nn_coll &coll,
@@ -315,6 +328,20 @@ public:
         pqcd::sigma_jet_params params,
         const double &power_law,
         double &envelope_maximum
+      ) noexcept -> void;
+
+    static auto generate_bin_NN_coll
+      (
+        nn_coll &coll,
+        const double &sigma_jet,
+        const double &Tpp_b, 
+        const double &kt0,
+        std::uniform_real_distribution<double> unirand, 
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        pqcd::sigma_jet_params params,
+        const double &power_law,
+        envelope_func &env_func
       ) noexcept -> void;
 
     static auto sigma_jet_integrand

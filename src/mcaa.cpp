@@ -433,7 +433,7 @@ auto mcaa::run() -> void
         dijet_norm,
         sigma_jet,
         mand_s_array,
-        envelope_maximum,
+        env_func,
         sqrt_s_array
     ] = 
     calcs::prepare_sigma_jets
@@ -607,7 +607,7 @@ auto mcaa::run() -> void
             event_indexes.end(), 
             [&,verbose=this->verbose,
              &sigma_jet=sigma_jet,
-             &envelope_maximum=envelope_maximum,
+             &env_func=env_func,
              &colls_scatterings=colls_scatterings
             ](const uint_fast64_t index) 
             {
@@ -706,7 +706,7 @@ auto mcaa::run() -> void
                             this->kt0,
                             this->p_pdf,
                             this->power_law,
-                            envelope_maximum,
+                            env_func,
                             verbose
                         );
                         
