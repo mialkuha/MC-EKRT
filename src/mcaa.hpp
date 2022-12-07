@@ -217,9 +217,9 @@ private:
      */
     auto filter_end_state
     (
-    /*uint_fast64_t &nall,
+    uint_fast64_t &nall,
     uint_fast64_t &nmc,
-    uint_fast64_t &nsat,*/
+    uint_fast64_t &nsat,
         std::vector<nn_coll> &binary_collisions, 
         std::vector<dijet_with_coords> &filtered_scatterings,
         std::shared_ptr<std::mt19937> random_generator,

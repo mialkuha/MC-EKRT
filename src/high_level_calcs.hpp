@@ -599,9 +599,9 @@ public:
             }
             else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
             {
-                double tolerance=0.1,
-                    upper_sumTpp_limit=0.61, 
-                    lower_sumTpp_limit=0.01;
+                double tolerance=0.1;
+                double upper_sumTpp_limit=0.61;
+                double lower_sumTpp_limit=0.0008;
 
                 std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
                 variant_sigma_jet sigma_jet 
@@ -1085,6 +1085,7 @@ public:
                             env_func_
                         );
                     }
+                    std::cout<<std::endl<<*sum_tppa << std::endl << *sum_tppb<<std::endl;
 
                     if (AA_params.reduce_nucleon_energies)
                     {
