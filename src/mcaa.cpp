@@ -25,6 +25,7 @@ mcaa::mcaa
         p_rad_min,
         p_sigma_inel,
         p_sqrt_s,
+        p_T_AA_0_for_snpdfs,
         p_calculate_end_state,
         p_calculate_tata,
         p_are_ns_depleted,
@@ -75,6 +76,7 @@ mcaa::mcaa
     this->rad_min                    = p_rad_min;
     this->sigma_inel                 = p_sigma_inel;
     this->sqrt_s                     = p_sqrt_s;
+    this->T_AA_0                     = p_T_AA_0_for_snpdfs;
 
     this->verbose                    = false;
     this->kt02                       = p_kt0*p_kt0;
@@ -502,6 +504,23 @@ auto mcaa::run() -> void
     };
 
     if (this->verbose) std::cout<<"Done!"<<std::endl;
+
+    if (this->snPDFs && (this->T_AA_0 == 0.0))
+    {
+        std::cout<<"Calculating T_AA(0)"<<std::endl;
+
+        this->T_AA_0 = calcs::calculate_T_AA_0
+        (
+            this->nuc_params,
+            1e-4,
+            this->Tpp,
+            eng, 
+            radial_sampler, 
+            verbose
+        );
+
+        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+    }
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);

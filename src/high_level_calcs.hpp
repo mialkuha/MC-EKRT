@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef HIGH_LEVEL_CALCS_HPP
 #define HIGH_LEVEL_CALCS_HPP
@@ -9,6 +9,7 @@
 #include <future>
 #include <gsl/gsl_multimin.h>
 #include <iostream>
+#include <numeric>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -1393,7 +1394,7 @@ public:
     (
         const nucleon &nuc, 
         const std::vector<nucleon> &nucleus, 
-        const std::function<double(const double&)> Tpp
+        const std::function<double(const double&)> &Tpp
     ) noexcept -> double
     {
         double sum_tpp=0.0; //sum(T_pp(b_ii'))
@@ -1407,6 +1408,81 @@ public:
             sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
         }
         return sum_tpp;
+    }
+
+    static auto calculate_T_AA_0
+    (
+        const nucleus_generator::nucleus_params &nuc_params,
+        const double &rel_tolerance,
+        const std::function<double(const double&)> Tpp,
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<ars> radial_sampler,
+        const bool verbose
+    ) -> double
+    {
+        double rel_delta = 1.0;
+        double ave_T_AA_0 = 0.0;
+        uint_fast16_t blocks_calculated = 0;
+        
+        std::vector<uint_fast8_t> block_indexes(100);
+        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+        
+        do
+        {
+            std::vector<double> T_AA_0s(100);
+
+            std::for_each
+            (
+                std::execution::par, 
+                block_indexes.begin(), 
+                block_indexes.end(),
+                [&](const uint_fast8_t block_index) 
+                {
+                    std::vector<nucleon> nucl;
+                    std::vector<uint_fast8_t> nucl_indexes(208);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::vector<double> sum_tpps(208);
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng, 
+                            radial_sampler
+                        );
+
+                    std::for_each
+                    (
+                        std::execution::par, 
+                        nucl_indexes.begin(), 
+                        nucl_indexes.end(),
+                        [&](const uint_fast8_t index) 
+                        {
+                            sum_tpps[index] = calculate_sum_tpp(nucl[index], nucl, Tpp);
+                        }
+                    );
+
+                    T_AA_0s[block_index] = std::reduce(std::execution::par, sum_tpps.begin(), sum_tpps.end(), 0.0);
+                }
+            );
+
+            double block_average = std::reduce(std::execution::par, T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 100.0;
+
+            double old_ave = ave_T_AA_0; 
+            double dummy = ave_T_AA_0 * blocks_calculated;
+            blocks_calculated++;
+            ave_T_AA_0 = (dummy + block_average) / blocks_calculated;
+
+            rel_delta = std::abs(old_ave - ave_T_AA_0) / old_ave;
+
+            std::cout<<"\rT_AAs calculated: "<<blocks_calculated*100<<" current average: "<<ave_T_AA_0<<" last rel_delta: "<<rel_delta<<"            "<<std::flush;
+
+        } while (rel_delta > rel_tolerance);
+
+        std::cout<<std::endl;
+        return ave_T_AA_0;
     }
 
     

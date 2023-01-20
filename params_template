@@ -13,6 +13,7 @@ rad_max 30.0                     # (fm) nucleons' maximum distance from the cent
 rad_min 0.0                      # (fm) nucleons' minimum distance from the center of the nucleus
 sigma_inel 70.0                  # (mb) inelastic cross section of the event
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
+T_AA_0_for_snpdfs 0              # (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
 calculate_end_state true         # false=no jets will be calculated, only collisions
 calculate_tata true              # If TA(x)TA(x) should be calculated for each dijet (takes time)
 are_ns_depleted false            # Probably always false here, kept for testing purposes for now
@@ -23,11 +24,11 @@ is_pp false                      # If the run is proton-proton
 use_npdfs true                   # If there should be nuclear corrections in nucleus' PDFs
 is_mc_glauber true               # If true, nucleon-nucleon collisions are decided like with hard spheres
 is_mom_cons true                 # If the momentum conservation should be forced
-read_sigmajets_from_file false   # If the sigma_jets are precalculated
+read_sigmajets_from_file true   # If the sigma_jets are precalculated
 reduce_nucleon_energies false    # Momentum conservation by reducing nucleon energies after each collision. Breaks factorization
 proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
 is_saturation true               # If the EKRT saturation should be used
 save_endstate_jets true          # If all the jets should be saved in binary (see jet_reader.cpp)
 save_events_plaintext false      # If all the jets should be saved in plaintext
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
-use_snpdfs false                 # If the used nPDF should be spatially dependent or average
+use_snpdfs true                 # If the used nPDF should be spatially dependent or average

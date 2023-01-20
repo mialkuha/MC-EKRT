@@ -751,6 +751,7 @@ public:
         double rad_min{0.0};
         double sigma_inel{70.0};
         double sqrt_s{5020.0};
+        double T_AA_0_for_snpdfs{0.0};
         bool calculate_end_state{true};
         bool calculate_tata{true};
         bool are_ns_depleted{false};
@@ -833,6 +834,10 @@ public:
                 else if (param_name == "sqrt_s")
                 {
                     line_stream >> sqrt_s;
+                }
+                else if (param_name == "T_AA_0_for_snpdfs")
+                {
+                    line_stream >> T_AA_0_for_snpdfs;
                 }
                 else if (param_name == "calculate_end_state")
                 {
@@ -936,6 +941,7 @@ public:
                     rad_min,
                     sigma_inel,
                     sqrt_s,
+                    T_AA_0_for_snpdfs,
                     calculate_end_state,
                     calculate_tata,
                     are_ns_depleted,

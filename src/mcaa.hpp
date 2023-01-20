@@ -75,7 +75,8 @@ public:
     double rad_max{30.0};                  // (fm) nucleons' maximum distance from the center of the nucleus
     double rad_min{0.0};                   // (fm) nucleons' minimum distance from the center of the nucleus
     double sigma_inel{70.0};               // (mb) inelastic cross section of the event
-    double sqrt_s{5020};                   // (GeV) sqrt(s) for the hard process 
+    double sqrt_s{5020.0};                 // (GeV) sqrt(s) for the hard process 
+    double T_AA_0{0.0};                    // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
 
 
     // PUBLIC METHODS /////////////////////////////////////////////////////////////////////////////////////////////////
