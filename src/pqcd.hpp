@@ -280,7 +280,8 @@ public:
       const double &y1, 
       const double &y2,
       std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-      pqcd::sigma_jet_params sigma_params
+      pqcd::sigma_jet_params sigma_params,
+      bool debug = false //true prints the calculated processes
     ) noexcept -> std::vector<xsection_id>;
 
     static auto throw_0_truncated_poissonian

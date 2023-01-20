@@ -15,6 +15,11 @@
 #include "eps09.cxx"
 #pragma GCC diagnostic pop
 
+static int glob_counter = 0;
+static int glob_counter2 = 0;
+static int glob_all = 0;
+static int glob_all2 = 0;
+
 auto pqcd::diff_sigma::make_pdfs
 (
     const double &x1, 
@@ -146,6 +151,45 @@ auto pqcd::diff_sigma::make_pdfs
         f_ai_x2[1] = ZoA * ub + NoA * db;
         f_ai_x2[2] = ZoA * db + NoA * ub;
     }
+
+
+    bool negative = false;
+    for (auto & f : f_i_x1)
+    {
+        if (f<0)
+        {
+            f = 0.0;
+            negative = true;
+        }
+    }
+    for (auto & f : f_i_x2)
+    {
+        if (f<0)
+        {
+            f = 0.0;
+            negative = true;
+        }
+    }
+    for (auto & f : f_ai_x1)
+    {
+        if (f<0)
+        {
+            f = 0.0;
+            negative = true;
+        }
+    }
+    for (auto & f : f_ai_x2)
+    {
+        if (f<0)
+        {
+            f = 0.0;
+            negative = true;
+        }
+    }
+    /*if (negative)
+    {
+        std::cout<<++glob_counter<<std::endl;
+    }*/
 
     return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);
 }
@@ -481,8 +525,16 @@ auto pqcd::generate_2_to_2_scatt
 
         double total_xsection = 0;
 
+        int how_many = 0;
+        int negatives = 0;
+
         for (auto xsect : xsection)
         {
+            if (xsect.sigma < 0)
+            {
+                negatives++;
+            }
+            how_many++;
             total_xsection += xsect.sigma;
         }
 
@@ -502,6 +554,12 @@ auto pqcd::generate_2_to_2_scatt
 
         if (ratio > rand[3])
         {
+            ++glob_all;
+            if (negatives>0)
+            {
+                //pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, true);
+            std::cout<<"found dijet, "<<negatives<<" of "<<how_many<<" x-sections were negative. Global: "<<++glob_counter<<" of "<<glob_all<<std::endl;
+            }
             is_below = true;
             double rand_xsect = total_xsection * unirand(*eng);
             double sum = 0;
@@ -950,7 +1008,8 @@ auto pqcd::diff_cross_section_2jet
     const double &y1, 
     const double &y2,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    pqcd::sigma_jet_params sigma_params
+    pqcd::sigma_jet_params sigma_params,
+    bool debug// = false //true prints the calculated processes
 ) noexcept -> std::vector<xsection_id>
 {
     std::vector<xsection_id> xsection;
@@ -959,7 +1018,7 @@ auto pqcd::diff_cross_section_2jet
     const particle_id num_flavors = static_cast<particle_id>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
     double xsect;
     xsection_id process;
-    bool debug = false; //true prints the calculated processes
+    
 
     //Mandelstam variables for the subprocesses    
     const double kt2 = kt * kt; 
@@ -1024,6 +1083,66 @@ auto pqcd::diff_cross_section_2jet
               diff_params.rB_spatial
           );
 
+    bool negative = false;
+    glob_all2++;
+    for (auto f : f_i_x1)
+    {
+        if (f<0)
+        {
+            negative = true;
+        }
+    }
+    for (auto f : f_i_x2)
+    {
+        if (f<0)
+        {
+            negative = true;
+        }
+    }
+    for (auto f : f_ai_x1)
+    {
+        if (f<0)
+        {
+            negative = true;
+        }
+    }
+    for (auto f : f_ai_x2)
+    {
+        if (f<0)
+        {
+            negative = true;
+        }
+    }
+    if (negative)
+    {
+        std::cout<<"Modified PDFs: "<<++glob_counter2<<" of "<<glob_all2<<std::endl;
+    }
+          
+    if (debug)
+    {
+        std::cout << "x1="<<x1<<" x2="<<x2<<" q2="<<q2<< std::endl;
+        std::cout << "f_i_x1 : "<< std::endl;
+        for ( auto f : f_i_x1)
+        {
+            std::cout<<f<<std::endl;
+        }
+        std::cout << "f_i_x2 : "<< std::endl;
+        for ( auto f : f_i_x2)
+        {
+            std::cout<<f<<std::endl;
+        }
+        std::cout << "f_ai_x1 : "<< std::endl;
+        for ( auto f : f_ai_x1)
+        {
+            std::cout<<f<<std::endl;
+        }
+        std::cout << "f_ai_x2 : "<< std::endl;
+        for ( auto f : f_ai_x2)
+        {
+            std::cout<<f<<std::endl;
+        }
+    }
+
     xsection.reserve(176); //176 different processes if n:o quark flavors = 5
 
     ///* GG -> XX
@@ -1038,7 +1157,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "gg -> gg: 0+0 -> 0+0" << std::endl;
+            std::cout << "gg -> gg: 0+0 -> 0+0" << " : " << xsect << std::endl;
         }
     }
 
@@ -1054,7 +1173,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "gg -> qaq: 0+0 -> " << static_cast<int_fast8_t>(flavor) << '+' << -static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "gg -> qaq: 0+0 -> " << static_cast<int>(flavor) << '+' << -static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
     }
     //*/
@@ -1072,7 +1191,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "gq -> gq: 0+" << static_cast<int_fast8_t>(flavor) << " -> 0+" << static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "gq -> gq: 0+" << static_cast<int>(flavor) << " -> 0+" << static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
 
         xsect = units * f_i_x1[0] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
@@ -1084,7 +1203,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "gq -> gq: 0+" << -static_cast<int_fast8_t>(flavor) << " -> 0+" << -static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "gq -> gq: 0+" << -static_cast<int>(flavor) << " -> 0+" << -static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
 
         xsect = units * f_i_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
@@ -1096,7 +1215,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "gq -> gq: " << static_cast<int_fast8_t>(flavor) << "+0 -> " << static_cast<int_fast8_t>(flavor) << "+0" << std::endl;
+            std::cout << "gq -> gq: " << static_cast<int>(flavor) << "+0 -> " << static_cast<int>(flavor) << "+0" << " : " << xsect << std::endl;
         }
 
         xsect = units * f_ai_x1[flavor] * f_i_x2[0] * pqcd::diff_sigma::sigma_gq_gq(s_hat, t_hat, u_hat);
@@ -1108,7 +1227,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "gq -> gq: " << -static_cast<int_fast8_t>(flavor) << "+0 -> " << -static_cast<int_fast8_t>(flavor) << "+0" << std::endl;
+            std::cout << "gq -> gq: " << -static_cast<int>(flavor) << "+0 -> " << -static_cast<int>(flavor) << "+0" << " : " << xsect << std::endl;
         }
     }
 
@@ -1126,7 +1245,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "qiqi -> qiqi: " << static_cast<int_fast8_t>(flavor) << '+' << static_cast<int_fast8_t>(flavor) << " -> " << static_cast<int_fast8_t>(flavor) << '+' << static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "qiqi -> qiqi: " << static_cast<int>(flavor) << '+' << static_cast<int>(flavor) << " -> " << static_cast<int>(flavor) << '+' << static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
 
         xsect = units * 0.5 * f_ai_x1[flavor] * f_ai_x2[flavor] * pqcd::diff_sigma::sigma_qiqi_qiqi(s_hat, t_hat, u_hat);
@@ -1138,7 +1257,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "qiqi -> qiqi: " << -static_cast<int_fast8_t>(flavor) << '+' << -static_cast<int_fast8_t>(flavor) << " -> " << -static_cast<int_fast8_t>(flavor) << '+' << -static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "qiqi -> qiqi: " << -static_cast<int>(flavor) << '+' << -static_cast<int>(flavor) << " -> " << -static_cast<int>(flavor) << '+' << -static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
     }
 
@@ -1158,7 +1277,7 @@ auto pqcd::diff_cross_section_2jet
                 xsection.push_back(process);
                 if (debug)
                 {
-                    std::cout << "qiqj -> qiqj: " << static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << " -> " << static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << std::endl;
+                    std::cout << "qiqj -> qiqj: " << static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << " -> " << static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << " : " << xsect << std::endl;
                 }
 
                 xsect = units * f_ai_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
@@ -1170,7 +1289,7 @@ auto pqcd::diff_cross_section_2jet
                 xsection.push_back(process);
                 if (debug)
                 {
-                    std::cout << "qiqj -> qiqj: " << -static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << " -> " << -static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << std::endl;
+                    std::cout << "qiqj -> qiqj: " << -static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << " -> " << -static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << " : " << xsect << std::endl;
                 }
 
                 xsect = units * f_i_x1[flavor1] * f_ai_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
@@ -1182,7 +1301,7 @@ auto pqcd::diff_cross_section_2jet
                 xsection.push_back(process);
                 if (debug)
                 {
-                    std::cout << "qiqj -> qiqj: " << static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << " -> " << static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << std::endl;
+                    std::cout << "qiqj -> qiqj: " << static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << " -> " << static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor2) << " : " << xsect << std::endl;
                 }
 
                 xsect = units * f_ai_x1[flavor1] * f_i_x2[flavor2] * pqcd::diff_sigma::sigma_qiqj_qiqj(s_hat, t_hat, u_hat);
@@ -1194,7 +1313,7 @@ auto pqcd::diff_cross_section_2jet
                 xsection.push_back(process);
                 if (debug)
                 {
-                    std::cout << "qiqj -> qiqj: " << -static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << " -> " << -static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << std::endl;
+                    std::cout << "qiqj -> qiqj: " << -static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << " -> " << -static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor2) << " : " << xsect << std::endl;
                 }
             }
         }
@@ -1212,7 +1331,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "qiaqi -> qiaqi: " << static_cast<int_fast8_t>(flavor) << '+' << -static_cast<int_fast8_t>(flavor) << " -> " << static_cast<int_fast8_t>(flavor) << '+' << -static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "qiaqi -> qiaqi: " << static_cast<int>(flavor) << '+' << -static_cast<int>(flavor) << " -> " << static_cast<int>(flavor) << '+' << -static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
 
         xsect = units * f_ai_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_qiaqi(s_hat, t_hat, u_hat);
@@ -1224,7 +1343,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "qiaqi -> qiaqi: " << -static_cast<int_fast8_t>(flavor) << '+' << static_cast<int_fast8_t>(flavor) << " -> " << -static_cast<int_fast8_t>(flavor) << '+' << static_cast<int_fast8_t>(flavor) << std::endl;
+            std::cout << "qiaqi -> qiaqi: " << -static_cast<int>(flavor) << '+' << static_cast<int>(flavor) << " -> " << -static_cast<int>(flavor) << '+' << static_cast<int>(flavor) << " : " << xsect << std::endl;
         }
     }
 
@@ -1240,7 +1359,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "qiaqi -> gg: " << static_cast<int_fast8_t>(flavor) << '+' << -static_cast<int_fast8_t>(flavor) << " -> " << 0 << '+' << 0 << std::endl;
+            std::cout << "qiaqi -> gg: " << static_cast<int>(flavor) << '+' << -static_cast<int>(flavor) << " -> " << 0 << '+' << 0 << " : " << xsect << std::endl;
         }
 
         xsect = units * 0.5 * f_ai_x1[flavor] * f_i_x2[flavor] * pqcd::diff_sigma::sigma_qiaqi_gg(s_hat, t_hat, u_hat);
@@ -1252,7 +1371,7 @@ auto pqcd::diff_cross_section_2jet
         xsection.push_back(process);
         if (debug)
         {
-            std::cout << "qiaqi -> gg: " << -static_cast<int_fast8_t>(flavor) << '+' << static_cast<int_fast8_t>(flavor) << " -> " << 0 << '+' << 0 << std::endl;
+            std::cout << "qiaqi -> gg: " << -static_cast<int>(flavor) << '+' << static_cast<int>(flavor) << " -> " << 0 << '+' << 0 << " : " << xsect << std::endl;
         }
     }
 
@@ -1272,7 +1391,7 @@ auto pqcd::diff_cross_section_2jet
                 xsection.push_back(process);
                 if (debug)
                 {
-                    std::cout << "qiaqi -> qjaqj: " << static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor1) << " -> " << static_cast<int_fast8_t>(flavor2) << '+' << -static_cast<int_fast8_t>(flavor2) << std::endl;
+                    std::cout << "qiaqi -> qjaqj: " << static_cast<int_fast8_t>(flavor1) << '+' << -static_cast<int_fast8_t>(flavor1) << " -> " << static_cast<int_fast8_t>(flavor2) << '+' << -static_cast<int_fast8_t>(flavor2) << " : " << xsect << std::endl;
                 }
 
                 xsect = units * f_ai_x1[flavor1] * f_i_x2[flavor1] * pqcd::diff_sigma::sigma_qiaqi_qjaqj(s_hat, t_hat, u_hat);
@@ -1284,7 +1403,7 @@ auto pqcd::diff_cross_section_2jet
                 xsection.push_back(process);
                 if (debug)
                 {
-                    std::cout << "qiaqi -> qjaqj: " << -static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor1) << " -> " << -static_cast<int_fast8_t>(flavor2) << '+' << static_cast<int_fast8_t>(flavor2) << std::endl;
+                    std::cout << "qiaqi -> qjaqj: " << -static_cast<int_fast8_t>(flavor1) << '+' << static_cast<int_fast8_t>(flavor1) << " -> " << -static_cast<int_fast8_t>(flavor2) << '+' << static_cast<int_fast8_t>(flavor2) << " : " << xsect << std::endl;
                 }
             }
         }

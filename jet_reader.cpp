@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cmath>
 #include <fstream>
 #include <iostream>
@@ -23,7 +24,7 @@ struct dijet
  
 int main()
 {
-    std::string filename = "jets_60_80_B_SAT_MC.dat";
+    std::string filename = "jets_60_80_example_name.dat";
     std::ifstream jet_file(filename, std::ios::in | std::ios::binary);
 
     if (!jet_file.is_open())
@@ -48,6 +49,9 @@ int main()
               << filename << " ..." << std::endl;
     events_jets.reserve(n_events);
 
+    uint_fast16_t n_bins = 20;
+    double largest_tata = 0;
+
     uint_fast64_t n_dijet_total = 0;
     for (uint_fast64_t i=0; i<n_events; i++)
     {
@@ -70,24 +74,65 @@ int main()
 
             jets.emplace_back(t01, t02, x, y, pt, y1, y2, phi, tata);
 			//std::cout<<t01<<' '<<t02<<' '<<x<<' '<<y<<' '<<pt<<' '<<y1<<' '<<y2<<' '<<phi<<' '<<tata<<std::endl;
+            if (largest_tata < tata)
+            {
+                largest_tata = tata;
+            }
         }
         events_jets.emplace_back(std::move(jets));
     }
     jet_file.close();
 
     std::cout << "Done! Read " << events_jets.size() << " events totaling "
-              << n_dijet_total << " dijets, the last one had "
-              << pt << " GeV pT"<<std::endl;
+              << n_dijet_total << " dijets, the largest tata was "
+              << largest_tata <<std::endl;
 
-    double pt_cumulant = 0;
+    double delta = largest_tata*1.01/n_bins;
+    std::ofstream smallest_pts;
+    smallest_pts.open("smallest_pts_60_80.csv");
+    for (uint i = 0; i < n_bins; i++)
+    {
+        smallest_pts << (i+1)*delta << ',';
+    }
+    smallest_pts << std::endl;
+
+    std::vector<std::vector<double> > pts_in_event
+    (
+        n_bins, 
+        std::vector<double>()
+    );
+
     for (auto event : events_jets)
     {
         for (auto dijet : event)
         {
-            pt_cumulant += dijet.pt;
+            //std::cout << dijet.tata << ' '; 
+            for (uint i = 0; i < n_bins; i++)
+            {
+                if ( (i+1)*delta > dijet.tata)
+                {
+                    //std::cout << (i+1)*delta << ' ' << ;
+                    pts_in_event[i].push_back(dijet.pt);
+                    break;
+                }
+            }
         }
+        
+        for (uint i = 0; i < n_bins; i++)
+        {
+            if (pts_in_event[i].size() != 0)
+            {
+                std::sort(pts_in_event[i].begin(),pts_in_event[i].end());
+                smallest_pts << pts_in_event[i][0] << ',';
+                pts_in_event[i].clear();
+            }
+            else
+            {
+                smallest_pts << "-1" << ',';
+            }
+        }
+        smallest_pts << std::endl;
     }
-    std::cout << "In all of the events, average jet had pT=" 
-              << pt_cumulant / n_dijet_total << " GeV"<<std::endl;
+    smallest_pts.close();
 }
 
