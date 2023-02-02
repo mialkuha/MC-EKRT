@@ -94,6 +94,7 @@ mcaa::mcaa
         this->proton_width_2 = (4.9 + 4*0.06*std::log(this->sqrt_s/90.0))/(FMGEV*FMGEV); //C. A. Flett, PhD thesis, U. Liverpool, 2021
         this->proton_width = std::sqrt(this->proton_width_2);
     }
+    std::cout<<"Proton width: "<<this->proton_width<<" fm"<<std::endl;
 
     this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
 
@@ -430,6 +431,23 @@ auto mcaa::run() -> void
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
 
+    if (this->snPDFs && (this->T_AA_0 == 0.0))
+    {
+        std::cout<<"Calculating T_AA(0)"<<std::endl;
+
+        this->T_AA_0 = calcs::calculate_T_AA_0
+        (
+            this->nuc_params,
+            1e-5,
+            this->Tpp,
+            eng, 
+            radial_sampler, 
+            verbose
+        );
+
+        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+    }
+
     auto
     [
         dijet_norm,
@@ -448,8 +466,11 @@ auto mcaa::run() -> void
         this->kt02, 
         this->kt0,
         this->power_law,
-        this->jet_params
+        this->jet_params,
+        this->T_AA_0,
+        "sigma_jet_grid_spatial_"+this->name+".dat" //TODO
     );
+
     if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
     {
 
@@ -486,6 +507,8 @@ auto mcaa::run() -> void
         }
     }
 
+    if (this->verbose) std::cout<<"Done!"<<std::endl;
+
     AA_collision_params coll_params
     {
     /*mc_glauber_mode=          */this->MC_Glauber,
@@ -500,27 +523,9 @@ auto mcaa::run() -> void
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
     /*energy_threshold=         */this->kt0,
-    /*nn_b2_max=                */nn_b2_max
+    /*nn_b2_max=                */nn_b2_max,
+    /*T_AA_0=                   */this->T_AA_0
     };
-
-    if (this->verbose) std::cout<<"Done!"<<std::endl;
-
-    if (this->snPDFs && (this->T_AA_0 == 0.0))
-    {
-        std::cout<<"Calculating T_AA(0)"<<std::endl;
-
-        this->T_AA_0 = calcs::calculate_T_AA_0
-        (
-            this->nuc_params,
-            1e-4,
-            this->Tpp,
-            eng, 
-            radial_sampler, 
-            verbose
-        );
-
-        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
-    }
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
@@ -955,8 +960,8 @@ auto mcaa::run() -> void
 
     if (save_endstate_jets)
     {
-        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.05},
-                                                                std::tuple<double,double>{0.25, 0.3},
+        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.02},
+                                                                std::tuple<double,double>{0.0, 0.05},
                                                                 std::tuple<double,double>{0.6, 0.8}};
 
         std::string name_pfs{this->name+".dat"};

@@ -90,7 +90,15 @@ struct AA_collision_params
   double sqrt_s;
   double energy_threshold;
   double nn_b2_max;
+  double T_AA_0;
 };
+
+
+inline bool almostEqual(double x, double y)    
+{    
+    double maxXYOne = std::max( { 1.0, std::abs(x) , std::abs(y) } ) ;
+    return std::abs(x - y) <= std::numeric_limits<double>::epsilon()*maxXYOne ;
+}
 
 struct coords {
  public:
@@ -162,6 +170,19 @@ struct coords {
   {
     os << co.x << "," << co.y << "," << co.z;
     return os;
+  }
+
+  friend std::ostream& operator==(std::ostream& os, const coords& co)
+  {
+    os << co.x << "," << co.y << "," << co.z;
+    return os;
+  }
+
+  friend bool operator==(const coords &lhs, const coords &rhs)
+  {
+    return almostEqual(lhs.x, rhs.x)&&
+           almostEqual(lhs.y, rhs.y)&&
+           almostEqual(lhs.z, rhs.z);
   }
 };
 

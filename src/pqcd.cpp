@@ -15,10 +15,15 @@
 #include "eps09.cxx"
 #pragma GCC diagnostic pop
 
-static int glob_counter = 0;
-static int glob_counter2 = 0;
-static int glob_all = 0;
-static int glob_all2 = 0;
+//static int glob_counter = 0;
+//static int glob_counter2 = 0;
+//static int glob_all = 0;
+//static int glob_all2 = 0;
+
+//static double g_rg_sum = 0;
+//static double g_ru_sum = 0;
+//static int g_r_tot = 0;
+//static std::mutex g_m;
 
 auto pqcd::diff_sigma::make_pdfs
 (
@@ -50,6 +55,8 @@ auto pqcd::diff_sigma::make_pdfs
     double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
     double ru = 1.0, rd = 1.0;
 
+    //double dummyg=0, dummyu=0;
+
     if (projectile_with_npdfs)
     {
         eps09(1, npdf_setnumber, static_cast<int>(A), x1, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
@@ -58,9 +65,20 @@ auto pqcd::diff_sigma::make_pdfs
 
         if (npdfs_spatial)
         {
+            //dummyg = rg;
+            //dummyu = ru;
+
             ru = rA_spatial(ru); rd = rA_spatial(rd); rus = rA_spatial(rus);
             rds = rA_spatial(rds); rs = rA_spatial(rs); rc = rA_spatial(rc); 
             rb = rA_spatial(rb); rt = rA_spatial(rt); rg = rA_spatial(rg);
+
+            //dummyg = (almostEqual(dummyg, 0))? 0.0 : (dummyg-rg)/dummyg;
+            //dummyu = (almostEqual(dummyu, 0))? 0.0 : (dummyu-ru)/dummyu;
+            
+            //const std::lock_guard<std::mutex> lock(g_m);
+            //g_rg_sum += dummyg;
+            //g_ru_sum += dummyu;
+            //g_r_tot++;
         }
     }
     std::array<double, 7> f_i_x1 = 
@@ -153,39 +171,39 @@ auto pqcd::diff_sigma::make_pdfs
     }
 
 
-    bool negative = false;
-    for (auto & f : f_i_x1)
-    {
-        if (f<0)
-        {
-            f = 0.0;
-            negative = true;
-        }
-    }
-    for (auto & f : f_i_x2)
-    {
-        if (f<0)
-        {
-            f = 0.0;
-            negative = true;
-        }
-    }
-    for (auto & f : f_ai_x1)
-    {
-        if (f<0)
-        {
-            f = 0.0;
-            negative = true;
-        }
-    }
-    for (auto & f : f_ai_x2)
-    {
-        if (f<0)
-        {
-            f = 0.0;
-            negative = true;
-        }
-    }
+    //bool negative = false;
+    //for (auto & f : f_i_x1)
+    //{
+    //    if (f<0)
+    //    {
+    //        f = 0.0;
+    //        negative = true;
+    //    }
+    //}
+    //for (auto & f : f_i_x2)
+    //{
+    //    if (f<0)
+    //    {
+    //        f = 0.0;
+    //        negative = true;
+    //    }
+    //}
+    //for (auto & f : f_ai_x1)
+    //{
+    //    if (f<0)
+    //    {
+    //        f = 0.0;
+    //        negative = true;
+    //    }
+    //}
+    //for (auto & f : f_ai_x2)
+    //{
+    //    if (f<0)
+    //    {
+    //        f = 0.0;
+    //        negative = true;
+    //    }
+    //}
     /*if (negative)
     {
         std::cout<<++glob_counter<<std::endl;
@@ -525,16 +543,16 @@ auto pqcd::generate_2_to_2_scatt
 
         double total_xsection = 0;
 
-        int how_many = 0;
-        int negatives = 0;
+        //int how_many = 0;
+        //int negatives = 0;
 
         for (auto xsect : xsection)
         {
-            if (xsect.sigma < 0)
-            {
-                negatives++;
-            }
-            how_many++;
+            //if (xsect.sigma < 0)
+            //{
+            //    negatives++;
+            //}
+            //how_many++;
             total_xsection += xsect.sigma;
         }
 
@@ -554,12 +572,12 @@ auto pqcd::generate_2_to_2_scatt
 
         if (ratio > rand[3])
         {
-            ++glob_all;
-            if (negatives>0)
-            {
-                //pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, true);
-            std::cout<<"found dijet, "<<negatives<<" of "<<how_many<<" x-sections were negative. Global: "<<++glob_counter<<" of "<<glob_all<<std::endl;
-            }
+            //++glob_all;
+            //if (negatives>0)
+            //{
+            //    //pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, true);
+            //std::cout<<"found dijet, "<<negatives<<" of "<<how_many<<" x-sections were negative. Global: "<<++glob_counter<<" of "<<glob_all<<std::endl;
+            //}
             is_below = true;
             double rand_xsect = total_xsection * unirand(*eng);
             double sum = 0;
@@ -658,6 +676,11 @@ auto pqcd::generate_bin_NN_coll
             env_func
         ));
     }
+    //if (g_r_tot%10000 == 0) 
+    //{
+    //    const std::lock_guard<std::mutex> lock(g_m);
+    //    std::cout<<"\raverage Rg - spatial: "<<g_rg_sum/g_r_tot<<" Rg - spatial: "<<g_rg_sum/g_r_tot<<" N: "<<g_r_tot<<"            "<<std::flush;
+    //}
 }
 
 auto pqcd::calculate_sigma_jet
@@ -870,7 +893,7 @@ auto pqcd::calculate_spatial_sigma_jet
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
 
-    const uint_fast16_t A = params.d_params.A, 
+    const uint_fast16_t A = params.d_params.A,
                         B = params.d_params.B;
 
     //c=A*(R-1)/TAA(0)
@@ -878,13 +901,23 @@ auto pqcd::calculate_spatial_sigma_jet
                  intA = 1.0 - scaA;
     const std::function<double(double const&)> 
         rA_spatial_ = [&](double const &r)
-            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+            {
+                auto dummy = r*scaA + intA;
+                return dummy; // no cutoff
+                // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                // return (dummy < 1/static_cast<double>(A) ) ? 1/static_cast<double>(A) : dummy; // cutoff at 1+cT < A
+            }; //r_s=1+c*sum(Tpp)
 
     const double scaB = static_cast<double>(B) * sum_tppb / tBB_0, 
                  intB = 1.0 - scaB;
     const std::function<double(double const&)> 
         rB_spatial_ = [&](double const &r)
-            {return r*scaB + intB;};
+            {
+                auto dummy = r*scaB + intB;
+                return dummy; // no cutoff
+                // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                // return (dummy < 1/static_cast<double>(B) ) ? 1/static_cast<double>(B) : dummy; // cutoff at 1+cT < B
+            };
 
     params.d_params.rA_spatial = rA_spatial_;
     params.d_params.rB_spatial = rB_spatial_;
@@ -1083,40 +1116,40 @@ auto pqcd::diff_cross_section_2jet
               diff_params.rB_spatial
           );
 
-    bool negative = false;
-    glob_all2++;
-    for (auto f : f_i_x1)
-    {
-        if (f<0)
-        {
-            negative = true;
-        }
-    }
-    for (auto f : f_i_x2)
-    {
-        if (f<0)
-        {
-            negative = true;
-        }
-    }
-    for (auto f : f_ai_x1)
-    {
-        if (f<0)
-        {
-            negative = true;
-        }
-    }
-    for (auto f : f_ai_x2)
-    {
-        if (f<0)
-        {
-            negative = true;
-        }
-    }
-    if (negative)
-    {
-        std::cout<<"Modified PDFs: "<<++glob_counter2<<" of "<<glob_all2<<std::endl;
-    }
+    //bool negative = false;
+    //glob_all2++;
+    //for (auto f : f_i_x1)
+    //{
+    //    if (f<0)
+    //    {
+    //        negative = true;
+    //    }
+    //}
+    //for (auto f : f_i_x2)
+    //{
+    //    if (f<0)
+    //    {
+    //        negative = true;
+    //    }
+    //}
+    //for (auto f : f_ai_x1)
+    //{
+    //    if (f<0)
+    //    {
+    //        negative = true;
+    //    }
+    //}
+    //for (auto f : f_ai_x2)
+    //{
+    //    if (f<0)
+    //    {
+    //        negative = true;
+    //    }
+    //}
+    //if (negative)
+    //{
+    //    std::cout<<"Modified PDFs: "<<++glob_counter2<<" of "<<glob_all2<<std::endl;
+    //}
           
     if (debug)
     {

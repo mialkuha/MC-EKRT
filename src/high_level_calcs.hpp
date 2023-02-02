@@ -445,7 +445,9 @@ public:
         const double &kt02, 
         const double &kt0, 
         const double &power_law,
-        pqcd::sigma_jet_params jet_params
+        pqcd::sigma_jet_params jet_params,
+        const double &ave_T_AA_0,
+        const std::string &s_jet_file_name //TODO
     ) ->
     std::tuple
     <
@@ -576,7 +578,7 @@ public:
             if (!reduce_nucleon_energies && read_sigmajets_from_file) //sigma_jet does not depend on energy
             {
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
-                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial("sigma_jet_grid_spatial.dat", jet_params.d_params.K_factor);
+                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial(s_jet_file_name, jet_params.d_params.K_factor);
                 std::cout<<"done!"<<std::endl;
 
                 auto other_params = jet_params;
@@ -600,8 +602,8 @@ public:
             }
             else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
             {
-                double tolerance=0.1,
-                    upper_sumTpp_limit=0.61, 
+                double tolerance=0.05,
+                    upper_sumTpp_limit=/*0.21033,//*/0.61, 
                     lower_sumTpp_limit=0.01;
 
                 std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
@@ -614,7 +616,8 @@ public:
                             kt02, 
                             jet_params, 
                             upper_sumTpp_limit, 
-                            lower_sumTpp_limit
+                            lower_sumTpp_limit,
+                            ave_T_AA_0
                         );
                 std::cout<<"done!"<<std::endl;
 
@@ -944,8 +947,8 @@ public:
 
         uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
-        double tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-        double tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+        double tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : AA_params.T_AA_0;//29.0851;//34.0125;//29.9965;//29.5494;//30.5;//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+        double tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : AA_params.T_AA_0;//29.0851;//34.0125;//29.9965;//29.5494;//30.5;//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
         
         if (verbose)
         {
@@ -1041,13 +1044,23 @@ public:
                                 intA = 1.0 - scaA;
                     const std::function<double(double const&)> 
                         rA_spatial_ = [&](double const &r)
-                            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+                            {
+                                auto dummy = r*scaA + intA;
+                                return dummy; // no cutoff
+                                // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                            }; //r_s=1+c*sum(Tpp)
 
                     const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
                                 intB = 1.0 - scaB;
                     const std::function<double(double const&)> 
                         rB_spatial_ = [&](double const &r)
-                            {return r*scaB + intB;};
+                            {
+                                auto dummy = r*scaB + intB;
+                                return dummy; // no cutoff
+                                // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
+                            };
 
                     dsigma_params.d_params.rA_spatial = rA_spatial_;
                     dsigma_params.d_params.rB_spatial = rB_spatial_;
@@ -1389,6 +1402,33 @@ public:
 
         return std::make_tuple(pro, tar);
     }
+
+    static auto ta_ws_folded
+    (
+        const double &r
+    ) noexcept -> double
+    {
+        if ((r > 0)&&(r < 2.99327))
+        {
+            return 2.1033+0.0387749*r-0.0641807*std::pow(r,1.5);
+        }
+        else if (r < 6.72925)
+        {
+            return 5.07336-2.16827*r+2.72582*std::pow(std::log(r),2);
+        }
+        else if (r < 9.12769)
+        {
+            return 13.4654+1.24837*r-11.2333*std::log(r);
+        }
+        else if (r < 15.6368)
+        {
+            return 0.00718685-0.000521874*r;
+        }
+        else 
+        {
+            return 0.0;
+        }
+    }
     
     static auto calculate_sum_tpp
     (
@@ -1397,17 +1437,38 @@ public:
         const std::function<double(const double&)> &Tpp
     ) noexcept -> double
     {
-        double sum_tpp=0.0; //sum(T_pp(b_ii'))
-        uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
-
-        auto [x1, y1, z1] = nuc.co;
-
-        for (uint_fast16_t i=0; i<A; i++)
+        double TA=0.0; //sum(T_pp(b_ii'))
+        
+        coords com{0.0,0.0,0.0}; //center of mass
+        for (const auto& n : nucleus)
         {
-            auto [x2, y2, z2] = nucleus.at(i).co;
-            sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
+            com += n.co;
         }
-        return sum_tpp;
+        com /= static_cast<double>(nucleus.size());
+        
+        auto r_3vec = nuc.co - com;
+        
+        TA = ta_ws_folded(std::pow(r_3vec.x*r_3vec.x + r_3vec.y*r_3vec.y,0.5))*0.1;
+        return TA;
+
+        // double sum_tpp=0.0; //sum(T_pp(b_ii'))
+        // uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
+        
+        // auto [x1, y1, z1] = nuc.co;
+        
+        // for (uint_fast16_t i=0; i<A; i++)
+        // {
+        //     auto [x2, y2, z2] = nucleus.at(i).co;
+        //     // if ( nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
+        //     // {
+        //     //    continue;
+        //     // }
+        //     sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
+        // }
+        // return sum_tpp;
+        
+        // TA = std::min(sum_tpp, TA);
+        // return TA;
     }
 
     static auto calculate_T_AA_0
@@ -1420,16 +1481,22 @@ public:
         const bool verbose
     ) -> double
     {
-        double rel_delta = 1.0;
         double ave_T_AA_0 = 0.0;
-        uint_fast16_t blocks_calculated = 0;
         
-        std::vector<uint_fast8_t> block_indexes(100);
+        std::vector<uint_fast8_t> block_indexes(200);
         std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        
+        //int inte=0;
+        //do
+        //{
+        //int expo=0;
+        //do
+        //{
+        double rel_delta = 1.0;
+        ave_T_AA_0 = 0.0;
+        uint_fast16_t blocks_calculated = 0;
         do
         {
-            std::vector<double> T_AA_0s(100);
+            std::vector<double> T_AA_0s(200);
 
             std::for_each
             (
@@ -1438,7 +1505,7 @@ public:
                 block_indexes.end(),
                 [&](const uint_fast8_t block_index) 
                 {
-                    std::vector<nucleon> nucl;
+                    std::vector<nucleon> nucl, other;
                     std::vector<uint_fast8_t> nucl_indexes(208);
                     std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
                     std::vector<double> sum_tpps(208);
@@ -1468,7 +1535,7 @@ public:
                 }
             );
 
-            double block_average = std::reduce(std::execution::par, T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 100.0;
+            double block_average = std::reduce(std::execution::par, T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
 
             double old_ave = ave_T_AA_0; 
             double dummy = ave_T_AA_0 * blocks_calculated;
@@ -1477,11 +1544,14 @@ public:
 
             rel_delta = std::abs(old_ave - ave_T_AA_0) / old_ave;
 
-            std::cout<<"\rT_AAs calculated: "<<blocks_calculated*100<<" current average: "<<ave_T_AA_0<<" last rel_delta: "<<rel_delta<<"            "<<std::flush;
+            std::cout<<"\rT_AAs calculated: "<<blocks_calculated*200<<" current average: "<<ave_T_AA_0<<" last rel_delta: "<<rel_delta<<"            "<<std::flush;
 
-        } while (rel_delta > rel_tolerance);
-
+        } while (blocks_calculated<50);//5*std::pow(10,expo));//2500);//(rel_delta > rel_tolerance);
+        //expo++;
         std::cout<<std::endl;
+        //} while (expo<3);
+        //} while (inte++<5);
+
         return ave_T_AA_0;
     }
 
@@ -1852,14 +1922,15 @@ private:
         const double &kt02, 
         const pqcd::sigma_jet_params &jet_params, 
         const double &upper_sumTpp_limit, 
-        const double &lower_sumTpp_limit
+        const double &lower_sumTpp_limit, 
+        const double &ave_T_AA_0
     ) noexcept -> InterpMultilinear<2, double>
     {
         const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
         std::array<uint_fast16_t,2> dim_Ns{0}; //How many points to calculate in each dimension
         std::array<double,4> corners{0};
-        const double tAA_0 = 29.5494;//30.5
-        const double tBB_0 = 29.5494;//30.5
+        const double tAA_0 = ave_T_AA_0;//29.5494;//30.5
+        const double tBB_0 = ave_T_AA_0;//29.5494;//30.5
 
         auto sigma_jet_function = [=](const double sum_tppa, const double sum_tppb)
         {
