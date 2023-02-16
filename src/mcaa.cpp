@@ -6,13 +6,14 @@ mcaa::mcaa
 (
     const std::string &initfile
 ) 
-: diff_params(false,false,false,false,false,1,1,1u,1u,1u,1u),
+: diff_params(false,false,false,false,false,1,0,1,1u,1u,1u,1u),
   jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
   nuc_params(1u,1u,1u,1u,1.0,false,false)
 {
     auto 
     [
         p_name,
+        p_A,
         p_n_events,
         p_b_max,
         p_b_min,
@@ -21,11 +22,14 @@ mcaa::mcaa
         p_M_factor,
         p_nn_min_dist,
         p_proton_width,
+        p_nuclear_RA,
+        p_nuclear_d,
         p_rad_max,
         p_rad_min,
         p_sigma_inel,
         p_sqrt_s,
         p_T_AA_0_for_snpdfs,
+        p_spatial_cutoff,
         p_calculate_end_state,
         p_calculate_tata,
         p_are_ns_depleted,
@@ -43,7 +47,8 @@ mcaa::mcaa
         p_save_endstate_jets,
         p_save_events_plaintext,
         p_sigma_inel_from_sigma_jet,
-        p_use_snpdfs
+        p_use_snpdfs,
+        p_calculate_spatial_cutoff
     ] = io::read_conf(initfile);
 
     this->calculate_end_state        = p_calculate_end_state; 
@@ -66,17 +71,21 @@ mcaa::mcaa
     this->snPDFs                     = p_use_snpdfs;
     this->name                       = p_name;
     this->desired_N_events           = p_n_events;
+    this->A                          = p_A;
     this->b_max                      = p_b_max;
     this->b_min                      = p_b_min;
     this->K_factor                   = p_K_factor;
     this->kt0                        = p_kt0;
     this->M_factor                   = p_M_factor;
     this->nn_min_dist                = p_nn_min_dist;
+    this->nuclear_RA                 = p_nuclear_RA;
+    this->nuclear_d                  = p_nuclear_d;
     this->rad_max                    = p_rad_max;
     this->rad_min                    = p_rad_min;
     this->sigma_inel                 = p_sigma_inel;
     this->sqrt_s                     = p_sqrt_s;
     this->T_AA_0                     = p_T_AA_0_for_snpdfs;
+    this->spatial_cutoff             = p_spatial_cutoff;
 
     this->verbose                    = false;
     this->kt02                       = p_kt0*p_kt0;
@@ -103,9 +112,21 @@ mcaa::mcaa
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }});
 
-    this->rad_pdf = std::function<double(const double&)>({[](const double & x)
+    if (p_calculate_spatial_cutoff)
     {
-        return x*x/(1+exp((x-6.624)/0.549));
+        auto A = this->A;
+        auto RA = this->nuclear_RA;
+        auto d = this->nuclear_d;
+        auto tp0 = 1.0 / (2.0 * M_PI * this->proton_width_2);
+        auto n0 = 0.75 * (A/(M_PI*std::pow(RA,3.0))) / (1.0 + M_PI*M_PI*std::pow(d/RA,2.0));
+        auto ta0 = 2.0 * n0 * d * std::log(1.0 + std::exp(RA/d));
+        this->spatial_cutoff = tp0 / (3.0 * ta0); 
+        std::cout<<"Spatial cutoff: (1+cT) >= "<<this->spatial_cutoff<<std::endl;
+    }
+
+    this->rad_pdf = std::function<double(const double&)>({[RA=this->nuclear_RA, d=this->nuclear_d](const double & x)
+    {
+        return x*x/(1+exp((x-RA)/d));
     }});
 
     // Parameter for the envelope function:
@@ -128,12 +149,58 @@ mcaa::mcaa
     }
     
     this->diff_params = pqcd::diff_sigma::params(
+    /*projectile_with_npdfs=    */false,
+    /*target_with_npdfs=        */false,
+    /*isoscalar_projectile=     */false,
+    /*isoscalar_target=         */false,
+    /*npdfs_spatial=            */false,
+    /*npdf_setnumber=           */1,
+    /*spatial_cutoff=           */0,
+    /*K_factor=                 */K_factor,
+    /*A=                        */(p_is_AA)? 208u : 1u, //Pb 
+    /*B=                        */(p_is_pp)? 1u : 208u, //Pb
+    /*ZA=                       */(p_is_AA)? 82u : 1u,  //Pb
+    /*ZB=                       */(p_is_pp)? 1u : 82u   //Pb
+    /*p_n_pdf=                  */
+    /*rA_spatial=               */
+    /*rB_spatial=               */);
+    this->jet_params = pqcd::sigma_jet_params(
+    /*d_params=                 */this->diff_params,
+    /*scale_choice=             */pqcd::scaled_from_kt,
+    /*scalar=                   */1.0,
+    /*use_ses=                  */false);
+    g_sjet_pp = pqcd::calculate_sigma_jet(this->p_pdf, &this->mand_s, &this->kt02, this->jet_params);
+    this->diff_params = pqcd::diff_sigma::params(
+    /*projectile_with_npdfs=    */true,
+    /*target_with_npdfs=        */true,
+    /*isoscalar_projectile=     */false,
+    /*isoscalar_target=         */false,
+    /*npdfs_spatial=            */false,
+    /*npdf_setnumber=           */1,
+    /*spatial_cutoff=           */0,
+    /*K_factor=                 */K_factor,
+    /*A=                        */(p_is_AA)? 208u : 1u, //Pb 
+    /*B=                        */(p_is_pp)? 1u : 208u, //Pb
+    /*ZA=                       */(p_is_AA)? 82u : 1u,  //Pb
+    /*ZB=                       */(p_is_pp)? 1u : 82u   //Pb
+    /*p_n_pdf=                  */
+    /*rA_spatial=               */
+    /*rB_spatial=               */);
+    this->jet_params = pqcd::sigma_jet_params(
+    /*d_params=                 */this->diff_params,
+    /*scale_choice=             */pqcd::scaled_from_kt,
+    /*scalar=                   */1.0,
+    /*use_ses=                  */false);
+    g_sjet_AA = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
+    
+    this->diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */(p_is_AA && p_use_npdfs),
     /*target_with_npdfs=        */(!p_is_pp && p_use_npdfs),
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */p_use_snpdfs,
     /*npdf_setnumber=           */1,
+    /*spatial_cutoff=           */this->spatial_cutoff,
     /*K_factor=                 */K_factor,
     /*A=                        */(p_is_AA)? 208u : 1u, //Pb 
     /*B=                        */(p_is_pp)? 1u : 208u, //Pb
@@ -430,12 +497,27 @@ auto mcaa::run() -> void
     const std::vector<double> y_bins{helpers::linspace(-ylim, ylim, 40u)};
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
-
+    
     if (this->snPDFs && (this->T_AA_0 == 0.0))
     {
-        std::cout<<"Calculating T_AA(0)"<<std::endl;
+        
+        // std::cout<<"Calculating T_AA(0)"<<std::endl;
 
-        this->T_AA_0 = calcs::calculate_T_AA_0
+        // this->T_AA_0 = calcs::calculate_T_AA_0
+        // (
+        //     this->nuc_params,
+        //     1e-5,
+        //     this->Tpp,
+        //     eng, 
+        //     radial_sampler, 
+        //     verbose
+        // );
+
+        // std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+        
+        std::cout<<"Calculating R_A - c_A table"<<std::endl;
+
+        auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
         (
             this->nuc_params,
             1e-5,
@@ -444,8 +526,14 @@ auto mcaa::run() -> void
             radial_sampler, 
             verbose
         );
+        std::cout<<"Done! {c,R} pairs:"<<std::endl;
+        for (uint_fast8_t i=0; i<20; i++)
+        {
+            std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
+        }
+        std::cout<<"{"<<c_A_table[20]<<","<<R_A_table[20]<<"}}"<<std::endl;
 
-        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+        exit(0);
     }
 
     auto
@@ -468,7 +556,7 @@ auto mcaa::run() -> void
         this->power_law,
         this->jet_params,
         this->T_AA_0,
-        "sigma_jet_grid_spatial_"+this->name+".dat" //TODO
+        "sigma_jet_grid_spatial.dat" //TODO
     );
 
     if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
@@ -558,7 +646,7 @@ auto mcaa::run() -> void
 
 
     std::ofstream total_energy;
-    std::mutex total_energy_mutex; 
+    std::mutex total_energy_mutex;
  
     total_energy.open("total_energies_"+this->name+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
@@ -922,8 +1010,50 @@ auto mcaa::run() -> void
         std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
     }
     std::cout<<" ...done!"<<std::endl;
+
     
 
+    const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.1},
+                                                                std::tuple<double,double>{0.6, 0.8},
+                                                                std::tuple<double,double>{0.0, 1.0}};
+
+    std::string name_pfs{this->name+".csv"};
+
+    std::ofstream tas_file;
+
+    for (auto [centLow, centHigh] : centBins)
+    {
+        std::stringstream tasname{""};
+        tasname<<"TAS_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+        tas_file.open(tasname.str(), std::ios::out);
+        tas_file << "num,TA,TB,ET,s_jet_r_pp,s_jet_r_AA,rA_spatial,rB_spatial,r_jet_ave,AA_sum_ET"<<std::endl;
+
+        uint_fast64_t N_evts_tot = g_ta_arr.size();
+        // Make sure that no rounding downwards.
+        double eps = 0.1/static_cast<double>(N_evts_tot);
+
+        uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
+        uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
+        uint_fast64_t n_in_bin = upper_ind - lower_ind;
+
+        auto it = g_ta_arr.crbegin();
+        std::advance(it, lower_ind);
+
+        for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+        {
+            for (auto TAS : it->second)
+            {
+                for (auto obs : TAS)
+                {
+                    tas_file<<obs<<',';
+                }
+                tas_file<<it->first<<std::endl;;
+            }
+        }
+        tas_file.close();
+        std::cout<<n_in_bin<<std::endl;
+    }
+    
 
     //io::print_histos
     //(

@@ -505,7 +505,8 @@ auto pqcd::generate_2_to_2_scatt
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    envelope_func &env_func
+    envelope_func &env_func,
+    double &used_r
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -515,6 +516,7 @@ auto pqcd::generate_2_to_2_scatt
     double rand[4];
     double ratio;
     bool is_below = false;
+    double found_r = 0;
     
     y1_min = static_cast<double>(-log(sqrt_s / kt_min));
     y1_max = static_cast<double>( log(sqrt_s / kt_min));
@@ -591,11 +593,13 @@ auto pqcd::generate_2_to_2_scatt
                     event.init2 = xsect.init2;
                     event.final1 = xsect.final1;
                     event.final2 = xsect.final2;
+                    found_r = xsect.rrr;
                     break;
                 }
             }
         }
     }
+    used_r += found_r;
 
     event.kt = kt;
     event.y1 = y1;
@@ -653,13 +657,14 @@ auto pqcd::generate_bin_NN_coll
     pqcd::sigma_jet_params params,
     const double &power_law,
     envelope_func &env_func
-) noexcept -> void
+) noexcept -> double
 {
     //First generate the number of produced dijets from zero-truncated Poissonian distribution
     uint_fast8_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
     coll.dijets.reserve(nof_dijets);
 
     const double sqrt_s = coll.getcr_sqrt_s();
+    double ave_r = 0;
 
     for (uint_fast8_t i=0; i < nof_dijets; i++)
     {
@@ -673,9 +678,11 @@ auto pqcd::generate_bin_NN_coll
             p_p_pdf,
             params,
             power_law,
-            env_func
+            env_func,
+            ave_r
         ));
     }
+    return ave_r/nof_dijets;
     //if (g_r_tot%10000 == 0) 
     //{
     //    const std::lock_guard<std::mutex> lock(g_m);
@@ -896,26 +903,29 @@ auto pqcd::calculate_spatial_sigma_jet
     const uint_fast16_t A = params.d_params.A,
                         B = params.d_params.B;
 
+    const auto spatial_cutoff = params.d_params.spatial_cutoff;
     //c=A*(R-1)/TAA(0)
     const double scaA = static_cast<double>(A) * sum_tppa / tAA_0, 
                  intA = 1.0 - scaA;
     const std::function<double(double const&)> 
-        rA_spatial_ = [&](double const &r)
+        rA_spatial_ = [&,co=spatial_cutoff](double const &r)
             {
                 auto dummy = r*scaA + intA;
-                return dummy; // no cutoff
+                // return dummy; // no cutoff
                 // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
                 // return (dummy < 1/static_cast<double>(A) ) ? 1/static_cast<double>(A) : dummy; // cutoff at 1+cT < A
             }; //r_s=1+c*sum(Tpp)
 
     const double scaB = static_cast<double>(B) * sum_tppb / tBB_0, 
                  intB = 1.0 - scaB;
     const std::function<double(double const&)> 
-        rB_spatial_ = [&](double const &r)
+        rB_spatial_ = [&,co=spatial_cutoff](double const &r)
             {
                 auto dummy = r*scaB + intB;
-                return dummy; // no cutoff
+                // return dummy; // no cutoff
                 // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
                 // return (dummy < 1/static_cast<double>(B) ) ? 1/static_cast<double>(B) : dummy; // cutoff at 1+cT < B
             };
 
@@ -1090,6 +1100,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = 0;
         process.final2 = 0;
+        process.rrr = 0;
         xsection.push_back(process);
         return xsection;
     }
@@ -1107,6 +1118,28 @@ auto pqcd::diff_cross_section_2jet
               diff_params.isoscalar_projectile,
               diff_params.isoscalar_target,
               diff_params.npdfs_spatial,
+              diff_params.npdf_setnumber,
+              diff_params.A,
+              diff_params.B,
+              diff_params.ZA,
+              diff_params.ZB,
+              diff_params.rA_spatial,
+              diff_params.rB_spatial
+          );
+
+    //Nuclear modifications and PDF manipulations 
+    auto [ uf_i_x1, uf_i_x2, uf_ai_x1, uf_ai_x2 ] 
+        = pqcd::diff_sigma::make_pdfs
+          (
+              x1, 
+              x2, 
+              q2, 
+              p_p_pdf, 
+              false,
+              false,
+              diff_params.isoscalar_projectile,
+              diff_params.isoscalar_target,
+              false,
               diff_params.npdf_setnumber,
               diff_params.A,
               diff_params.B,
@@ -1187,6 +1220,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = 0;
         process.final2 = 0;
+        process.rrr = (f_i_x1[0] * f_i_x2[0]) / (uf_i_x1[0] * uf_i_x2[0]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1203,6 +1237,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.rrr = (f_i_x1[0] * f_i_x2[0]) / (uf_i_x1[0] * uf_i_x2[0]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1221,6 +1256,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = static_cast<int_fast8_t>(flavor);
+        process.rrr = (f_i_x1[0] * f_i_x2[flavor]) / (uf_i_x1[0] * uf_i_x2[flavor]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1233,6 +1269,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.rrr = ( f_i_x1[0] * f_ai_x2[flavor] ) / ( uf_i_x1[0] * uf_ai_x2[flavor] );
         xsection.push_back(process);
         if (debug)
         {
@@ -1245,6 +1282,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = 0;
+        process.rrr = ( f_i_x1[flavor] * f_i_x2[0] ) / ( uf_i_x1[flavor] * uf_i_x2[0] );
         xsection.push_back(process);
         if (debug)
         {
@@ -1257,6 +1295,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = 0;
+        process.rrr = (  f_ai_x1[flavor] * f_i_x2[0] ) / (  uf_ai_x1[flavor] * uf_i_x2[0] );
         xsection.push_back(process);
         if (debug)
         {
@@ -1275,6 +1314,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = static_cast<int_fast8_t>(flavor);
+        process.rrr = (  f_i_x1[flavor] * f_i_x2[flavor] ) / (uf_i_x1[flavor] * uf_i_x2[flavor] );
         xsection.push_back(process);
         if (debug)
         {
@@ -1287,6 +1327,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.rrr = (f_ai_x1[flavor] * f_ai_x2[flavor]) / (uf_ai_x1[flavor] * uf_ai_x2[flavor]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1307,6 +1348,7 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor2);
                 process.final1 = static_cast<int_fast8_t>(flavor1);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
+                process.rrr = (f_i_x1[flavor1] * f_i_x2[flavor2]) / (uf_i_x1[flavor1] * uf_i_x2[flavor2]);
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1319,6 +1361,7 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor2);
                 process.final1 = -static_cast<int_fast8_t>(flavor1);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
+                process.rrr = (f_ai_x1[flavor1] * f_ai_x2[flavor2]) / (uf_ai_x1[flavor1] * uf_ai_x2[flavor2]);
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1331,6 +1374,7 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor2);
                 process.final1 = static_cast<int_fast8_t>(flavor1);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
+                process.rrr = (f_i_x1[flavor1] * f_ai_x2[flavor2]) / (uf_i_x1[flavor1] * uf_ai_x2[flavor2]);
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1343,6 +1387,7 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor2);
                 process.final1 = -static_cast<int_fast8_t>(flavor1);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
+                process.rrr = (f_ai_x1[flavor1] * f_i_x2[flavor2]) / (uf_ai_x1[flavor1] * uf_i_x2[flavor2]);
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1361,6 +1406,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.rrr = (f_i_x1[flavor] * f_ai_x2[flavor]) / (uf_i_x1[flavor] * uf_ai_x2[flavor]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1373,6 +1419,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = static_cast<int_fast8_t>(flavor);
+        process.rrr = (f_ai_x1[flavor] * f_i_x2[flavor]) / (uf_ai_x1[flavor] * uf_i_x2[flavor]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1389,6 +1436,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = 0;
+        process.rrr = (f_i_x1[flavor] * f_ai_x2[flavor]) / (uf_i_x1[flavor] * uf_ai_x2[flavor]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1401,6 +1449,7 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = 0;
+        process.rrr = (f_ai_x1[flavor] * f_i_x2[flavor]) / (uf_ai_x1[flavor] * uf_i_x2[flavor]);
         xsection.push_back(process);
         if (debug)
         {
@@ -1421,6 +1470,7 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor1);
                 process.final1 = static_cast<int_fast8_t>(flavor2);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
+                process.rrr = (f_i_x1[flavor1] * f_ai_x2[flavor1]) / (uf_i_x1[flavor1] * uf_ai_x2[flavor1]);
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1433,6 +1483,7 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor1);
                 process.final1 = -static_cast<int_fast8_t>(flavor2);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
+                process.rrr = (f_ai_x1[flavor1] * f_i_x2[flavor1]) / (uf_ai_x1[flavor1] * uf_i_x2[flavor1]);
                 xsection.push_back(process);
                 if (debug)
                 {

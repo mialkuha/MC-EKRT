@@ -47,6 +47,7 @@ struct xsection_id
   particle_id init2;
   particle_id final1;
   particle_id final2;
+  double rrr;
 };
 
 enum class B2_normalization_mode

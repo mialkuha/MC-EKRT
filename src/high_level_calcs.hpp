@@ -33,6 +33,14 @@
 #include "pqcd.hpp"
 #include "typedefs.hpp"
 
+static std::map<double, std::vector<std::array<double, 9> > > g_ta_arr;
+
+//static std::ofstream g_ta_file;
+static std::mutex g_ta_arr_mutex;
+static double g_sjet_pp;
+static double g_sjet_AA;
+static uint nof_AA=0;
+
 using variant_sigma_jet = std::variant<InterpMultilinear<3, double>, InterpMultilinear<2, double>, linear_interpolator, double>;
 using variant_envelope_pars = std::variant<linear_interpolator, envelope_func>;
 
@@ -53,7 +61,8 @@ public:
         const double &kt, 
         const double &sqrt_s,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        pqcd::sigma_jet_params params
+        pqcd::sigma_jet_params params,
+        const double &ave_T_AA_0
     ) noexcept -> std::tuple<double,double>
     {
         double max_dsigma;
@@ -62,13 +71,39 @@ public:
         if (params.d_params.npdfs_spatial)
         {
             //c=A*(R-1)/TAA(0)
-            const double scaA = 208 * 0.01 / 29.5494,//30.5, 
+            /*
+            const double scaA = params.d_params.A * 0.01 / ave_T_AA_0, 
                         intA = 1.0 - scaA;
             const std::function<double(double const&)> 
                 rA_spatial_ = [&](double const &r)
                     {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
             params.d_params.rA_spatial = rA_spatial_;
             params.d_params.rB_spatial = rA_spatial_;
+            */
+
+            const uint_fast16_t A = params.d_params.A,
+                                B = params.d_params.B;
+            //c=A*(R-1)/TAA(0)
+            const double scaA = static_cast<double>(A) * 3.0, 
+                        intA = 1.0 - scaA;
+            const std::function<double(double const&)> 
+                rA_spatial_ = [&](double const &r)
+                    {
+                        auto dummy = r*scaA + intA;
+                        return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                    }; //r_s=1+c*sum(Tpp)
+
+            const double scaB = static_cast<double>(B) * 3.0, 
+                        intB = 1.0 - scaB;
+            const std::function<double(double const&)> 
+                rB_spatial_ = [&](double const &r)
+                    {
+                        auto dummy = r*scaB + intB;
+                        return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                    };
+
+            params.d_params.rA_spatial = rA_spatial_;
+            params.d_params.rB_spatial = rB_spatial_;
         }
 
         struct f_params fparams = {kt, sqrt_s, p_pdf, params};
@@ -152,7 +187,8 @@ public:
         const double &kt0, 
         const double &sqrt_s,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        pqcd::sigma_jet_params jet_params
+        pqcd::sigma_jet_params jet_params,
+        const double &ave_T_AA_0
     ) noexcept
     {
         // How tight we want the envelope to be, lower values == faster but more prone to error
@@ -174,14 +210,14 @@ public:
         {
             //Calculate the normalization for the ~1/kt part
             double dummy_kt0 = 1.0;
-            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
             env_norm1 = (max_dsigma + fabs(err)) * extra;
 
             //Calculate parameters for the a*kt^b part
             double kt1 = 2.0;
             double kt2 = 3.0;
-            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
-            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
             double logkt1 = std::log(kt1);
             double logkt2 = std::log(kt2);
             double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
@@ -244,8 +280,8 @@ public:
             //Calculate parameters for the a*kt^b part
             double kt1 = env_min_kt;
             double kt2 = env_min_kt + 1.0;
-            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
-            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
             double logkt1 = std::log(kt1);
             double logkt2 = std::log(kt2);
             double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
@@ -403,7 +439,7 @@ public:
             sqrt_ss.end(), 
             [&](const double ss) 
             {
-                auto max_dsigma = calcs::find_max_dsigma(kt0, ss, p_pdf, params);
+                auto max_dsigma = calcs::find_max_dsigma(kt0, ss, p_pdf, params, 30.5);
                 const std::lock_guard<std::mutex> lock(ret_mutex);
                 ret.push_back(std::make_tuple(ss, max_dsigma));
             }
@@ -477,7 +513,7 @@ public:
                 dijet_norm = sigma_jet;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -532,7 +568,7 @@ public:
                 dijet_norm = sigma_jet;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -588,7 +624,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -603,7 +639,7 @@ public:
             else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
             {
                 double tolerance=0.05,
-                    upper_sumTpp_limit=/*0.21033,//*/0.61, 
+                    upper_sumTpp_limit=/*0.21033,*/0.44,//0.61, 
                     lower_sumTpp_limit=0.01;
 
                 std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
@@ -630,7 +666,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -944,6 +980,14 @@ public:
         const bool &verbose
     ) noexcept -> void
     {
+        std::vector<std::array<double, 9> > TA_vector;
+        double sumET=0;
+        uint nof_this_AA;
+        
+        {
+            const std::lock_guard<std::mutex> lock(g_ta_arr_mutex);
+            nof_this_AA = nof_AA++;
+        }
 
         uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
@@ -1024,6 +1068,10 @@ public:
                 //collision
                 if (AA_params.calculate_end_state)
                 {
+                    std::array<double, 9> TAS;
+                    TAS[0] = nof_this_AA;
+                    TAS[1] = *sum_tppa;
+                    TAS[2] = *sum_tppb;
                     double sigma_jet;
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -1036,29 +1084,35 @@ public:
                         sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
                         //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                     }
+                    
 
                     const uint_fast16_t NA = dsigma_params.d_params.A, 
                                         NB = dsigma_params.d_params.B;
+                                        
+                    const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
                     //c=A*(R-1)/TAA(0)
                     const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
                                 intA = 1.0 - scaA;
                     const std::function<double(double const&)> 
-                        rA_spatial_ = [&](double const &r)
+                        rA_spatial_ = [&,co=spatial_cutoff](double const &r)
                             {
                                 auto dummy = r*scaA + intA;
-                                return dummy; // no cutoff
+                                // return dummy; // no cutoff
                                 // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
                                 // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                                
                             }; //r_s=1+c*sum(Tpp)
 
                     const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
                                 intB = 1.0 - scaB;
                     const std::function<double(double const&)> 
-                        rB_spatial_ = [&](double const &r)
+                        rB_spatial_ = [&,co=spatial_cutoff](double const &r)
                             {
                                 auto dummy = r*scaB + intB;
-                                return dummy; // no cutoff
+                                // return dummy; // no cutoff
                                 // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
                                 // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
                             };
 
@@ -1085,7 +1139,7 @@ public:
                     else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
-                        pqcd::generate_bin_NN_coll
+                        TAS[8] = pqcd::generate_bin_NN_coll
                         (
                             newpair, 
                             sigma_jet, 
@@ -1099,6 +1153,20 @@ public:
                             env_func_
                         );
                     }
+                    double et = 0;
+                    for (auto n : newpair.dijets)
+                    {
+                        et += 2*n.kt;
+                    }
+                    sumET+=et;
+
+                    TAS[3] = et;
+                    TAS[4] = sigma_jet/g_sjet_pp;
+                    TAS[5] = sigma_jet/g_sjet_AA;
+                    TAS[6] = rA_spatial_(0.5);
+                    TAS[7] = rB_spatial_(0.5);
+
+                    TA_vector.push_back(TAS);
 
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -1206,6 +1274,11 @@ public:
                 newpair.wound();
                 binary_collisions.push_back(std::move(newpair));
             }
+        }
+        
+        {
+            const std::lock_guard<std::mutex> lock(g_ta_arr_mutex);
+            g_ta_arr.insert({sumET, TA_vector});
         }
 
         if (verbose)
@@ -1437,35 +1510,35 @@ public:
         const std::function<double(const double&)> &Tpp
     ) noexcept -> double
     {
-        double TA=0.0; //sum(T_pp(b_ii'))
+        // double TA=0.0; //sum(T_pp(b_ii'))
         
-        coords com{0.0,0.0,0.0}; //center of mass
-        for (const auto& n : nucleus)
-        {
-            com += n.co;
-        }
-        com /= static_cast<double>(nucleus.size());
-        
-        auto r_3vec = nuc.co - com;
-        
-        TA = ta_ws_folded(std::pow(r_3vec.x*r_3vec.x + r_3vec.y*r_3vec.y,0.5))*0.1;
-        return TA;
-
-        // double sum_tpp=0.0; //sum(T_pp(b_ii'))
-        // uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
-        
-        // auto [x1, y1, z1] = nuc.co;
-        
-        // for (uint_fast16_t i=0; i<A; i++)
+        // coords com{0.0,0.0,0.0}; //center of mass
+        // for (const auto& n : nucleus)
         // {
-        //     auto [x2, y2, z2] = nucleus.at(i).co;
-        //     // if ( nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
-        //     // {
-        //     //    continue;
-        //     // }
-        //     sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
+        //     com += n.co;
         // }
-        // return sum_tpp;
+        // com /= static_cast<double>(nucleus.size());
+        
+        // auto r_3vec = nuc.co - com;
+        
+        // TA = ta_ws_folded(std::pow(r_3vec.x*r_3vec.x + r_3vec.y*r_3vec.y,0.5))*0.1;
+        // return TA;
+
+        double sum_tpp=0.0; //sum(T_pp(b_ii'))
+        uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
+        
+        auto [x1, y1, z1] = nuc.co;
+        
+        for (uint_fast16_t i=0; i<A; i++)
+        {
+            auto [x2, y2, z2] = nucleus.at(i).co;
+            if ( nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
+            {
+               continue;
+            }
+            sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
+        }
+        return sum_tpp;
         
         // TA = std::min(sum_tpp, TA);
         // return TA;
@@ -1553,6 +1626,94 @@ public:
         //} while (inte++<5);
 
         return ave_T_AA_0;
+    }
+
+    static auto calculate_R_c_table
+    (
+        const nucleus_generator::nucleus_params &nuc_params,
+        const double &rel_tolerance,
+        const std::function<double(const double&)> Tpp,
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<ars> radial_sampler,
+        const bool verbose
+    ) -> std::tuple<std::array<double, 21>, std::array<double, 21> >
+    {
+        std::vector<uint_fast8_t> block_indexes(200);
+        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+        
+        std::array<double, 21> c_vector{-15.0,-14.0,-13.0,-12.0,-11.0,-10.0,-9.0,-8.0,-7.0,-6.0,-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0};
+        std::array<double, 21> ave_R_vector{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+        
+        uint_fast16_t blocks_calculated = 0;
+        do
+        {
+            std::array<std::array<double, 200>, 21> R_vectors;
+
+            std::for_each
+            (
+                std::execution::par, 
+                block_indexes.begin(), 
+                block_indexes.end(),
+                [&](const uint_fast8_t block_index) 
+                {
+                    std::vector<nucleon> nucl, other;
+                    std::vector<uint_fast8_t> nucl_indexes(208);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::array<std::array<double, 208>, 21> sum_tpps;
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng, 
+                            radial_sampler
+                        );
+
+                    std::for_each
+                    (
+                        std::execution::par, 
+                        nucl_indexes.begin(), 
+                        nucl_indexes.end(),
+                        [&](const uint_fast8_t index) 
+                        {
+                            for (uint_fast8_t i=0; i<21; i++)
+                            {
+                                sum_tpps[i][index] = std::exp(c_vector[i]*calculate_sum_tpp(nucl[index], nucl, Tpp));
+                            }
+                            //sum_tpps[index] = calculate_sum_tpp(nucl[index], nucl, Tpp);
+                        }
+                    );
+
+                    for (uint_fast8_t i=0; i<21; i++)
+                    {
+                        R_vectors[i][block_index] = std::reduce(std::execution::par, sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / 208.0;
+                    }
+                }
+            );
+
+            for (uint_fast8_t i=0; i<21; i++)
+            {
+                double block_average = std::reduce(std::execution::par, R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
+                double dummy = ave_R_vector[i] * blocks_calculated;
+                ave_R_vector[i] = (dummy + block_average) / (blocks_calculated + 1.0);
+            }
+            blocks_calculated++;
+
+            std::cout<<"\rA-configs calculated: "<<blocks_calculated*200<<std::flush;
+
+        } while (blocks_calculated<50);
+        // std::cout<<std::endl<<blocks_calculated<<std::endl;
+        
+        // std::cout<<"{c,R}"<<std::endl<<'{';
+        // for (uint_fast8_t i=0; i<20; i++)
+        // {
+        //     std::cout<<"{"<<c_vector[i]<<","<<ave_R_vector[i]<<"},";
+        // }
+        // std::cout<<"{"<<c_vector[20]<<","<<ave_R_vector[20]<<"}}"<<std::endl;
+
+        return std::make_tuple(ave_R_vector,c_vector);
     }
 
     

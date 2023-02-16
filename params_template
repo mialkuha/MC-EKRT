@@ -1,19 +1,23 @@
 # Example of a parameter initialization file. Not all of the parameters need to be explicitly stated,
 # these are the default values
-name NOSPATIAL                # Name of the run, affects output filenames and such 
-n_events 20000                     # How many events should be simulated
+name SP_EXP                # Name of the run, affects output filenames and such 
+n_events 10000                     # How many events should be simulated
+A 208                            # Mass number of the colliding nucleus
 b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 K_factor 1.0                     # pQCD K-factor to account for the higher order corrections
 kt0 1.0                          # (GeV) jet k_T lower cutoff
 M_factor                         # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
 nn_min_dist 0.4                  # (fm) minimum distance between the nucleons in a nucleus
-proton_width 0.573               # (fm) proton width (Only used if proton_width_static==true)
+proton_width 0.48               # (fm) proton width (Only used if proton_width_static==true)
+nuclear_RA 6.62435               # (fm) nucleus RA for the 2pF-distribution
+nuclear_d 0.5498                 # (fm) nucleus d for the 2pF-distribution
 rad_max 30.0                     # (fm) nucleons' maximum distance from the center of the nucleus
 rad_min 0.0                      # (fm) nucleons' minimum distance from the center of the nucleus
-sigma_inel 70.0                  # (mb) inelastic cross section of the event
+sigma_inel 64.0                  # (mb) inelastic cross section of the event
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
 T_AA_0_for_snpdfs 0              # (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
+spatial_cutoff 0                # If calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below
 calculate_end_state true         # false=no jets will be calculated, only collisions
 calculate_tata false              # If TA(x)TA(x) should be calculated for each dijet (takes time)
 are_ns_depleted false            # Probably always false here, kept for testing purposes for now
@@ -26,9 +30,10 @@ is_mc_glauber true               # If true, nucleon-nucleon collisions are decid
 is_mom_cons false                 # If the momentum conservation should be forced
 read_sigmajets_from_file true   # If the sigma_jets are precalculated
 reduce_nucleon_energies false    # Momentum conservation by reducing nucleon energies after each collision. Breaks factorization
-proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
+proton_width_static true        # If the proton width should be a static value or depend on sqrt(s)
 is_saturation false               # If the EKRT saturation should be used
-save_endstate_jets true          # If all the jets should be saved in binary (see jet_reader.cpp)
+save_endstate_jets false          # If all the jets should be saved in binary (see jet_reader.cpp)
 save_events_plaintext false      # If all the jets should be saved in plaintext
-sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
+sigma_inel_from_sigma_jet false   # Is sigma_inel static or calculated from eikonal model
 use_snpdfs true                 # If the used nPDF should be spatially dependent or average
+calculate_spatial_cutoff true   # If to calculate the spatial cutoff (T_p(0))/(3T_A(0)) or if it's something user provided

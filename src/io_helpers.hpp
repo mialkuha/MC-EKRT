@@ -740,6 +740,7 @@ public:
         
         std::string name{"example_name"};
         uint_fast32_t n_events{500};
+        uint_fast16_t A{208};
         double b_max{20.0};
         double b_min{0.0};
         double K_factor{1.0};
@@ -747,11 +748,14 @@ public:
         double M_factor{2.5};
         double nn_min_dist{0.4};
         double proton_width{0.573};
+        double nuclear_RA{6.62435};
+        double nuclear_d{0.5498};
         double rad_max{30.0};
         double rad_min{0.0};
         double sigma_inel{70.0};
         double sqrt_s{5020.0};
         double T_AA_0_for_snpdfs{0.0};
+        double spatial_cutoff{0.0};
         bool calculate_end_state{true};
         bool calculate_tata{true};
         bool are_ns_depleted{false};
@@ -770,6 +774,7 @@ public:
         bool save_events_plaintext{false};
         bool sigma_inel_from_sigma_jet{true};
         bool use_snpdfs{false};
+        bool calculate_spatial_cutoff{true};
 
         uint_fast16_t count = 0;
 
@@ -790,6 +795,10 @@ public:
                 else if (param_name == "n_events")
                 {
                     line_stream >> n_events;
+                }
+                else if (param_name == "A")
+                {
+                    line_stream >> A;
                 }
                 else if (param_name == "b_max")
                 {
@@ -819,6 +828,14 @@ public:
                 {
                     line_stream >> proton_width;
                 }
+                else if (param_name == "nuclear_RA")
+                {
+                    line_stream >> nuclear_RA;
+                }
+                else if (param_name == "nuclear_d")
+                {
+                    line_stream >> nuclear_d;
+                }
                 else if (param_name == "rad_max")
                 {
                     line_stream >> rad_max;
@@ -838,6 +855,10 @@ public:
                 else if (param_name == "T_AA_0_for_snpdfs")
                 {
                     line_stream >> T_AA_0_for_snpdfs;
+                }
+                else if (param_name == "spatial_cutoff")
+                {
+                    line_stream >> spatial_cutoff;
                 }
                 else if (param_name == "calculate_end_state")
                 {
@@ -911,6 +932,10 @@ public:
                 {
                     line_stream >> std::boolalpha >> use_snpdfs;
                 }
+                else if (param_name == "calculate_spatial_cutoff")
+                {
+                    line_stream >> std::boolalpha >> calculate_spatial_cutoff;
+                }
                 else
                 {
                     continue;
@@ -929,6 +954,7 @@ public:
         return std::make_tuple
                 (
                     name,
+                    A,
                     n_events,
                     b_max,
                     b_min,
@@ -937,11 +963,14 @@ public:
                     M_factor,
                     nn_min_dist,
                     proton_width,
+                    nuclear_RA,
+                    nuclear_d,
                     rad_max,
                     rad_min,
                     sigma_inel,
                     sqrt_s,
                     T_AA_0_for_snpdfs,
+                    spatial_cutoff,
                     calculate_end_state,
                     calculate_tata,
                     are_ns_depleted,
@@ -959,7 +988,8 @@ public:
                     save_endstate_jets,
                     save_events_plaintext,
                     sigma_inel_from_sigma_jet,
-                    use_snpdfs
+                    use_snpdfs,
+                    calculate_spatial_cutoff
                 );
     }
 

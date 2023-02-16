@@ -40,6 +40,7 @@ public:
             bool isoscalar_target{false};
             bool npdfs_spatial{false};
             int npdf_setnumber{1};
+            double spatial_cutoff{0.0};
             double K_factor{1};
             uint_fast16_t A{1};
             uint_fast16_t B{1};
@@ -54,9 +55,10 @@ public:
               auto projectile_with_npdfs_, 
               auto target_with_npdfs_,     
               auto isoscalar_projectile_,  
-              auto isoscalar_target_,      
-              auto npdfs_spatial_,    
+              auto isoscalar_target_,
+              auto npdfs_spatial_,
               auto npdf_setnumber_,        
+              auto spatial_cutoff_,
               auto K_factor_,
               auto A_,                     
               auto B_,                     
@@ -72,6 +74,7 @@ public:
               isoscalar_target(isoscalar_target_), 
               npdfs_spatial(npdfs_spatial_), 
               npdf_setnumber(npdf_setnumber_),
+              spatial_cutoff(spatial_cutoff_),
               K_factor(K_factor_), 
               A(A_),
               B(B_),
@@ -88,8 +91,9 @@ public:
               auto target_with_npdfs_,     
               auto isoscalar_projectile_,  
               auto isoscalar_target_,  
-              auto npdfs_spatial_,      
+              auto npdfs_spatial_, 
               auto npdf_setnumber_,  
+              auto spatial_cutoff_,     
               auto K_factor_,      
               auto A_,                     
               auto B_,                     
@@ -102,6 +106,7 @@ public:
               isoscalar_target(isoscalar_target_), 
               npdfs_spatial(npdfs_spatial_), 
               npdf_setnumber(npdf_setnumber_),
+              spatial_cutoff(spatial_cutoff_),
               K_factor(K_factor_), 
               A(A_),
               B(B_),
@@ -314,7 +319,8 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        envelope_func &env_func
+        envelope_func &env_func,
+        double &used_r
       ) noexcept -> dijet_specs;
 
     static auto generate_bin_NN_coll
@@ -343,7 +349,7 @@ public:
         pqcd::sigma_jet_params params,
         const double &power_law,
         envelope_func &env_func
-      ) noexcept -> void;
+      ) noexcept -> double;
 
     static auto sigma_jet_integrand
       (
