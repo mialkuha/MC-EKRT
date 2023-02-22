@@ -13,42 +13,44 @@ mcaa::mcaa
     auto 
     [
         p_name,
-        p_A,
+        p_sjet_name,
         p_n_events,
         p_b_max,
         p_b_min,
+        p_sqrt_s,
         p_K_factor,
         p_kt0,
+        p_proton_width,
+        p_sigma_inel,
+        p_T_AA_0_for_snpdfs,
+        p_spatial_cutoff,
+        p_A,
         p_M_factor,
         p_nn_min_dist,
-        p_proton_width,
         p_nuclear_RA,
         p_nuclear_d,
         p_rad_max,
         p_rad_min,
-        p_sigma_inel,
-        p_sqrt_s,
-        p_T_AA_0_for_snpdfs,
-        p_spatial_cutoff,
-        p_calculate_end_state,
-        p_calculate_tata,
-        p_are_ns_depleted,
-        p_end_state_filtering,
         p_is_AA,
         p_is_pA,
         p_is_pp,
-        p_use_npdfs,
         p_is_mc_glauber,
-        p_is_mom_cons,
         p_read_sigmajets_from_file,
-        p_reduce_nucleon_energies,
         p_proton_width_static,
-        p_is_saturation,
+        p_sigma_inel_from_sigma_jet,
+        p_use_npdfs,
+        p_use_snpdfs,
+        p_snpdfs_linear,
+        p_calculate_spatial_cutoff,
+        p_calculate_end_state,
+        p_calculate_tata,
         p_save_endstate_jets,
         p_save_events_plaintext,
-        p_sigma_inel_from_sigma_jet,
-        p_use_snpdfs,
-        p_calculate_spatial_cutoff
+        p_are_ns_depleted,
+        p_end_state_filtering,
+        p_is_mom_cons,
+        p_reduce_nucleon_energies,
+        p_is_saturation
     ] = io::read_conf(initfile);
 
     this->calculate_end_state        = p_calculate_end_state; 
@@ -69,7 +71,9 @@ mcaa::mcaa
     this->save_events_plaintext      = p_save_events_plaintext; 
     this->sigma_inel_from_sigma_jet  = p_sigma_inel_from_sigma_jet; 
     this->snPDFs                     = p_use_snpdfs;
+    this->snPDFs_linear              = p_snpdfs_linear;
     this->name                       = p_name;
+    this->sigmajet_filename          = p_sjet_name;
     this->desired_N_events           = p_n_events;
     this->A                          = p_A;
     this->b_max                      = p_b_max;
@@ -170,6 +174,7 @@ mcaa::mcaa
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
     g_sjet_pp = pqcd::calculate_sigma_jet(this->p_pdf, &this->mand_s, &this->kt02, this->jet_params);
+    std::cout<<"sigma_jet_pp = "<<g_sjet_pp<<std::endl;
     this->diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */true,
     /*target_with_npdfs=        */true,
@@ -192,6 +197,7 @@ mcaa::mcaa
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
     g_sjet_AA = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
+    std::cout<<"sigma_jet_AA = "<<g_sjet_AA<<std::endl;
     
     this->diff_params = pqcd::diff_sigma::params(
     /*projectile_with_npdfs=    */(p_is_AA && p_use_npdfs),
@@ -514,27 +520,40 @@ auto mcaa::run() -> void
         // );
 
         // std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
-        
-        std::cout<<"Calculating R_A - c_A table"<<std::endl;
-
-        auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
-        (
-            this->nuc_params,
-            1e-5,
-            this->Tpp,
-            eng, 
-            radial_sampler, 
-            verbose
-        );
-        std::cout<<"Done! {c,R} pairs:"<<std::endl;
-        for (uint_fast8_t i=0; i<20; i++)
-        {
-            std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
-        }
-        std::cout<<"{"<<c_A_table[20]<<","<<R_A_table[20]<<"}}"<<std::endl;
-
-        exit(0);
     }
+        
+    std::cout<<"Calculating R_A - c_A table"<<std::endl;
+
+    auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
+    (
+        this->nuc_params,
+        1e-5,
+        this->Tpp,
+        eng, 
+        radial_sampler, 
+        verbose
+    );
+    std::cout<<"Done! {c,R} pairs:"<<std::endl;
+    for (uint_fast8_t i=0; i<24; i++)
+    {
+        std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
+    }
+    std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
+
+    std::vector<double> Rs_as_vector, cs_as_vector;
+    for (uint_fast8_t i=0; i<25; i++)
+    {
+        Rs_as_vector.push_back(R_A_table[i]);
+        cs_as_vector.push_back(c_A_table[i]);
+    }
+    auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
+
+    this->jet_params = pqcd::sigma_jet_params(
+    /*d_params=                 */this->jet_params.d_params,
+    /*scale_choice=             */this->jet_params.scale_c,
+    /*scalar=                   */this->jet_params.scalar,
+    /*use_ses=                  */this->jet_params.use_ses,
+    /*c_A_func=                 */c_A_from_R);
 
     auto
     [

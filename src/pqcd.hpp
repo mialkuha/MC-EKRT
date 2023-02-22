@@ -21,6 +21,7 @@
 #pragma GCC diagnostic pop
 
 #include "cubature.h"
+#include "linear_interpolator.hpp"
 #include "nn_coll.hpp"
 #include "typedefs.hpp"
 
@@ -113,6 +114,25 @@ public:
               ZA(ZA_),
               ZB(ZB_)
             {}
+            params& operator=(const params& rhs)
+            {
+              this->projectile_with_npdfs = rhs.projectile_with_npdfs;
+              this->target_with_npdfs = rhs.target_with_npdfs;
+              this->isoscalar_projectile = rhs.isoscalar_projectile;
+              this->isoscalar_target = rhs.isoscalar_target;
+              this->npdfs_spatial = rhs.npdfs_spatial;
+              this->npdf_setnumber = rhs.npdf_setnumber;
+              this->spatial_cutoff = rhs.spatial_cutoff;
+              this->K_factor = rhs.K_factor;
+              this->A = rhs.A;
+              this->B = rhs.B;
+              this->ZA = rhs.ZA;
+              this->ZB = rhs.ZB;
+              this->p_n_pdf = rhs.p_n_pdf;
+              this->rA_spatial = rhs.rA_spatial;
+              this->rB_spatial = rhs.rB_spatial;
+              return *this;
+            }
         };
 
         static auto make_pdfs
@@ -263,19 +283,31 @@ public:
         double scalar;
         diff_sigma::params d_params;
         bool use_ses;
+        linear_interpolator c_A_func;
 
         explicit sigma_jet_params
           (
             diff_sigma::params d_params_, 
             scale_choice scale_c_    = scaled_from_kt, 
             double scalar_         = 1.0,
-            bool use_ses_            = false
+            bool use_ses_            = false,
+            linear_interpolator c_A_func_ = linear_interpolator(std::vector<double>{0.0},std::vector<double>{0.0})
           ) noexcept
           : scale_c(scale_c_), 
             scalar(scalar_), 
             d_params(d_params_), 
-            use_ses(use_ses_)
+            use_ses(use_ses_), 
+            c_A_func(c_A_func_)
           {}
+        sigma_jet_params& operator=(const sigma_jet_params& rhs)
+        {
+          this->scale_c = rhs.scale_c;
+          this->scalar = rhs.scalar;
+          this->d_params = rhs.d_params;
+          this->use_ses = rhs.use_ses;
+          this->c_A_func = rhs.c_A_func;
+          return *this;
+        }
     };
 
     static auto diff_cross_section_2jet

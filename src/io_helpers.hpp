@@ -739,42 +739,44 @@ public:
         std::ifstream input(filename);
         
         std::string name{"example_name"};
+        std::string sigmajet_filename{"sigma_jet.dat"}; 
         uint_fast32_t n_events{500};
-        uint_fast16_t A{208};
         double b_max{20.0};
         double b_min{0.0};
+        double sqrt_s{5020.0};
         double K_factor{1.0};
         double kt0{1.0};
+        double proton_width{0.573};
+        double sigma_inel{70.0};
+        double T_AA_0_for_snpdfs{0.0};
+        double spatial_cutoff{0.0};
+        uint_fast16_t A{208};
         double M_factor{2.5};
         double nn_min_dist{0.4};
-        double proton_width{0.573};
         double nuclear_RA{6.62435};
         double nuclear_d{0.5498};
         double rad_max{30.0};
         double rad_min{0.0};
-        double sigma_inel{70.0};
-        double sqrt_s{5020.0};
-        double T_AA_0_for_snpdfs{0.0};
-        double spatial_cutoff{0.0};
-        bool calculate_end_state{true};
-        bool calculate_tata{true};
-        bool are_ns_depleted{false};
-        bool end_state_filtering{true};
         bool is_AA{true};
         bool is_pA{false};
         bool is_pp{false};
-        bool use_npdfs{true};
         bool is_mc_glauber{true};
-        bool is_mom_cons{true};
         bool read_sigmajets_from_file{false};
-        bool reduce_nucleon_energies{false};
         bool proton_width_static{false};
-        bool is_saturation{true};
+        bool sigma_inel_from_sigma_jet{true};
+        bool use_npdfs{true};
+        bool use_snpdfs{false}; 
+        bool snpdfs_linear{false};
+        bool calculate_spatial_cutoff{true};
+        bool calculate_end_state{true};
+        bool calculate_tata{true};
         bool save_endstate_jets{true};
         bool save_events_plaintext{false};
-        bool sigma_inel_from_sigma_jet{true};
-        bool use_snpdfs{false};
-        bool calculate_spatial_cutoff{true};
+        bool are_ns_depleted{false};
+        bool end_state_filtering{true};
+        bool is_mom_cons{true};
+        bool reduce_nucleon_energies{false};
+        bool is_saturation{true};
 
         uint_fast16_t count = 0;
 
@@ -792,13 +794,13 @@ public:
                 {
                     line_stream >> name;
                 }
+                else if (param_name == "sigmajet_filename")
+                {
+                    line_stream >> sigmajet_filename;
+                }
                 else if (param_name == "n_events")
                 {
                     line_stream >> n_events;
-                }
-                else if (param_name == "A")
-                {
-                    line_stream >> A;
                 }
                 else if (param_name == "b_max")
                 {
@@ -808,6 +810,10 @@ public:
                 {
                     line_stream >> b_min;
                 }
+                else if (param_name == "sqrt_s")
+                {
+                    line_stream >> sqrt_s;
+                }
                 else if (param_name == "K_factor")
                 {
                     line_stream >> K_factor;
@@ -816,6 +822,26 @@ public:
                 {
                     line_stream >> kt0;
                 }
+                else if (param_name == "proton_width")
+                {
+                    line_stream >> proton_width;
+                }
+                else if (param_name == "sigma_inel")
+                {
+                    line_stream >> sigma_inel;
+                }
+                else if (param_name == "T_AA_0_for_snpdfs")
+                {
+                    line_stream >> T_AA_0_for_snpdfs;
+                }
+                else if (param_name == "spatial_cutoff")
+                {
+                    line_stream >> spatial_cutoff;
+                }
+                else if (param_name == "A")
+                {
+                    line_stream >> A;
+                }
                 else if (param_name == "M_factor")
                 {
                     line_stream >> M_factor;
@@ -823,10 +849,6 @@ public:
                 else if (param_name == "nn_min_dist")
                 {
                     line_stream >> nn_min_dist;
-                }
-                else if (param_name == "proton_width")
-                {
-                    line_stream >> proton_width;
                 }
                 else if (param_name == "nuclear_RA")
                 {
@@ -844,38 +866,6 @@ public:
                 {
                     line_stream >> rad_min;
                 }
-                else if (param_name == "sigma_inel")
-                {
-                    line_stream >> sigma_inel;
-                }
-                else if (param_name == "sqrt_s")
-                {
-                    line_stream >> sqrt_s;
-                }
-                else if (param_name == "T_AA_0_for_snpdfs")
-                {
-                    line_stream >> T_AA_0_for_snpdfs;
-                }
-                else if (param_name == "spatial_cutoff")
-                {
-                    line_stream >> spatial_cutoff;
-                }
-                else if (param_name == "calculate_end_state")
-                {
-                    line_stream >> std::boolalpha >> calculate_end_state;
-                }
-                else if (param_name == "calculate_tata")
-                {
-                    line_stream >> std::boolalpha >> calculate_tata;
-                }
-                else if (param_name == "are_ns_depleted")
-                {
-                    line_stream >> std::boolalpha >> are_ns_depleted;
-                }
-                else if (param_name == "end_state_filtering")
-                {
-                    line_stream >> std::boolalpha >> end_state_filtering;
-                }
                 else if (param_name == "is_aa")
                 {
                     line_stream >> std::boolalpha >> is_AA;
@@ -888,33 +878,45 @@ public:
                 {
                     line_stream >> std::boolalpha >> is_pp;
                 }
-                else if (param_name == "use_npdfs")
-                {
-                    line_stream >> std::boolalpha >> use_npdfs;
-                }
                 else if (param_name == "is_mc_glauber")
                 {
                     line_stream >> std::boolalpha >> is_mc_glauber;
-                }
-                else if (param_name == "is_mom_cons")
-                {
-                    line_stream >> std::boolalpha >> is_mom_cons;
                 }
                 else if (param_name == "read_sigmajets_from_file")
                 {
                     line_stream >> std::boolalpha >> read_sigmajets_from_file;
                 }
-                else if (param_name == "reduce_nucleon_energies")
-                {
-                    line_stream >> std::boolalpha >> reduce_nucleon_energies;
-                }
                 else if (param_name == "proton_width_static")
                 {
                     line_stream >> std::boolalpha >> proton_width_static;
                 }
-                else if (param_name == "is_saturation")
+                else if (param_name == "sigma_inel_from_sigma_jet")
                 {
-                    line_stream >> std::boolalpha >> is_saturation;
+                    line_stream >> std::boolalpha >> sigma_inel_from_sigma_jet;
+                }
+                else if (param_name == "use_npdfs")
+                {
+                    line_stream >> std::boolalpha >> use_npdfs;
+                }
+                else if (param_name == "use_snpdfs")
+                {
+                    line_stream >> std::boolalpha >> use_snpdfs;
+                }
+                else if (param_name == "snpdfs_linear")
+                {
+                    line_stream >> std::boolalpha >> snpdfs_linear;
+                }
+                else if (param_name == "calculate_spatial_cutoff")
+                {
+                    line_stream >> std::boolalpha >> calculate_spatial_cutoff;
+                }
+                else if (param_name == "calculate_end_state")
+                {
+                    line_stream >> std::boolalpha >> calculate_end_state;
+                }
+                else if (param_name == "calculate_tata")
+                {
+                    line_stream >> std::boolalpha >> calculate_tata;
                 }
                 else if (param_name == "save_endstate_jets")
                 {
@@ -924,17 +926,25 @@ public:
                 {
                     line_stream >> std::boolalpha >> save_events_plaintext;
                 }
-                else if (param_name == "sigma_inel_from_sigma_jet")
+                else if (param_name == "are_ns_depleted")
                 {
-                    line_stream >> std::boolalpha >> sigma_inel_from_sigma_jet;
+                    line_stream >> std::boolalpha >> are_ns_depleted;
                 }
-                else if (param_name == "use_snpdfs")
+                else if (param_name == "end_state_filtering")
                 {
-                    line_stream >> std::boolalpha >> use_snpdfs;
+                    line_stream >> std::boolalpha >> end_state_filtering;
                 }
-                else if (param_name == "calculate_spatial_cutoff")
+                else if (param_name == "is_mom_cons")
                 {
-                    line_stream >> std::boolalpha >> calculate_spatial_cutoff;
+                    line_stream >> std::boolalpha >> is_mom_cons;
+                }
+                else if (param_name == "reduce_nucleon_energies")
+                {
+                    line_stream >> std::boolalpha >> reduce_nucleon_energies;
+                }
+                else if (param_name == "is_saturation")
+                {
+                    line_stream >> std::boolalpha >> is_saturation;
                 }
                 else
                 {
@@ -954,42 +964,44 @@ public:
         return std::make_tuple
                 (
                     name,
-                    A,
+                    sigmajet_filename,
                     n_events,
                     b_max,
                     b_min,
+                    sqrt_s,
                     K_factor,
                     kt0,
+                    proton_width,
+                    sigma_inel,
+                    T_AA_0_for_snpdfs,
+                    spatial_cutoff,
+                    A,
                     M_factor,
                     nn_min_dist,
-                    proton_width,
                     nuclear_RA,
                     nuclear_d,
                     rad_max,
                     rad_min,
-                    sigma_inel,
-                    sqrt_s,
-                    T_AA_0_for_snpdfs,
-                    spatial_cutoff,
-                    calculate_end_state,
-                    calculate_tata,
-                    are_ns_depleted,
-                    end_state_filtering,
                     is_AA,
                     is_pA,
                     is_pp,
-                    use_npdfs,
                     is_mc_glauber,
-                    is_mom_cons,
                     read_sigmajets_from_file,
-                    reduce_nucleon_energies,
                     proton_width_static,
-                    is_saturation,
+                    sigma_inel_from_sigma_jet,
+                    use_npdfs,
+                    use_snpdfs,
+                    snpdfs_linear,
+                    calculate_spatial_cutoff,
+                    calculate_end_state,
+                    calculate_tata,
                     save_endstate_jets,
                     save_events_plaintext,
-                    sigma_inel_from_sigma_jet,
-                    use_snpdfs,
-                    calculate_spatial_cutoff
+                    are_ns_depleted,
+                    end_state_filtering,
+                    is_mom_cons,
+                    reduce_nucleon_energies,
+                    is_saturation
                 );
     }
 

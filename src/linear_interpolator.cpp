@@ -2,11 +2,11 @@
 
 #include "linear_interpolator.hpp"
 
-double linear_interpolator::value_at(const double &x) noexcept
+double linear_interpolator::value_at(const double &x) const noexcept
 {
     if (x < this->xs.front() || x > this->xs.back())
     {
-        std::cout << "OUT OF BOUNDS" << std::endl;
+        std::cout << "LINEAR INTERPOLATOR OUT OF BOUNDS AT x="<<x<< std::endl;
         return 0.0;
     }
 
