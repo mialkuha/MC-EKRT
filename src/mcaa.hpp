@@ -58,29 +58,31 @@ public:
     bool save_events_plaintext{false};     // if all the jets should be saved in plaintext
     bool sigma_inel_from_sigma_jet{true};  // is sigma_inel static or from eikonal model
     bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
+    bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
     bool verbose{false};                   // lots of printing all around
     // simulation parameters 
-    std::string name{"example_name"};      // name of the run, affects output filenames and such 
-    uint_fast32_t desired_N_events{500};   // how many events should be simulated
-    uint_fast16_t A{208};                   // mass number of the colliding nucleus
-    double b_max{20.0};                    // (fm) maximum of the impact parameter
-    double b_min{0.0};                     // (fm) minimum of the impact parameter 
-    double K_factor{1.0};                  // pQCD K-factor to account for the higher order corrections
-    double kt0{1.0};                       // (GeV) jet p_T lower cutoff
-    double kt02{1.0};                      // (GeV^2) p_T lower cutoff squared
-    double M_factor{2.5};                  // saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
-    double nn_min_dist{0.4};               // (fm) minimum distance between the nucleons in a nucleus
-    double mand_s{5020*5020};              // (GeV^2) mandelstam s for the hard process 
-    double proton_width{0.573};            // (fm) proton width
-    double proton_width_2{0.573*0.573};    // (fm^2) proton width squared
-    double nuclear_RA{0.573};              // (fm) nucleus RA for the 2pF-distribution
-    double nuclear_d{0.573};               // (fm) nucleus d for the 2pF-distribution
-    double rad_max{30.0};                  // (fm) nucleons' maximum distance from the center of the nucleus
-    double rad_min{0.0};                   // (fm) nucleons' minimum distance from the center of the nucleus
-    double sigma_inel{70.0};               // (mb) inelastic cross section of the event
-    double sqrt_s{5020.0};                 // (GeV) sqrt(s) for the hard process 
-    double T_AA_0{0.0};                    // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
-    double spatial_cutoff{0.0};            // if calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below.
+    std::string name{"example_name"};               // name of the run, affects output filenames and such 
+    std::string sigmajet_filename{"sigma_jet.dat"}; // filename for the spatially dependent sigma_jet grid 
+    uint_fast32_t desired_N_events{500};            // how many events should be simulated
+    uint_fast16_t A{208};                           // mass number of the colliding nucleus
+    double b_max{20.0};                             // (fm) maximum of the impact parameter
+    double b_min{0.0};                              // (fm) minimum of the impact parameter 
+    double K_factor{1.0};                           // pQCD K-factor to account for the higher order corrections
+    double kt0{1.0};                                // (GeV) jet p_T lower cutoff
+    double kt02{1.0};                               // (GeV^2) p_T lower cutoff squared
+    double M_factor{2.5};                           // saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
+    double nn_min_dist{0.4};                        // (fm) minimum distance between the nucleons in a nucleus
+    double mand_s{5020*5020};                       // (GeV^2) mandelstam s for the hard process 
+    double proton_width{0.573};                     // (fm) proton width
+    double proton_width_2{0.573*0.573};             // (fm^2) proton width squared
+    double nuclear_RA{0.573};                       // (fm) nucleus RA for the 2pF-distribution
+    double nuclear_d{0.573};                        // (fm) nucleus d for the 2pF-distribution
+    double rad_max{30.0};                           // (fm) nucleons' maximum distance from the center of the nucleus
+    double rad_min{0.0};                            // (fm) nucleons' minimum distance from the center of the nucleus
+    double sigma_inel{70.0};                        // (mb) inelastic cross section of the event
+    double sqrt_s{5020.0};                          // (GeV) sqrt(s) for the hard process 
+    double T_AA_0{0.0};                             // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
+    double spatial_cutoff{0.0};                     // if calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below.
 
 
     // PUBLIC METHODS /////////////////////////////////////////////////////////////////////////////////////////////////

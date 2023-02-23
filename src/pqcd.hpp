@@ -283,29 +283,33 @@ public:
         double scalar;
         diff_sigma::params d_params;
         bool use_ses;
+        bool snPDFs_linear;
         linear_interpolator c_A_func;
 
         explicit sigma_jet_params
           (
             diff_sigma::params d_params_, 
             scale_choice scale_c_    = scaled_from_kt, 
-            double scalar_         = 1.0,
+            double scalar_           = 1.0,
             bool use_ses_            = false,
+            bool snPDFs_linear_      = true,
             linear_interpolator c_A_func_ = linear_interpolator(std::vector<double>{0.0},std::vector<double>{0.0})
           ) noexcept
           : scale_c(scale_c_), 
             scalar(scalar_), 
             d_params(d_params_), 
             use_ses(use_ses_), 
+            snPDFs_linear(snPDFs_linear_), 
             c_A_func(c_A_func_)
           {}
         sigma_jet_params& operator=(const sigma_jet_params& rhs)
         {
-          this->scale_c = rhs.scale_c;
-          this->scalar = rhs.scalar;
-          this->d_params = rhs.d_params;
-          this->use_ses = rhs.use_ses;
-          this->c_A_func = rhs.c_A_func;
+          this->scale_c       = rhs.scale_c;
+          this->scalar        = rhs.scalar;
+          this->d_params      = rhs.d_params;
+          this->use_ses       = rhs.use_ses;
+          this->snPDFs_linear = rhs.snPDFs_linear;
+          this->c_A_func      = rhs.c_A_func;
           return *this;
         }
     };

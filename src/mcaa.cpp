@@ -116,7 +116,7 @@ mcaa::mcaa
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }});
 
-    if (p_calculate_spatial_cutoff)
+    if (p_use_snpdfs && p_snpdfs_linear && p_calculate_spatial_cutoff)
     {
         auto A = this->A;
         auto RA = this->nuclear_RA;
@@ -125,7 +125,7 @@ mcaa::mcaa
         auto n0 = 0.75 * (A/(M_PI*std::pow(RA,3.0))) / (1.0 + M_PI*M_PI*std::pow(d/RA,2.0));
         auto ta0 = 2.0 * n0 * d * std::log(1.0 + std::exp(RA/d));
         this->spatial_cutoff = tp0 / (3.0 * ta0); 
-        std::cout<<"Spatial cutoff: (1+cT) >= "<<this->spatial_cutoff<<std::endl;
+        std::cout<<"Calculated spatial cutoff: (1+cT) >= "<<this->spatial_cutoff<<std::endl;
     }
 
     this->rad_pdf = std::function<double(const double&)>({[RA=this->nuclear_RA, d=this->nuclear_d](const double & x)
@@ -504,56 +504,62 @@ auto mcaa::run() -> void
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
     
-    if (this->snPDFs && (this->T_AA_0 == 0.0))
-    {
-        
-        // std::cout<<"Calculating T_AA(0)"<<std::endl;
-
-        // this->T_AA_0 = calcs::calculate_T_AA_0
-        // (
-        //     this->nuc_params,
-        //     1e-5,
-        //     this->Tpp,
-        //     eng, 
-        //     radial_sampler, 
-        //     verbose
-        // );
-
-        // std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
-    }
-        
-    std::cout<<"Calculating R_A - c_A table"<<std::endl;
-
-    auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
-    (
-        this->nuc_params,
-        1e-5,
-        this->Tpp,
-        eng, 
-        radial_sampler, 
-        verbose
-    );
-    std::cout<<"Done! {c,R} pairs:"<<std::endl;
-    for (uint_fast8_t i=0; i<24; i++)
-    {
-        std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
-    }
-    std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
-
     std::vector<double> Rs_as_vector, cs_as_vector;
-    for (uint_fast8_t i=0; i<25; i++)
-    {
-        Rs_as_vector.push_back(R_A_table[i]);
-        cs_as_vector.push_back(c_A_table[i]);
-    }
-    auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
 
-    this->jet_params = pqcd::sigma_jet_params(
-    /*d_params=                 */this->jet_params.d_params,
-    /*scale_choice=             */this->jet_params.scale_c,
-    /*scalar=                   */this->jet_params.scalar,
-    /*use_ses=                  */this->jet_params.use_ses,
-    /*c_A_func=                 */c_A_from_R);
+    //if linear snPDFs
+    if (this->snPDFs && (this->T_AA_0 == 0.0) && this->snPDFs_linear)
+    {
+        std::cout<<"Calculating T_AA(0)"<<std::endl;
+
+        this->T_AA_0 = calcs::calculate_T_AA_0
+        (
+            this->nuc_params,
+            1e-5,
+            this->Tpp,
+            eng, 
+            radial_sampler, 
+            verbose
+        );
+
+        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+    } //if exponential snPDFs
+    else if (this->snPDFs && (this->T_AA_0 == 0.0))
+    {
+        std::cout<<"Calculating R_A - c_A table"<<std::endl;
+
+        auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
+        (
+            this->nuc_params,
+            1e-5,
+            this->Tpp,
+            eng, 
+            radial_sampler, 
+            verbose
+        );
+        std::cout<<"Done! {c,R} pairs:"<<std::endl;
+
+        for (uint_fast8_t i=0; i<24; i++)
+        {
+            std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
+        }
+        std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
+        
+        for (uint_fast8_t i=0; i<25; i++)
+        {
+            Rs_as_vector.push_back(R_A_table[i]);
+            cs_as_vector.push_back(c_A_table[i]);
+        }
+
+        auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
+    
+        this->jet_params = pqcd::sigma_jet_params(
+        /*d_params=                 */this->jet_params.d_params,
+        /*scale_choice=             */this->jet_params.scale_c,
+        /*scalar=                   */this->jet_params.scalar,
+        /*use_ses=                  */this->jet_params.use_ses,
+        /*snPDFs_linear=            */this->snPDFs_linear,
+        /*c_A_func=                 */c_A_from_R);
+    }
 
     auto
     [
@@ -575,7 +581,7 @@ auto mcaa::run() -> void
         this->power_law,
         this->jet_params,
         this->T_AA_0,
-        "sigma_jet_grid_spatial.dat" //TODO
+        this->sigmajet_filename
     );
 
     if (this->sigma_inel_from_sigma_jet && !this->snPDFs)

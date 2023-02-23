@@ -899,68 +899,79 @@ auto pqcd::calculate_spatial_sigma_jet
     const double upper_limits[3] = {1, 1, 1};
     const double lower_limits[3] = {0, 0, 0};
     const unsigned fdim = 1;
+                    
+    if (params.snPDFs_linear)
+    {
+        //r=(1+cT)
 
-    const uint_fast16_t A = params.d_params.A,
-                        B = params.d_params.B;
-
-    // const auto spatial_cutoff = params.d_params.spatial_cutoff;
-    // //c=A*(R-1)/TAA(0)
-    // const double scaA = static_cast<double>(A) * sum_tppa / tAA_0, 
-    //              intA = 1.0 - scaA;
-    // const std::function<double(double const&)> 
-    //     rA_spatial_ = [&,co=spatial_cutoff](double const &r)
-    //         {
-    //             auto dummy = r*scaA + intA;
-    //             // return dummy; // no cutoff
-    //             // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-    //             return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-    //             // return (dummy < 1/static_cast<double>(A) ) ? 1/static_cast<double>(A) : dummy; // cutoff at 1+cT < A
-    //         }; //r_s=1+c*sum(Tpp)
-
-    // const double scaB = static_cast<double>(B) * sum_tppb / tBB_0, 
-    //              intB = 1.0 - scaB;
-    // const std::function<double(double const&)> 
-    //     rB_spatial_ = [&,co=spatial_cutoff](double const &r)
-    //         {
-    //             auto dummy = r*scaB + intB;
-    //             // return dummy; // no cutoff
-    //             // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-    //             return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-    //             // return (dummy < 1/static_cast<double>(B) ) ? 1/static_cast<double>(B) : dummy; // cutoff at 1+cT < B
-    //         };
-
-    
-
-    const std::function<double(double const&)> 
-        rA_spatial_ = [TAi=sum_tppa,c_func=params.c_A_func](double const &r)
-            {
-                if (r>0.0)
+        const uint_fast16_t NA = params.d_params.A, 
+                            NB = params.d_params.B;
+                            
+        const auto spatial_cutoff = params.d_params.spatial_cutoff;
+        //c=A*(R-1)/TAA(0)
+        const double scaA = static_cast<double>(NA) * sum_tppa / tAA_0, 
+                    intA = 1.0 - scaA;
+        const std::function<double(double const&)> 
+            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
                 {
-                    double c = c_func.value_at(r);
-                    return std::exp(c * TAi);
-                }
-                else
-                {
-                    return 0.0;
-                }
-            };
+                    auto dummy = r*scaA + intA;
+                    // return dummy; // no cutoff
+                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                    
+                }; //r_s=1+c*sum(Tpp)
 
-    const std::function<double(double const&)> 
-        rB_spatial_ = [TBi=sum_tppb,c_func=params.c_A_func](double const &r)
-            {
-                if (r>0.0)
+        const double scaB = static_cast<double>(NB) * sum_tppb / tBB_0, 
+                    intB = 1.0 - scaB;
+        const std::function<double(double const&)> 
+            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
                 {
-                    double c = c_func.value_at(r);
-                    return std::exp(c * TBi);
-                }
-                else
-                {
-                    return 0.0;
-                }
-            };
+                    auto dummy = r*scaB + intB;
+                    // return dummy; // no cutoff
+                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
+                };
+                
+        params.d_params.rA_spatial = rA_spatial_;
+        params.d_params.rB_spatial = rB_spatial_;
+    }
+    else
+    {
+        //r=exp(cT)
 
-    params.d_params.rA_spatial = rA_spatial_;
-    params.d_params.rB_spatial = rB_spatial_;
+        const std::function<double(double const&)> 
+            rA_spatial_ = [TAi=sum_tppa,c_func=params.c_A_func](double const &r)
+                {
+                    if (r>0.0)
+                    {
+                        double c = c_func.value_at(r);
+                        return std::exp(c * TAi);
+                    }
+                    else
+                    {
+                        return 0.0;
+                    }
+                };
+
+        const std::function<double(double const&)> 
+            rB_spatial_ = [TBi=sum_tppb,c_func=params.c_A_func](double const &r)
+                {
+                    if (r>0.0)
+                    {
+                        double c = c_func.value_at(r);
+                        return std::exp(c * TBi);
+                    }
+                    else
+                    {
+                        return 0.0;
+                    }
+                };
+
+        params.d_params.rA_spatial = rA_spatial_;
+        params.d_params.rB_spatial = rB_spatial_;
+    }
 
     std::tuple
     <

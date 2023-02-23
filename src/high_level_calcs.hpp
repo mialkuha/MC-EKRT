@@ -70,70 +70,80 @@ public:
 
         if (params.d_params.npdfs_spatial)
         {
-            //c=A*(R-1)/TAA(0)
-            /*
-            const double scaA = params.d_params.A * 0.01 / ave_T_AA_0, 
-                        intA = 1.0 - scaA;
-            const std::function<double(double const&)> 
-                rA_spatial_ = [&](double const &r)
-                    {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
-            params.d_params.rA_spatial = rA_spatial_;
-            params.d_params.rB_spatial = rA_spatial_;
-            */
-
-            // const uint_fast16_t A = params.d_params.A,
-            //                     B = params.d_params.B;
-            // //c=A*(R-1)/TAA(0)
-            // const double scaA = static_cast<double>(A) * 3.0, 
-            //             intA = 1.0 - scaA;
-            // const std::function<double(double const&)> 
-            //     rA_spatial_ = [&](double const &r)
-            //         {
-            //             auto dummy = r*scaA + intA;
-            //             return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-            //         }; //r_s=1+c*sum(Tpp)
-
-            // const double scaB = static_cast<double>(B) * 3.0, 
-            //             intB = 1.0 - scaB;
-            // const std::function<double(double const&)> 
-            //     rB_spatial_ = [&](double const &r)
-            //         {
-            //             auto dummy = r*scaB + intB;
-            //             return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-            //         };
-            
-            const std::function<double(double const&)> 
-                rA_spatial_ = [c_func=params.c_A_func](double const &r)
-                    {
-                        if (r>0.0)
+            if (params.snPDFs_linear)
+            {
+                //r=(1+cT)
+                //c=A*(R-1)/TAA(0)
+                
+                // const double scaA = params.d_params.A * 0.01 / ave_T_AA_0, 
+                //             intA = 1.0 - scaA;
+                // const std::function<double(double const&)> 
+                //     rA_spatial_ = [&](double const &r)
+                //         {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+                // params.d_params.rA_spatial = rA_spatial_;
+                // params.d_params.rB_spatial = rA_spatial_;
+                
+                const uint_fast16_t A = params.d_params.A,
+                                    B = params.d_params.B;
+                //c=A*(R-1)/TAA(0)
+                const double scaA = static_cast<double>(A) * 3.0, 
+                            intA = 1.0 - scaA;
+                const std::function<double(double const&)> 
+                    rA_spatial_ = [&](double const &r)
                         {
-                            double c = c_func.value_at(r);
-                            auto dummy = std::exp(c * 0.4);
+                            auto dummy = r*scaA + intA;
                             return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-                        }
-                        else
-                        {
-                            return 0.0;
-                        }
-                    };
+                        }; //r_s=1+c*sum(Tpp)
 
-            const std::function<double(double const&)> 
-                rB_spatial_ = [c_func=params.c_A_func](double const &r)
-                    {
-                        if (r>0.0)
+                const double scaB = static_cast<double>(B) * 3.0, 
+                            intB = 1.0 - scaB;
+                const std::function<double(double const&)> 
+                    rB_spatial_ = [&](double const &r)
                         {
-                            double c = c_func.value_at(r);
-                            auto dummy = std::exp(c * 0.4);
+                            auto dummy = r*scaB + intB;
                             return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-                        }
-                        else
-                        {
-                            return 0.0;
-                        }
-                    };
+                        };
 
-            params.d_params.rA_spatial = rA_spatial_;
-            params.d_params.rB_spatial = rB_spatial_;
+                params.d_params.rA_spatial = rA_spatial_;
+                params.d_params.rB_spatial = rB_spatial_;
+            }
+            else
+            {
+                //r=exp(cT)
+
+                const std::function<double(double const&)> 
+                    rA_spatial_ = [c_func=params.c_A_func](double const &r)
+                        {
+                            if (r>0.0)
+                            {
+                                double c = c_func.value_at(r);
+                                auto dummy = std::exp(c * 0.4);
+                                return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                            }
+                            else
+                            {
+                                return 0.0;
+                            }
+                        };
+
+                const std::function<double(double const&)> 
+                    rB_spatial_ = [c_func=params.c_A_func](double const &r)
+                        {
+                            if (r>0.0)
+                            {
+                                double c = c_func.value_at(r);
+                                auto dummy = std::exp(c * 0.4);
+                                return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                            }
+                            else
+                            {
+                                return 0.0;
+                            }
+                        };
+
+                params.d_params.rA_spatial = rA_spatial_;
+                params.d_params.rB_spatial = rB_spatial_;
+            }
         }
 
         struct f_params fparams = {kt, sqrt_s, p_pdf, params};
@@ -513,7 +523,7 @@ public:
         const double &power_law,
         pqcd::sigma_jet_params jet_params,
         const double &ave_T_AA_0,
-        const std::string &s_jet_file_name //TODO
+        const std::string &s_jet_file_name
     ) ->
     std::tuple
     <
@@ -676,6 +686,7 @@ public:
                 variant_sigma_jet sigma_jet 
                     = calcs::calculate_spatial_sigma_jets
                         (
+                            s_jet_file_name,
                             tolerance, 
                             p_pdf, 
                             mand_s, 
@@ -1115,67 +1126,78 @@ public:
                         //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                     }
                     
+                    if (dsigma_params.snPDFs_linear)
+                    {
+                        //r=(1+cT)
 
-                    // const uint_fast16_t NA = dsigma_params.d_params.A, 
-                    //                     NB = dsigma_params.d_params.B;
-                                        
-                    // const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
-                    // //c=A*(R-1)/TAA(0)
-                    // const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                    //             intA = 1.0 - scaA;
-                    // const std::function<double(double const&)> 
-                    //     rA_spatial_ = [&,co=spatial_cutoff](double const &r)
-                    //         {
-                    //             auto dummy = r*scaA + intA;
-                    //             // return dummy; // no cutoff
-                    //             // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                    //             return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                    //             // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                        const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                            NB = dsigma_params.d_params.B;
+                                            
+                        const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
+                        //c=A*(R-1)/TAA(0)
+                        const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                                    intA = 1.0 - scaA;
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaA + intA;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                                    
+                                }; //r_s=1+c*sum(Tpp)
+
+                        const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                                    intB = 1.0 - scaB;
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaB + intB;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
+                                };
                                 
-                    //         }; //r_s=1+c*sum(Tpp)
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
+                    else
+                    {
+                        //r=exp(cT)
 
-                    // const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                    //             intB = 1.0 - scaB;
-                    // const std::function<double(double const&)> 
-                    //     rB_spatial_ = [&,co=spatial_cutoff](double const &r)
-                    //         {
-                    //             auto dummy = r*scaB + intB;
-                    //             // return dummy; // no cutoff
-                    //             // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                    //             return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                    //             // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
-                    //         };
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TAi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
 
-                    const std::function<double(double const&)> 
-                        rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
-                            {
-                                if (r>0.0)
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
                                 {
-                                    double c = c_func.value_at(r);
-                                    return std::exp(c * TAi);
-                                }
-                                else
-                                {
-                                    return 0.0;
-                                }
-                            };
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TBi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
 
-                    const std::function<double(double const&)> 
-                        rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
-                            {
-                                if (r>0.0)
-                                {
-                                    double c = c_func.value_at(r);
-                                    return std::exp(c * TBi);
-                                }
-                                else
-                                {
-                                    return 0.0;
-                                }
-                            };
-
-                    dsigma_params.d_params.rA_spatial = rA_spatial_;
-                    dsigma_params.d_params.rB_spatial = rB_spatial_;
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
 
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -1221,8 +1243,8 @@ public:
                     TAS[3] = et;
                     TAS[4] = sigma_jet/g_sjet_pp;
                     TAS[5] = sigma_jet/g_sjet_AA;
-                    TAS[6] = rA_spatial_(0.5);
-                    TAS[7] = rB_spatial_(0.5);
+                    TAS[6] = dsigma_params.d_params.rA_spatial(0.5);
+                    TAS[7] = dsigma_params.d_params.rB_spatial(0.5);
 
                     TA_vector.push_back(TAS);
 
@@ -1267,23 +1289,79 @@ public:
                 }
                 if (AA_params.calculate_end_state)
                 {
-                    const uint_fast16_t NA = dsigma_params.d_params.A, 
-                                        NB = dsigma_params.d_params.B;
-                    //c=A*(R-1)/TAA(0)
-                    const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                                intA = 1.0 - scaA;
-                    const std::function<double(double const&)> 
-                        rA_spatial_ = [&](double const &r)
-                            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+                    
+                    if (dsigma_params.snPDFs_linear)
+                    {
+                        //r=(1+cT)
 
-                    const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                                intB = 1.0 - scaB;
-                    const std::function<double(double const&)> 
-                        rB_spatial_ = [&](double const &r)
-                            {return r*scaB + intB;};
+                        const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                            NB = dsigma_params.d_params.B;
+                                            
+                        const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
+                        //c=A*(R-1)/TAA(0)
+                        const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                                    intA = 1.0 - scaA;
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaA + intA;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                                    
+                                }; //r_s=1+c*sum(Tpp)
 
-                    dsigma_params.d_params.rA_spatial = rA_spatial_;
-                    dsigma_params.d_params.rB_spatial = rB_spatial_;
+                        const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                                    intB = 1.0 - scaB;
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaB + intB;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
+                                };
+                                
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
+                    else
+                    {
+                        //r=exp(cT)
+
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TAi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
+
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TBi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
+
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
 
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -2127,6 +2205,7 @@ private:
 
     static auto calculate_spatial_sigma_jets
     (
+        const std::string filename,
         const double &tolerance, 
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
         /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/ 
@@ -2204,7 +2283,7 @@ private:
         uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1]; 
 
         std::ofstream sigma_jet_grid_file;
-        sigma_jet_grid_file.open("sigma_jet_grid_spatial.dat", std::ios::out);
+        sigma_jet_grid_file.open(filename, std::ios::out);
         sigma_jet_grid_file << "%mand_s=" << mand_s << " kt02=" << kt02 << " p_pdf=" << p_p_pdf->info().get_entry("SetIndex") << std::endl;
         sigma_jet_grid_file << "%num_elements=" << num_elements << std::endl;
         sigma_jet_grid_file << "%num_sum_T_pp_A=" << dim_Ns[0] << std::endl;
