@@ -1,5 +1,5 @@
 //Copyright (c) 2022 Mikko Kuha 
-//TODO implement NN-tree 
+//TODO get rid of all the hardcoded "208"s
 
 #include "mcaa.hpp"
 

@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef HIGH_LEVEL_CALCS_HPP
 #define HIGH_LEVEL_CALCS_HPP
@@ -9,6 +9,7 @@
 #include <future>
 #include <gsl/gsl_multimin.h>
 #include <iostream>
+#include <numeric>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -52,7 +53,8 @@ public:
         const double &kt, 
         const double &sqrt_s,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        pqcd::sigma_jet_params params
+        pqcd::sigma_jet_params params,
+        const double &ave_T_AA_0
     ) noexcept -> std::tuple<double,double>
     {
         double max_dsigma;
@@ -60,14 +62,80 @@ public:
 
         if (params.d_params.npdfs_spatial)
         {
-            //c=A*(R-1)/TAA(0)
-            const double scaA = 208 * 0.01 / 29.5494,//30.5, 
-                        intA = 1.0 - scaA;
-            const std::function<double(double const&)> 
-                rA_spatial_ = [&](double const &r)
-                    {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
-            params.d_params.rA_spatial = rA_spatial_;
-            params.d_params.rB_spatial = rA_spatial_;
+            if (params.snPDFs_linear)
+            {
+                //r=(1+cT)
+                //c=A*(R-1)/TAA(0)
+                
+                // const double scaA = params.d_params.A * 0.01 / ave_T_AA_0, 
+                //             intA = 1.0 - scaA;
+                // const std::function<double(double const&)> 
+                //     rA_spatial_ = [&](double const &r)
+                //         {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+                // params.d_params.rA_spatial = rA_spatial_;
+                // params.d_params.rB_spatial = rA_spatial_;
+                
+                const uint_fast16_t A = params.d_params.A,
+                                    B = params.d_params.B;
+                //c=A*(R-1)/TAA(0)
+                const double scaA = static_cast<double>(A) * 3.0, 
+                            intA = 1.0 - scaA;
+                const std::function<double(double const&)> 
+                    rA_spatial_ = [&](double const &r)
+                        {
+                            auto dummy = r*scaA + intA;
+                            return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                        }; //r_s=1+c*sum(Tpp)
+
+                const double scaB = static_cast<double>(B) * 3.0, 
+                            intB = 1.0 - scaB;
+                const std::function<double(double const&)> 
+                    rB_spatial_ = [&](double const &r)
+                        {
+                            auto dummy = r*scaB + intB;
+                            return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                        };
+
+                params.d_params.rA_spatial = rA_spatial_;
+                params.d_params.rB_spatial = rB_spatial_;
+            }
+            else
+            {
+                //r=exp(cT)
+
+                const std::function<double(double const&)> 
+                    rA_spatial_ = [c_func=params.c_A_func](double const &r)
+                        {
+                            if (r>0.0)
+                            {
+                                double c = c_func.value_at(r);
+                                auto dummy = std::exp(c * 0.4);
+                                return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                            }
+                            else
+                            {
+                                return 0.0;
+                            }
+                        };
+
+                const std::function<double(double const&)> 
+                    rB_spatial_ = [c_func=params.c_A_func](double const &r)
+                        {
+                            if (r>0.0)
+                            {
+                                double c = c_func.value_at(r);
+                                auto dummy = std::exp(c * 0.4);
+                                return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
+                            }
+                            else
+                            {
+                                return 0.0;
+                            }
+                        };
+
+                params.d_params.rA_spatial = rA_spatial_;
+                params.d_params.rB_spatial = rB_spatial_;
+            }
         }
 
         struct f_params fparams = {kt, sqrt_s, p_pdf, params};
@@ -151,7 +219,8 @@ public:
         const double &kt0, 
         const double &sqrt_s,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        pqcd::sigma_jet_params jet_params
+        pqcd::sigma_jet_params jet_params,
+        const double &ave_T_AA_0
     ) noexcept
     {
         // How tight we want the envelope to be, lower values == faster but more prone to error
@@ -173,14 +242,14 @@ public:
         {
             //Calculate the normalization for the ~1/kt part
             double dummy_kt0 = 1.0;
-            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
             env_norm1 = (max_dsigma + fabs(err)) * extra;
 
             //Calculate parameters for the a*kt^b part
             double kt1 = 2.0;
             double kt2 = 3.0;
-            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
-            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
             double logkt1 = std::log(kt1);
             double logkt2 = std::log(kt2);
             double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
@@ -243,8 +312,8 @@ public:
             //Calculate parameters for the a*kt^b part
             double kt1 = env_min_kt;
             double kt2 = env_min_kt + 1.0;
-            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
-            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
             double logkt1 = std::log(kt1);
             double logkt2 = std::log(kt2);
             double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
@@ -381,58 +450,58 @@ public:
         return -total_xsection;
     }
 
-    static auto calculate_max_dsigmas_for_MC
-    (
-        const double &kt0,
-        const double &sqrt_s,
-        std::shared_ptr<LHAPDF::GridPDF> p_pdf,    
-        pqcd::sigma_jet_params params,
-        const uint_fast16_t n_divisions = 100
-    )
-    {
-        const std::vector<double> sqrt_ss{helpers::linspace(kt0, sqrt_s, n_divisions)};
-        std::vector<std::tuple<double, std::tuple<double, double> > > ret;
-        std::mutex ret_mutex; 
-        ret.push_back(std::make_tuple(kt0, std::make_tuple(0.0, 0.0)));
+    // static auto calculate_max_dsigmas_for_MC
+    // (
+    //     const double &kt0,
+    //     const double &sqrt_s,
+    //     std::shared_ptr<LHAPDF::GridPDF> p_pdf,    
+    //     pqcd::sigma_jet_params params,
+    //     const uint_fast16_t n_divisions = 100
+    // )
+    // {
+    //     const std::vector<double> sqrt_ss{helpers::linspace(kt0, sqrt_s, n_divisions)};
+    //     std::vector<std::tuple<double, std::tuple<double, double> > > ret;
+    //     std::mutex ret_mutex; 
+    //     ret.push_back(std::make_tuple(kt0, std::make_tuple(0.0, 0.0)));
 
-        std::for_each
-        (
-            std::execution::par, 
-            sqrt_ss.begin()+1, 
-            sqrt_ss.end(), 
-            [&](const double ss) 
-            {
-                auto max_dsigma = calcs::find_max_dsigma(kt0, ss, p_pdf, params);
-                const std::lock_guard<std::mutex> lock(ret_mutex);
-                ret.push_back(std::make_tuple(ss, max_dsigma));
-            }
-        );
+    //     std::for_each
+    //     (
+    //         std::execution::par, 
+    //         sqrt_ss.begin()+1, 
+    //         sqrt_ss.end(), 
+    //         [&](const double ss) 
+    //         {
+    //             auto max_dsigma = calcs::find_max_dsigma(kt0, ss, p_pdf, params, 30.5);
+    //             const std::lock_guard<std::mutex> lock(ret_mutex);
+    //             ret.push_back(std::make_tuple(ss, max_dsigma));
+    //         }
+    //     );
         
-        //Sort the pairs by sqrt_s
-        std::sort
-        (
-            ret.begin(), 
-            ret.end(),
-            [](std::tuple<double, std::tuple<double, double> > a, std::tuple<double, std::tuple<double, double> > b)
-                {
-                    auto [ a0, ph1 ] = a;
-                    auto [ b0, ph2 ] = b;
-                    return a0 < b0;
-                }
-        );
+    //     //Sort the pairs by sqrt_s
+    //     std::sort
+    //     (
+    //         ret.begin(), 
+    //         ret.end(),
+    //         [](std::tuple<double, std::tuple<double, double> > a, std::tuple<double, std::tuple<double, double> > b)
+    //             {
+    //                 auto [ a0, ph1 ] = a;
+    //                 auto [ b0, ph2 ] = b;
+    //                 return a0 < b0;
+    //             }
+    //     );
 
-        std::vector<double> xs;
-        std::vector<std::tuple<double, double> > ys;
+    //     std::vector<double> xs;
+    //     std::vector<std::tuple<double, double> > ys;
 
-        for (auto p : ret)
-        {
-            auto [x, y] = p;
-            xs.push_back(x);
-            ys.push_back(y);
-        }
+    //     for (auto p : ret)
+    //     {
+    //         auto [x, y] = p;
+    //         xs.push_back(x);
+    //         ys.push_back(y);
+    //     }
 
-        return std::make_tuple(xs, ys);
-    }
+    //     return std::make_tuple(xs, ys);
+    // }
 
     static auto prepare_sigma_jets
     (
@@ -444,7 +513,9 @@ public:
         const double &kt02, 
         const double &kt0, 
         const double &power_law,
-        pqcd::sigma_jet_params jet_params
+        pqcd::sigma_jet_params jet_params,
+        const double &ave_T_AA_0,
+        const std::string &s_jet_file_name
     ) ->
     std::tuple
     <
@@ -474,7 +545,7 @@ public:
                 dijet_norm = sigma_jet;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -486,34 +557,34 @@ public:
                         std::nullopt
                     );
             }
-            else //sigma_jet depends on energy
-            {
-                std::cout<<"Calculating sigma_jets..."<<std::flush;
-                auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
-                auto sigma_jet = linear_interpolator(mand_ss, sigmas);
-                std::cout<<"done!"<<std::endl;
+            // else //sigma_jet depends on energy
+            // {
+            //     std::cout<<"Calculating sigma_jets..."<<std::flush;
+            //     auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
+            //     auto sigma_jet = linear_interpolator(mand_ss, sigmas);
+            //     std::cout<<"done!"<<std::endl;
 
-                dijet_norm = sigmas.back();
+            //     dijet_norm = sigmas.back();
 
-                std::cout<<"Calculating envelope..."<<std::flush;
-                auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-                std::vector<double> envelopes;
-                for (auto [ds, err] : max_dsigmas)
-                {
-                    envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-                }
-                auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-                std::cout<<"done!"<<std::endl;
+            //     std::cout<<"Calculating envelope..."<<std::flush;
+            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
+            //     std::vector<double> envelopes;
+            //     for (auto [ds, err] : max_dsigmas)
+            //     {
+            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
+            //     }
+            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
+            //     std::cout<<"done!"<<std::endl;
 
-                return std::make_tuple
-                    (
-                        dijet_norm,
-                        variant_sigma_jet(sigma_jet),
-                        mand_ss,
-                        variant_envelope_pars(envelope_maximum),
-                        sqrt_ss
-                    );
-            }
+            //     return std::make_tuple
+            //         (
+            //             dijet_norm,
+            //             variant_sigma_jet(sigma_jet),
+            //             mand_ss,
+            //             variant_envelope_pars(envelope_maximum),
+            //             sqrt_ss
+            //         );
+            // }
         }
         else if //nPDFS in use
         (
@@ -529,7 +600,7 @@ public:
                 dijet_norm = sigma_jet;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -541,41 +612,41 @@ public:
                         std::nullopt
                     );
             }
-            else //sigma_jet depends on energy
-            {
-                std::cout<<"Calculating sigma_jets..."<<std::flush;
-                auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
-                auto sigma_jet = linear_interpolator(mand_ss, sigmas);
-                std::cout<<"done!"<<std::endl;
+            // else //sigma_jet depends on energy
+            // {
+            //     std::cout<<"Calculating sigma_jets..."<<std::flush;
+            //     auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
+            //     auto sigma_jet = linear_interpolator(mand_ss, sigmas);
+            //     std::cout<<"done!"<<std::endl;
 
-                dijet_norm = sigmas.back();
+            //     dijet_norm = sigmas.back();
 
-                std::cout<<"Calculating envelope..."<<std::flush;
-                auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-                std::vector<double> envelopes;
-                for (auto [ds, err] : max_dsigmas)
-                {
-                    envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-                }
-                auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-                std::cout<<"done!"<<std::endl;
+            //     std::cout<<"Calculating envelope..."<<std::flush;
+            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
+            //     std::vector<double> envelopes;
+            //     for (auto [ds, err] : max_dsigmas)
+            //     {
+            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
+            //     }
+            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
+            //     std::cout<<"done!"<<std::endl;
 
-                return std::make_tuple
-                    (
-                        dijet_norm,
-                        variant_sigma_jet(sigma_jet),
-                        mand_ss,
-                        variant_envelope_pars(envelope_maximum),
-                        sqrt_ss
-                    );
-            }
+            //     return std::make_tuple
+            //         (
+            //             dijet_norm,
+            //             variant_sigma_jet(sigma_jet),
+            //             mand_ss,
+            //             variant_envelope_pars(envelope_maximum),
+            //             sqrt_ss
+            //         );
+            // }
         }
         else //spatial nPDFs
         {
             if (!reduce_nucleon_energies && read_sigmajets_from_file) //sigma_jet does not depend on energy
             {
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
-                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial("sigma_jet_grid_spatial.dat", jet_params.d_params.K_factor);
+                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial(s_jet_file_name, jet_params.d_params.K_factor);
                 std::cout<<"done!"<<std::endl;
 
                 auto other_params = jet_params;
@@ -585,7 +656,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -599,21 +670,23 @@ public:
             }
             else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
             {
-                double tolerance=0.1,
-                    upper_sumTpp_limit=0.61, 
-                    lower_sumTpp_limit=0.01;
+                double tolerance=0.05,
+                    upper_sumTpp_limit=/*0.21033,*/0.44,//0.61, 
+                    lower_sumTpp_limit=0.0;//0.01;
 
                 std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
                 variant_sigma_jet sigma_jet 
                     = calcs::calculate_spatial_sigma_jets
                         (
+                            s_jet_file_name,
                             tolerance, 
                             p_pdf, 
                             mand_s, 
                             kt02, 
                             jet_params, 
                             upper_sumTpp_limit, 
-                            lower_sumTpp_limit
+                            lower_sumTpp_limit,
+                            ave_T_AA_0
                         );
                 std::cout<<"done!"<<std::endl;
 
@@ -626,7 +699,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -638,84 +711,84 @@ public:
                         std::nullopt
                     );
             }
-            else if (read_sigmajets_from_file)//sigma_jet depends on energy
-            {
-                std::cout<<"Reading spatial sigma_jets..."<<std::flush;
-                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial_MC("sigma_jet_grid_spatial_MC.dat");
-                std::cout<<"done!"<<std::endl;
+            // else if (read_sigmajets_from_file)//sigma_jet depends on energy
+            // {
+            //     std::cout<<"Reading spatial sigma_jets..."<<std::flush;
+            //     variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial_MC("sigma_jet_grid_spatial_MC.dat");
+            //     std::cout<<"done!"<<std::endl;
 
-                std::cout<<"Calculating dijet_norm..."<<std::endl;
-                auto other_params = jet_params;
-                other_params.d_params.npdfs_spatial = false;
-                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
-                //dijet_norm = 93.7604;
-                std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
+            //     std::cout<<"Calculating dijet_norm..."<<std::endl;
+            //     auto other_params = jet_params;
+            //     other_params.d_params.npdfs_spatial = false;
+            //     dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+            //     //dijet_norm = 93.7604;
+            //     std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
-                std::cout<<"Calculating envelope..."<<std::flush;
-                auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-                std::vector<double> envelopes;
-                for (auto [ds, err] : max_dsigmas)
-                {
-                    envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-                }
-                auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-                std::cout<<"done!"<<std::endl;
+            //     std::cout<<"Calculating envelope..."<<std::flush;
+            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
+            //     std::vector<double> envelopes;
+            //     for (auto [ds, err] : max_dsigmas)
+            //     {
+            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
+            //     }
+            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
+            //     std::cout<<"done!"<<std::endl;
 
-                return std::make_tuple
-                    (
-                        dijet_norm,
-                        std::move(sigma_jet),
-                        std::nullopt,
-                        variant_envelope_pars(envelope_maximum),
-                        sqrt_ss
-                    );
-            }
-            else //sigma_jet depends on energy
-            {
-                double tolerance=0.02,
-                    upper_sumTpp_limit=0.61, 
-                    lower_sumTpp_limit=0.01;
+            //     return std::make_tuple
+            //         (
+            //             dijet_norm,
+            //             std::move(sigma_jet),
+            //             std::nullopt,
+            //             variant_envelope_pars(envelope_maximum),
+            //             sqrt_ss
+            //         );
+            // }
+            // else //sigma_jet depends on energy
+            // {
+            //     double tolerance=0.02,
+            //         upper_sumTpp_limit=0.61, 
+            //         lower_sumTpp_limit=0.01;
 
-                std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
-                variant_sigma_jet sigma_jet 
-                    = calcs::calculate_spatial_sigma_jets_MC
-                        (
-                            tolerance, 
-                            p_pdf, 
-                            mand_s, 
-                            kt02, 
-                            jet_params, 
-                            upper_sumTpp_limit, 
-                            lower_sumTpp_limit
-                        );
-                std::cout<<"done!"<<std::endl;
+            //     std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
+            //     variant_sigma_jet sigma_jet 
+            //         = calcs::calculate_spatial_sigma_jets_MC
+            //             (
+            //                 tolerance, 
+            //                 p_pdf, 
+            //                 mand_s, 
+            //                 kt02, 
+            //                 jet_params, 
+            //                 upper_sumTpp_limit, 
+            //                 lower_sumTpp_limit
+            //             );
+            //     std::cout<<"done!"<<std::endl;
 
-                std::cout<<"Calculating dijet_norm..."<<std::endl;
-                auto other_params = jet_params;
-                other_params.d_params.npdfs_spatial = false;
-                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
-                //dijet_norm = 93.7604;
-                std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
+            //     std::cout<<"Calculating dijet_norm..."<<std::endl;
+            //     auto other_params = jet_params;
+            //     other_params.d_params.npdfs_spatial = false;
+            //     dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+            //     //dijet_norm = 93.7604;
+            //     std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
-                std::cout<<"Calculating envelope..."<<std::flush;
-                auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-                std::vector<double> envelopes;
-                for (auto [ds, err] : max_dsigmas)
-                {
-                    envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-                }
-                auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-                std::cout<<"done!"<<std::endl;
+            //     std::cout<<"Calculating envelope..."<<std::flush;
+            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
+            //     std::vector<double> envelopes;
+            //     for (auto [ds, err] : max_dsigmas)
+            //     {
+            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
+            //     }
+            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
+            //     std::cout<<"done!"<<std::endl;
 
-                return std::make_tuple
-                    (
-                        dijet_norm,
-                        std::move(sigma_jet),
-                        std::nullopt,
-                        variant_envelope_pars(envelope_maximum),
-                        sqrt_ss
-                    );
-            }
+            //     return std::make_tuple
+            //         (
+            //             dijet_norm,
+            //             std::move(sigma_jet),
+            //             std::nullopt,
+            //             variant_envelope_pars(envelope_maximum),
+            //             sqrt_ss
+            //         );
+            // }
         }
     }
 
@@ -943,8 +1016,8 @@ public:
 
         uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
-        double tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-        double tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : 29.5494;//30.5//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+        double tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : AA_params.T_AA_0;//29.0851;//34.0125;//29.9965;//29.5494;//30.5;//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
+        double tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : AA_params.T_AA_0;//29.0851;//34.0125;//29.9965;//29.5494;//30.5;//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
         
         if (verbose)
         {
@@ -1032,24 +1105,79 @@ public:
                         sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
                         //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                     }
+                    
+                    if (dsigma_params.snPDFs_linear)
+                    {
+                        //r=(1+cT)
 
-                    const uint_fast16_t NA = dsigma_params.d_params.A, 
-                                        NB = dsigma_params.d_params.B;
-                    //c=A*(R-1)/TAA(0)
-                    const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                                intA = 1.0 - scaA;
-                    const std::function<double(double const&)> 
-                        rA_spatial_ = [&](double const &r)
-                            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+                        const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                            NB = dsigma_params.d_params.B;
+                                            
+                        const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
+                        //c=A*(R-1)/TAA(0)
+                        const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                                    intA = 1.0 - scaA;
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaA + intA;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                                    
+                                }; //r_s=1+c*sum(Tpp)
 
-                    const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                                intB = 1.0 - scaB;
-                    const std::function<double(double const&)> 
-                        rB_spatial_ = [&](double const &r)
-                            {return r*scaB + intB;};
+                        const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                                    intB = 1.0 - scaB;
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaB + intB;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
+                                };
+                                
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
+                    else
+                    {
+                        //r=exp(cT)
 
-                    dsigma_params.d_params.rA_spatial = rA_spatial_;
-                    dsigma_params.d_params.rB_spatial = rB_spatial_;
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TAi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
+
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TBi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
+
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
 
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -1127,23 +1255,79 @@ public:
                 }
                 if (AA_params.calculate_end_state)
                 {
-                    const uint_fast16_t NA = dsigma_params.d_params.A, 
-                                        NB = dsigma_params.d_params.B;
-                    //c=A*(R-1)/TAA(0)
-                    const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                                intA = 1.0 - scaA;
-                    const std::function<double(double const&)> 
-                        rA_spatial_ = [&](double const &r)
-                            {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
+                    
+                    if (dsigma_params.snPDFs_linear)
+                    {
+                        //r=(1+cT)
 
-                    const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                                intB = 1.0 - scaB;
-                    const std::function<double(double const&)> 
-                        rB_spatial_ = [&](double const &r)
-                            {return r*scaB + intB;};
+                        const uint_fast16_t NA = dsigma_params.d_params.A, 
+                                            NB = dsigma_params.d_params.B;
+                                            
+                        const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
+                        //c=A*(R-1)/TAA(0)
+                        const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
+                                    intA = 1.0 - scaA;
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaA + intA;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
+                                    
+                                }; //r_s=1+c*sum(Tpp)
 
-                    dsigma_params.d_params.rA_spatial = rA_spatial_;
-                    dsigma_params.d_params.rB_spatial = rB_spatial_;
+                        const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
+                                    intB = 1.0 - scaB;
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
+                                {
+                                    auto dummy = r*scaB + intB;
+                                    // return dummy; // no cutoff
+                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
+                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
+                                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
+                                };
+                                
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
+                    else
+                    {
+                        //r=exp(cT)
+
+                        const std::function<double(double const&)> 
+                            rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TAi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
+
+                        const std::function<double(double const&)> 
+                            rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
+                                {
+                                    if (r>0.0)
+                                    {
+                                        double c = c_func.value_at(r);
+                                        return std::exp(c * TBi);
+                                    }
+                                    else
+                                    {
+                                        return 0.0;
+                                    }
+                                };
+
+                        dsigma_params.d_params.rA_spatial = rA_spatial_;
+                        dsigma_params.d_params.rB_spatial = rB_spatial_;
+                    }
 
                     if (AA_params.reduce_nucleon_energies)
                     {
@@ -1388,25 +1572,238 @@ public:
 
         return std::make_tuple(pro, tar);
     }
+
+    static auto ta_ws_folded
+    (
+        const double &r
+    ) noexcept -> double
+    {
+        if ((r > 0)&&(r < 2.99327))
+        {
+            return 2.1033+0.0387749*r-0.0641807*std::pow(r,1.5);
+        }
+        else if (r < 6.72925)
+        {
+            return 5.07336-2.16827*r+2.72582*std::pow(std::log(r),2);
+        }
+        else if (r < 9.12769)
+        {
+            return 13.4654+1.24837*r-11.2333*std::log(r);
+        }
+        else if (r < 15.6368)
+        {
+            return 0.00718685-0.000521874*r;
+        }
+        else 
+        {
+            return 0.0;
+        }
+    }
     
     static auto calculate_sum_tpp
     (
         const nucleon &nuc, 
         const std::vector<nucleon> &nucleus, 
-        const std::function<double(const double&)> Tpp
+        const std::function<double(const double&)> &Tpp
     ) noexcept -> double
     {
+        // double TA=0.0; //sum(T_pp(b_ii'))
+        
+        // coords com{0.0,0.0,0.0}; //center of mass
+        // for (const auto& n : nucleus)
+        // {
+        //     com += n.co;
+        // }
+        // com /= static_cast<double>(nucleus.size());
+        
+        // auto r_3vec = nuc.co - com;
+        
+        // TA = ta_ws_folded(std::pow(r_3vec.x*r_3vec.x + r_3vec.y*r_3vec.y,0.5))*0.1;
+        // return TA;
+
         double sum_tpp=0.0; //sum(T_pp(b_ii'))
         uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
-
+        
         auto [x1, y1, z1] = nuc.co;
-
+        
         for (uint_fast16_t i=0; i<A; i++)
         {
             auto [x2, y2, z2] = nucleus.at(i).co;
+            if ( nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
+            {
+               continue;
+            }
             sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
         }
         return sum_tpp;
+        
+        // TA = std::min(sum_tpp, TA);
+        // return TA;
+    }
+
+    static auto calculate_T_AA_0
+    (
+        const nucleus_generator::nucleus_params &nuc_params,
+        const double &rel_tolerance,
+        const std::function<double(const double&)> Tpp,
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<ars> radial_sampler,
+        const bool verbose
+    ) -> double
+    {
+        double ave_T_AA_0 = 0.0;
+        
+        std::vector<uint_fast8_t> block_indexes(200);
+        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+        //int inte=0;
+        //do
+        //{
+        //int expo=0;
+        //do
+        //{
+        double rel_delta = 1.0;
+        ave_T_AA_0 = 0.0;
+        uint_fast16_t blocks_calculated = 0;
+        do
+        {
+            std::vector<double> T_AA_0s(200);
+
+            std::for_each
+            (
+                std::execution::par, 
+                block_indexes.begin(), 
+                block_indexes.end(),
+                [&](const uint_fast8_t block_index) 
+                {
+                    std::vector<nucleon> nucl, other;
+                    std::vector<uint_fast8_t> nucl_indexes(208);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::vector<double> sum_tpps(208);
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng, 
+                            radial_sampler
+                        );
+
+                    std::for_each
+                    (
+                        std::execution::par, 
+                        nucl_indexes.begin(), 
+                        nucl_indexes.end(),
+                        [&](const uint_fast8_t index) 
+                        {
+                            sum_tpps[index] = calculate_sum_tpp(nucl[index], nucl, Tpp);
+                        }
+                    );
+
+                    T_AA_0s[block_index] = std::reduce(std::execution::par, sum_tpps.begin(), sum_tpps.end(), 0.0);
+                }
+            );
+
+            double block_average = std::reduce(std::execution::par, T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
+
+            double old_ave = ave_T_AA_0; 
+            double dummy = ave_T_AA_0 * blocks_calculated;
+            blocks_calculated++;
+            ave_T_AA_0 = (dummy + block_average) / blocks_calculated;
+
+            rel_delta = std::abs(old_ave - ave_T_AA_0) / old_ave;
+
+            std::cout<<"\rT_AAs calculated: "<<blocks_calculated*200<<" current average: "<<ave_T_AA_0<<" last rel_delta: "<<rel_delta<<"            "<<std::flush;
+
+        } while (blocks_calculated<50);//5*std::pow(10,expo));//2500);//(rel_delta > rel_tolerance);
+        //expo++;
+        std::cout<<std::endl;
+        //} while (expo<3);
+        //} while (inte++<5);
+
+        return ave_T_AA_0;
+    }
+
+    static auto calculate_R_c_table
+    (
+        const nucleus_generator::nucleus_params &nuc_params,
+        const double &rel_tolerance,
+        const std::function<double(const double&)> Tpp,
+        std::shared_ptr<std::mt19937> eng,
+        std::shared_ptr<ars> radial_sampler,
+        const bool verbose
+    ) -> std::tuple<std::array<double, 25>, std::array<double, 25> >
+    {
+        std::vector<uint_fast8_t> block_indexes(200);
+        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+        
+        std::array<double, 25> c_vector{-15.0,-14.0,-13.0,-12.0,-11.0,-10.0,-9.0,-8.0,-7.0,-6.0,-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0,10.0,15.0,20.0,25.0};
+        std::array<double, 25> ave_R_vector{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+        
+        uint_fast16_t blocks_calculated = 0;
+        do
+        {
+            std::array<std::array<double, 200>, 25> R_vectors;
+
+            std::for_each
+            (
+                std::execution::par, 
+                block_indexes.begin(), 
+                block_indexes.end(),
+                [&](const uint_fast8_t block_index) 
+                {
+                    std::vector<nucleon> nucl, other;
+                    std::vector<uint_fast8_t> nucl_indexes(208);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::array<std::array<double, 208>, 25> sum_tpps;
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng, 
+                            radial_sampler
+                        );
+
+                    std::for_each
+                    (
+                        std::execution::par, 
+                        nucl_indexes.begin(), 
+                        nucl_indexes.end(),
+                        [&](const uint_fast8_t index) 
+                        {
+                            for (uint_fast8_t i=0; i<25; i++)
+                            {
+                                sum_tpps[i][index] = std::exp(c_vector[i]*calculate_sum_tpp(nucl[index], nucl, Tpp));
+                            }
+                            //sum_tpps[index] = calculate_sum_tpp(nucl[index], nucl, Tpp);
+                        }
+                    );
+
+                    for (uint_fast8_t i=0; i<25; i++)
+                    {
+                        R_vectors[i][block_index] = std::reduce(std::execution::par, sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / 208.0;
+                    }
+                }
+            );
+
+            for (uint_fast8_t i=0; i<25; i++)
+            {
+                double block_average = std::reduce(std::execution::par, R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
+                double dummy = ave_R_vector[i] * blocks_calculated;
+                ave_R_vector[i] = (dummy + block_average) / (blocks_calculated + 1.0);
+            }
+            blocks_calculated++;
+
+            std::cout<<"\rA-configs calculated: "<<blocks_calculated*200<<std::flush;
+
+        } while (blocks_calculated<50);
+        std::cout<<std::endl;
+
+        return std::make_tuple(ave_R_vector,c_vector);
     }
 
     
@@ -1588,187 +1985,188 @@ private:
         return InterpMultilinear<2, double>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data());
     }
 
-    static auto calculate_spatial_sigma_jets_MC
-    (
-        const double &tolerance, 
-        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-        /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/ 
-        const double &mand_s, 
-        const double &kt02, 
-        const pqcd::sigma_jet_params &jet_params, 
-        const double &upper_sumTpp_limit, 
-        const double &lower_sumTpp_limit
-    ) noexcept -> InterpMultilinear<3, double>
-    {
-        const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
-        std::array<uint_fast16_t,3> dim_Ns{0}; //How many points to calculate in each dimension
-        std::array<double,8> corners{0};
-        const double tAA_0 = 29.5494;//30.5;
-        const double tBB_0 = 29.5494;//30.5;
+    // static auto calculate_spatial_sigma_jets_MC
+    // (
+    //     const double &tolerance, 
+    //     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    //     /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/ 
+    //     const double &mand_s, 
+    //     const double &kt02, 
+    //     const pqcd::sigma_jet_params &jet_params, 
+    //     const double &upper_sumTpp_limit, 
+    //     const double &lower_sumTpp_limit
+    // ) noexcept -> InterpMultilinear<3, double>
+    // {
+    //     const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
+    //     std::array<uint_fast16_t,3> dim_Ns{0}; //How many points to calculate in each dimension
+    //     std::array<double,8> corners{0};
+    //     const double tAA_0 = 29.5494;//30.5;
+    //     const double tBB_0 = 29.5494;//30.5;
 
-        auto sigma_jet_function = [=](const double sum_tppa, const double sum_tppb, const double mand_s_)
-        {
-            return pqcd::calculate_spatial_sigma_jet(p_p_pdf,/* p_n_pdf,*/ &mand_s_, &kt02, jet_params, sum_tppa, sum_tppb, tAA_0, tBB_0);
-        };
+    //     auto sigma_jet_function = [=](const double sum_tppa, const double sum_tppb, const double mand_s_)
+    //     {
+    //         return pqcd::calculate_spatial_sigma_jet(p_p_pdf,/* p_n_pdf,*/ &mand_s_, &kt02, jet_params, sum_tppa, sum_tppb, tAA_0, tBB_0);
+    //     };
 
-        std::array<std::future<double>, 8> corner_futures{};
+    //     std::array<std::future<double>, 8> corner_futures{};
         
-        //First calculation in a single thread, so the PDF gets fully initialized thread-safe
-        corners[0]         =                                sigma_jet_function( upper_sumTpp_limit, upper_sumTpp_limit, mand_s);
-        corner_futures[1]  = std::async(std::launch::async, sigma_jet_function, upper_sumTpp_limit, upper_sumTpp_limit, kt02  );
-        corner_futures[2]  = std::async(std::launch::async, sigma_jet_function, upper_sumTpp_limit, lower_sumTpp_limit, mand_s);
-        corner_futures[3]  = std::async(std::launch::async, sigma_jet_function, upper_sumTpp_limit, lower_sumTpp_limit, kt02  );
-        corner_futures[4]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, upper_sumTpp_limit, mand_s);
-        corner_futures[5]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, upper_sumTpp_limit, kt02  );
-        corner_futures[6]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit, mand_s);
-        corner_futures[7]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit, kt02  );
+    //     //First calculation in a single thread, so the PDF gets fully initialized thread-safe
+    //     corners[0]         =                                sigma_jet_function( upper_sumTpp_limit, upper_sumTpp_limit, mand_s);
+    //     corner_futures[1]  = std::async(std::launch::async, sigma_jet_function, upper_sumTpp_limit, upper_sumTpp_limit, kt02  );
+    //     corner_futures[2]  = std::async(std::launch::async, sigma_jet_function, upper_sumTpp_limit, lower_sumTpp_limit, mand_s);
+    //     corner_futures[3]  = std::async(std::launch::async, sigma_jet_function, upper_sumTpp_limit, lower_sumTpp_limit, kt02  );
+    //     corner_futures[4]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, upper_sumTpp_limit, mand_s);
+    //     corner_futures[5]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, upper_sumTpp_limit, kt02  );
+    //     corner_futures[6]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit, mand_s);
+    //     corner_futures[7]  = std::async(std::launch::async, sigma_jet_function, lower_sumTpp_limit, lower_sumTpp_limit, kt02  );
 
-        for (uint_fast8_t i=1; i<8; i++)
-        {
-            corners[i] = corner_futures[i].get();
-        }
+    //     for (uint_fast8_t i=1; i<8; i++)
+    //     {
+    //         corners[i] = corner_futures[i].get();
+    //     }
 
-        //Determine the grid spacings in all directions
+    //     //Determine the grid spacings in all directions
 
-        double max_corner = *std::max_element(corners.begin(), corners.end());
+    //     double max_corner = *std::max_element(corners.begin(), corners.end());
 
-        //sum_Tpp_A
-        std::array<double,4> differences
-        {
-            abs(corners[0]-corners[4]), 
-            abs(corners[1]-corners[5]), 
-            abs(corners[2]-corners[6]), 
-            abs(corners[3]-corners[7])
-        };
-        double max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[0] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+    //     //sum_Tpp_A
+    //     std::array<double,4> differences
+    //     {
+    //         abs(corners[0]-corners[4]), 
+    //         abs(corners[1]-corners[5]), 
+    //         abs(corners[2]-corners[6]), 
+    //         abs(corners[3]-corners[7])
+    //     };
+    //     double max_diff = *std::max_element(differences.begin(), differences.end());
+    //     dim_Ns[0] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
-        //sum_Tpp_B
-        differences = std::array<double,4>
-        ({
-            abs(corners[0]-corners[2]), 
-            abs(corners[1]-corners[3]), 
-            abs(corners[4]-corners[6]), 
-            abs(corners[5]-corners[7])
-        });
-        max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[1] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+    //     //sum_Tpp_B
+    //     differences = std::array<double,4>
+    //     ({
+    //         abs(corners[0]-corners[2]), 
+    //         abs(corners[1]-corners[3]), 
+    //         abs(corners[4]-corners[6]), 
+    //         abs(corners[5]-corners[7])
+    //     });
+    //     max_diff = *std::max_element(differences.begin(), differences.end());
+    //     dim_Ns[1] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
-        //mand_s
-        differences = std::array<double,4>
-        ({
-            abs(corners[0]-corners[1]), 
-            abs(corners[2]-corners[3]), 
-            abs(corners[4]-corners[5]), 
-            abs(corners[6]-corners[7])
-        });
-        max_diff = *std::max_element(differences.begin(), differences.end());
-        dim_Ns[2] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
+    //     //mand_s
+    //     differences = std::array<double,4>
+    //     ({
+    //         abs(corners[0]-corners[1]), 
+    //         abs(corners[2]-corners[3]), 
+    //         abs(corners[4]-corners[5]), 
+    //         abs(corners[6]-corners[7])
+    //     });
+    //     max_diff = *std::max_element(differences.begin(), differences.end());
+    //     dim_Ns[2] = static_cast<uint_fast16_t>(ceil( ((max_diff/max_corner) / tolerance) * marginal ));
 
-        for (auto & n : dim_Ns)
-        {
-            if (!std::isnormal(n) || n<2)
-            {
-                n=2;
-            }
-        }
+    //     for (auto & n : dim_Ns)
+    //     {
+    //         if (!std::isnormal(n) || n<2)
+    //         {
+    //             n=2;
+    //         }
+    //     }
 
-        // construct the grid in each dimension. 
-        // note that we will pass in a sequence of iterators pointing to the beginning of each grid
-        std::vector<double> grid1 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
-        std::vector<double> grid2 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
-        std::vector<double> grid3 = helpers::linspace(kt02, mand_s, dim_Ns[2]);
-        std::vector< std::vector<double>::iterator > grid_iter_list;
-        grid_iter_list.push_back(grid1.begin());
-        grid_iter_list.push_back(grid2.begin());
-        grid_iter_list.push_back(grid3.begin());
+    //     // construct the grid in each dimension. 
+    //     // note that we will pass in a sequence of iterators pointing to the beginning of each grid
+    //     std::vector<double> grid1 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[0]);
+    //     std::vector<double> grid2 = helpers::linspace(lower_sumTpp_limit, upper_sumTpp_limit, dim_Ns[1]);
+    //     std::vector<double> grid3 = helpers::linspace(kt02, mand_s, dim_Ns[2]);
+    //     std::vector< std::vector<double>::iterator > grid_iter_list;
+    //     grid_iter_list.push_back(grid1.begin());
+    //     grid_iter_list.push_back(grid2.begin());
+    //     grid_iter_list.push_back(grid3.begin());
     
-        // total number of elements
-        uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2]; 
+    //     // total number of elements
+    //     uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1] * dim_Ns[2]; 
 
-        std::ofstream sigma_jet_grid_file;
-        sigma_jet_grid_file.open("sigma_jet_grid_spagtial_MC.dat", std::ios::out);
-        sigma_jet_grid_file << "%p_pdf=" << p_p_pdf->info().get_entry("SetIndex") << std::endl;
-        sigma_jet_grid_file << "%num_elements=" << num_elements << std::endl;
-        sigma_jet_grid_file << "%num_sum_T_pp_A=" << dim_Ns[0] << std::endl;
-        sigma_jet_grid_file << "%num_sum_T_pp_B=" << dim_Ns[1] << std::endl;
-        sigma_jet_grid_file << "%num_mand_s=" << dim_Ns[2] << std::endl;
-        sigma_jet_grid_file << std::endl;
-        sigma_jet_grid_file << "%sum_T_pp_A" << std::endl;
-        for (auto g : grid1) sigma_jet_grid_file << g << ' ';
-        sigma_jet_grid_file << std::endl << std::endl;
-        sigma_jet_grid_file << "%sum_T_pp_B" << std::endl;
-        for (auto g : grid2) sigma_jet_grid_file << g << ' ';
-        sigma_jet_grid_file << std::endl << std::endl;
-        sigma_jet_grid_file << "%mand_s" << std::endl;
-        for (auto g : grid3) sigma_jet_grid_file << g << ' ';
-        sigma_jet_grid_file << std::endl << std::endl;
-        sigma_jet_grid_file << "%sigma_jet_values" << std::endl;
+    //     std::ofstream sigma_jet_grid_file;
+    //     sigma_jet_grid_file.open("sigma_jet_grid_spagtial_MC.dat", std::ios::out);
+    //     sigma_jet_grid_file << "%p_pdf=" << p_p_pdf->info().get_entry("SetIndex") << std::endl;
+    //     sigma_jet_grid_file << "%num_elements=" << num_elements << std::endl;
+    //     sigma_jet_grid_file << "%num_sum_T_pp_A=" << dim_Ns[0] << std::endl;
+    //     sigma_jet_grid_file << "%num_sum_T_pp_B=" << dim_Ns[1] << std::endl;
+    //     sigma_jet_grid_file << "%num_mand_s=" << dim_Ns[2] << std::endl;
+    //     sigma_jet_grid_file << std::endl;
+    //     sigma_jet_grid_file << "%sum_T_pp_A" << std::endl;
+    //     for (auto g : grid1) sigma_jet_grid_file << g << ' ';
+    //     sigma_jet_grid_file << std::endl << std::endl;
+    //     sigma_jet_grid_file << "%sum_T_pp_B" << std::endl;
+    //     for (auto g : grid2) sigma_jet_grid_file << g << ' ';
+    //     sigma_jet_grid_file << std::endl << std::endl;
+    //     sigma_jet_grid_file << "%mand_s" << std::endl;
+    //     for (auto g : grid3) sigma_jet_grid_file << g << ' ';
+    //     sigma_jet_grid_file << std::endl << std::endl;
+    //     sigma_jet_grid_file << "%sigma_jet_values" << std::endl;
 
-        // fill in the values of f(x) at the gridpoints. 
-        // we will pass in a contiguous sequence, values are assumed to be laid out C-style
-        std::vector<uint_fast64_t> c_style_indexes(num_elements);
-        std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        const uint_fast64_t rad1 = dim_Ns[1]*dim_Ns[2], 
-                    rad2 = dim_Ns[2]; //These will help untangle the C-style index into coordinates
-        // c_index = ii*rad1 + jj*rad2 + kk
-        std::vector<double> f_values(num_elements);
-        uint_fast64_t running_count{num_elements};
-        std::mutex count_mutex;
+    //     // fill in the values of f(x) at the gridpoints. 
+    //     // we will pass in a contiguous sequence, values are assumed to be laid out C-style
+    //     std::vector<uint_fast64_t> c_style_indexes(num_elements);
+    //     std::iota(c_style_indexes.begin(), c_style_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+    //     const uint_fast64_t rad1 = dim_Ns[1]*dim_Ns[2], 
+    //                 rad2 = dim_Ns[2]; //These will help untangle the C-style index into coordinates
+    //     // c_index = ii*rad1 + jj*rad2 + kk
+    //     std::vector<double> f_values(num_elements);
+    //     uint_fast64_t running_count{num_elements};
+    //     std::mutex count_mutex;
         
-        std::for_each
-        (
-            std::execution::par, 
-            c_style_indexes.begin(), 
-            c_style_indexes.end(), 
-            [=, &f_values, &running_count, &count_mutex]
-            (const uint_fast64_t index) 
-            {
-                uint_fast64_t kk = index % rad1 % rad2;
-                uint_fast64_t i_dummy = index - kk; 
-                uint_fast64_t jj = (i_dummy % rad1) / rad2;
-                uint_fast64_t ii = (i_dummy - jj*rad2) / rad1;
-                double dummy = pqcd::calculate_spatial_sigma_jet
-                                (
-                                    p_p_pdf, 
-                                    /*p_n_pdf,*/ 
-                                    &grid3[kk], 
-                                    &kt02, 
-                                    jet_params, 
-                                    grid1[ii], 
-                                    grid2[jj], 
-                                    tAA_0, 
-                                    tBB_0
-                                );
-                f_values[index] = dummy;
-                {
-                    const std::lock_guard<std::mutex> lock(count_mutex);
-                    std::cout <<'\r'<<--running_count<<" left of "
-                        <<num_elements<<" grid points to be calculated"<<std::flush;
-                }
-            }
-        );
+    //     std::for_each
+    //     (
+    //         std::execution::par, 
+    //         c_style_indexes.begin(), 
+    //         c_style_indexes.end(), 
+    //         [=, &f_values, &running_count, &count_mutex]
+    //         (const uint_fast64_t index) 
+    //         {
+    //             uint_fast64_t kk = index % rad1 % rad2;
+    //             uint_fast64_t i_dummy = index - kk; 
+    //             uint_fast64_t jj = (i_dummy % rad1) / rad2;
+    //             uint_fast64_t ii = (i_dummy - jj*rad2) / rad1;
+    //             double dummy = pqcd::calculate_spatial_sigma_jet
+    //                             (
+    //                                 p_p_pdf, 
+    //                                 /*p_n_pdf,*/ 
+    //                                 &grid3[kk], 
+    //                                 &kt02, 
+    //                                 jet_params, 
+    //                                 grid1[ii], 
+    //                                 grid2[jj], 
+    //                                 tAA_0, 
+    //                                 tBB_0
+    //                             );
+    //             f_values[index] = dummy;
+    //             {
+    //                 const std::lock_guard<std::mutex> lock(count_mutex);
+    //                 std::cout <<'\r'<<--running_count<<" left of "
+    //                     <<num_elements<<" grid points to be calculated"<<std::flush;
+    //             }
+    //         }
+    //     );
         
-        for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
-        {
-            for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
-            {
-                for (uint_fast64_t k=0; k<dim_Ns[2]; k++)
-                {
-                    sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k] << ' ';
-                }
-                sigma_jet_grid_file << std::endl;
-            }
-            sigma_jet_grid_file << std::endl;
-        }
-        sigma_jet_grid_file.close();
-        std::cout<<std::endl;
+    //     for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
+    //     {
+    //         for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
+    //         {
+    //             for (uint_fast64_t k=0; k<dim_Ns[2]; k++)
+    //             {
+    //                 sigma_jet_grid_file << f_values[i*rad1 + j*rad2 + k] << ' ';
+    //             }
+    //             sigma_jet_grid_file << std::endl;
+    //         }
+    //         sigma_jet_grid_file << std::endl;
+    //     }
+    //     sigma_jet_grid_file.close();
+    //     std::cout<<std::endl;
 
-        return InterpMultilinear<3, double>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
-    }
+    //     return InterpMultilinear<3, double>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
+    // }
 
     static auto calculate_spatial_sigma_jets
     (
+        const std::string filename,
         const double &tolerance, 
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
         /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/ 
@@ -1776,14 +2174,15 @@ private:
         const double &kt02, 
         const pqcd::sigma_jet_params &jet_params, 
         const double &upper_sumTpp_limit, 
-        const double &lower_sumTpp_limit
+        const double &lower_sumTpp_limit, 
+        const double &ave_T_AA_0
     ) noexcept -> InterpMultilinear<2, double>
     {
         const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
         std::array<uint_fast16_t,2> dim_Ns{0}; //How many points to calculate in each dimension
         std::array<double,4> corners{0};
-        const double tAA_0 = 29.5494;//30.5
-        const double tBB_0 = 29.5494;//30.5
+        const double tAA_0 = ave_T_AA_0;//29.5494;//30.5
+        const double tBB_0 = ave_T_AA_0;//29.5494;//30.5
 
         auto sigma_jet_function = [=](const double sum_tppa, const double sum_tppb)
         {
@@ -1845,7 +2244,7 @@ private:
         uint_fast64_t num_elements = dim_Ns[0] * dim_Ns[1]; 
 
         std::ofstream sigma_jet_grid_file;
-        sigma_jet_grid_file.open("sigma_jet_grid_spatial.dat", std::ios::out);
+        sigma_jet_grid_file.open(filename, std::ios::out);
         sigma_jet_grid_file << "%mand_s=" << mand_s << " kt02=" << kt02 << " p_pdf=" << p_p_pdf->info().get_entry("SetIndex") << std::endl;
         sigma_jet_grid_file << "%num_elements=" << num_elements << std::endl;
         sigma_jet_grid_file << "%num_sum_T_pp_A=" << dim_Ns[0] << std::endl;

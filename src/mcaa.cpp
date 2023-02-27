@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #include "mcaa.hpp"
 
@@ -6,43 +6,51 @@ mcaa::mcaa
 (
     const std::string &initfile
 ) 
-: diff_params(false,false,false,false,false,1,1,1u,1u,1u,1u),
+: diff_params(false,false,false,false,false,1,0,1,1u,1u,1u,1u),
   jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
   nuc_params(1u,1u,1u,1u,1.0,false,false)
 {
     auto 
     [
         p_name,
+        p_sjet_name,
         p_n_events,
         p_b_max,
         p_b_min,
+        p_sqrt_s,
         p_K_factor,
         p_kt0,
+        p_proton_width,
+        p_sigma_inel,
+        p_T_AA_0_for_snpdfs,
+        p_spatial_cutoff,
+        p_A,
         p_M_factor,
         p_nn_min_dist,
-        p_proton_width,
+        p_nuclear_RA,
+        p_nuclear_d,
         p_rad_max,
         p_rad_min,
-        p_sigma_inel,
-        p_sqrt_s,
-        p_calculate_end_state,
-        p_calculate_tata,
-        p_are_ns_depleted,
-        p_end_state_filtering,
         p_is_AA,
         p_is_pA,
         p_is_pp,
-        p_use_npdfs,
         p_is_mc_glauber,
-        p_is_mom_cons,
         p_read_sigmajets_from_file,
-        p_reduce_nucleon_energies,
         p_proton_width_static,
-        p_is_saturation,
+        p_sigma_inel_from_sigma_jet,
+        p_use_npdfs,
+        p_use_snpdfs,
+        p_snpdfs_linear,
+        p_calculate_spatial_cutoff,
+        p_calculate_end_state,
+        p_calculate_tata,
         p_save_endstate_jets,
         p_save_events_plaintext,
-        p_sigma_inel_from_sigma_jet,
-        p_use_snpdfs
+        p_are_ns_depleted,
+        p_end_state_filtering,
+        p_is_mom_cons,
+        p_reduce_nucleon_energies,
+        p_is_saturation
     ] = io::read_conf(initfile);
 
     this->calculate_end_state        = p_calculate_end_state; 
@@ -63,18 +71,25 @@ mcaa::mcaa
     this->save_events_plaintext      = p_save_events_plaintext; 
     this->sigma_inel_from_sigma_jet  = p_sigma_inel_from_sigma_jet; 
     this->snPDFs                     = p_use_snpdfs;
+    this->snPDFs_linear              = p_snpdfs_linear;
     this->name                       = p_name;
+    this->sigmajet_filename          = p_sjet_name;
     this->desired_N_events           = p_n_events;
+    this->A                          = p_A;
     this->b_max                      = p_b_max;
     this->b_min                      = p_b_min;
     this->K_factor                   = p_K_factor;
     this->kt0                        = p_kt0;
     this->M_factor                   = p_M_factor;
     this->nn_min_dist                = p_nn_min_dist;
+    this->nuclear_RA                 = p_nuclear_RA;
+    this->nuclear_d                  = p_nuclear_d;
     this->rad_max                    = p_rad_max;
     this->rad_min                    = p_rad_min;
     this->sigma_inel                 = p_sigma_inel;
     this->sqrt_s                     = p_sqrt_s;
+    this->T_AA_0                     = p_T_AA_0_for_snpdfs;
+    this->spatial_cutoff             = p_spatial_cutoff;
 
     this->verbose                    = false;
     this->kt02                       = p_kt0*p_kt0;
@@ -92,6 +107,7 @@ mcaa::mcaa
         this->proton_width_2 = (4.9 + 4*0.06*std::log(this->sqrt_s/90.0))/(FMGEV*FMGEV); //C. A. Flett, PhD thesis, U. Liverpool, 2021
         this->proton_width = std::sqrt(this->proton_width_2);
     }
+    std::cout<<"Proton width: "<<this->proton_width<<" fm"<<std::endl;
 
     this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
 
@@ -100,9 +116,21 @@ mcaa::mcaa
         return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
     }});
 
-    this->rad_pdf = std::function<double(const double&)>({[](const double & x)
+    if (p_use_snpdfs && p_snpdfs_linear && p_calculate_spatial_cutoff)
     {
-        return x*x/(1+exp((x-6.624)/0.549));
+        auto A = this->A;
+        auto RA = this->nuclear_RA;
+        auto d = this->nuclear_d;
+        auto tp0 = 1.0 / (2.0 * M_PI * this->proton_width_2);
+        auto n0 = 0.75 * (A/(M_PI*std::pow(RA,3.0))) / (1.0 + M_PI*M_PI*std::pow(d/RA,2.0));
+        auto ta0 = 2.0 * n0 * d * std::log(1.0 + std::exp(RA/d));
+        this->spatial_cutoff = tp0 / (3.0 * ta0); 
+        std::cout<<"Calculated spatial cutoff: (1+cT) >= "<<this->spatial_cutoff<<std::endl;
+    }
+
+    this->rad_pdf = std::function<double(const double&)>({[RA=this->nuclear_RA, d=this->nuclear_d](const double & x)
+    {
+        return x*x/(1+exp((x-RA)/d));
     }});
 
     // Parameter for the envelope function:
@@ -131,6 +159,7 @@ mcaa::mcaa
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */p_use_snpdfs,
     /*npdf_setnumber=           */1,
+    /*spatial_cutoff=           */this->spatial_cutoff,
     /*K_factor=                 */K_factor,
     /*A=                        */(p_is_AA)? 208u : 1u, //Pb 
     /*B=                        */(p_is_pp)? 1u : 208u, //Pb
@@ -427,6 +456,63 @@ auto mcaa::run() -> void
     const std::vector<double> y_bins{helpers::linspace(-ylim, ylim, 40u)};
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
+    
+    std::vector<double> Rs_as_vector, cs_as_vector;
+
+    //if linear snPDFs
+    if (this->snPDFs && (this->T_AA_0 == 0.0) && this->snPDFs_linear)
+    {
+        std::cout<<"Calculating T_AA(0)"<<std::endl;
+
+        this->T_AA_0 = calcs::calculate_T_AA_0
+        (
+            this->nuc_params,
+            1e-5,
+            this->Tpp,
+            eng, 
+            radial_sampler, 
+            verbose
+        );
+
+        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+    } //if exponential snPDFs
+    else if (this->snPDFs && (this->T_AA_0 == 0.0))
+    {
+        std::cout<<"Calculating R_A - c_A table"<<std::endl;
+
+        auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
+        (
+            this->nuc_params,
+            1e-5,
+            this->Tpp,
+            eng, 
+            radial_sampler, 
+            verbose
+        );
+        std::cout<<"Done! {c,R} pairs:"<<std::endl;
+
+        for (uint_fast8_t i=0; i<24; i++)
+        {
+            std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
+        }
+        std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
+        
+        for (uint_fast8_t i=0; i<25; i++)
+        {
+            Rs_as_vector.push_back(R_A_table[i]);
+            cs_as_vector.push_back(c_A_table[i]);
+        }
+
+        auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
+    
+        this->jet_params = pqcd::sigma_jet_params(
+        /*d_params=                 */this->jet_params.d_params,
+        /*scale_choice=             */this->jet_params.scale_c,
+        /*scalar=                   */this->jet_params.scalar,
+        /*use_ses=                  */this->jet_params.use_ses,
+        /*snPDFs_linear=            */this->snPDFs_linear,
+        /*c_A_func=                 */c_A_from_R);
+    }
 
     auto
     [
@@ -446,8 +532,11 @@ auto mcaa::run() -> void
         this->kt02, 
         this->kt0,
         this->power_law,
-        this->jet_params
+        this->jet_params,
+        this->T_AA_0,
+        this->sigmajet_filename
     );
+
     if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
     {
 
@@ -484,6 +573,8 @@ auto mcaa::run() -> void
         }
     }
 
+    if (this->verbose) std::cout<<"Done!"<<std::endl;
+
     AA_collision_params coll_params
     {
     /*mc_glauber_mode=          */this->MC_Glauber,
@@ -498,10 +589,9 @@ auto mcaa::run() -> void
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
     /*energy_threshold=         */this->kt0,
-    /*nn_b2_max=                */nn_b2_max
+    /*nn_b2_max=                */nn_b2_max,
+    /*T_AA_0=                   */this->T_AA_0
     };
-
-    if (this->verbose) std::cout<<"Done!"<<std::endl;
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
@@ -534,7 +624,7 @@ auto mcaa::run() -> void
 
 
     std::ofstream total_energy;
-    std::mutex total_energy_mutex; 
+    std::mutex total_energy_mutex;
  
     total_energy.open("total_energies_"+this->name+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
@@ -898,8 +988,8 @@ auto mcaa::run() -> void
         std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
     }
     std::cout<<" ...done!"<<std::endl;
-    
 
+    
 
     //io::print_histos
     //(
@@ -936,8 +1026,8 @@ auto mcaa::run() -> void
 
     if (save_endstate_jets)
     {
-        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.05},
-                                                                std::tuple<double,double>{0.25, 0.3},
+        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.02},
+                                                                std::tuple<double,double>{0.0, 0.05},
                                                                 std::tuple<double,double>{0.6, 0.8}};
 
         std::string name_pfs{this->name+".dat"};

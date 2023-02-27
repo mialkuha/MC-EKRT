@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef NUCLEON_HPP
 #define NUCLEON_HPP
@@ -29,6 +29,15 @@ public:
     double mom{0};
     bool wounded{false};
     bool is_neutron{false};
+
+    friend bool operator==(const nucleon &lhs, const nucleon &rhs)
+    {
+        return (lhs.co == rhs.co)&&
+            (lhs.mom == rhs.mom)&&
+            (lhs.wounded == rhs.wounded)&&
+            (lhs.is_neutron == rhs.is_neutron);
+    }
+    
 protected:
 private:
 };
