@@ -65,16 +65,6 @@ public:
             if (params.snPDFs_linear)
             {
                 //r=(1+cT)
-                //c=A*(R-1)/TAA(0)
-                
-                // const double scaA = params.d_params.A * 0.01 / ave_T_AA_0, 
-                //             intA = 1.0 - scaA;
-                // const std::function<double(double const&)> 
-                //     rA_spatial_ = [&](double const &r)
-                //         {return r*scaA + intA;}; //r_s=1+c*sum(Tpp)
-                // params.d_params.rA_spatial = rA_spatial_;
-                // params.d_params.rB_spatial = rA_spatial_;
-                
                 const uint_fast16_t A = params.d_params.A,
                                     B = params.d_params.B;
                 //c=A*(R-1)/TAA(0)
@@ -175,23 +165,10 @@ public:
             simplex_size = gsl_multimin_fminimizer_size(minimizer);
             status = gsl_multimin_test_size(simplex_size, 1e-3);
 
-            //if (status == GSL_SUCCESS)
-            //{
-            //    printf ("converged to maximum at\n");
-            //    printf ("%5i %10.3e %10.3e f() = %10.3e size = %.3f\n",
-            //            int(iter),
-            //            gsl_vector_get (minimizer->x, 0),
-            //            gsl_vector_get (minimizer->x, 1),
-            //            -minimizer->fval, simplex_size);
-            //}
-
         } while (status == GSL_CONTINUE && iter < 100);
 
         max_dsigma = static_cast<double>(-minimizer->fval);
         error_est = static_cast<double>(simplex_size);
-
-        //  double y1 = gsl_vector_get(minimizer->x, 0);
-        //  double y2 = gsl_vector_get(minimizer->x, 1);
 
         gsl_vector_free(ys);
         gsl_vector_free(init_step_size);
@@ -357,60 +334,6 @@ public:
             };
     }
     
-    static auto calculate_sigma_jets_for_MC
-    (
-        std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        const double &mand_s, 
-        const double &kt02,  
-        pqcd::sigma_jet_params params,
-        const uint_fast16_t n_divisions = 100
-    )
-    {
-        const std::vector<double> mand_ss{helpers::linspace(kt02, mand_s, n_divisions)};
-        std::vector<std::tuple<double, double> > ret;
-        std::mutex ret_mutex; 
-        ret.push_back(std::make_tuple(kt02, 0.0));
-        ret.push_back(std::make_tuple(mand_ss[1], pqcd::calculate_sigma_jet(p_pdf, &mand_ss[1], &kt02, params)));
-
-        std::for_each
-        (
-            std::execution::par, 
-            mand_ss.begin()+2, 
-            mand_ss.end(), 
-            [&](const double ss) 
-            {
-                auto sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &ss, &kt02, params);
-                const std::lock_guard<std::mutex> lock(ret_mutex);
-                ret.push_back(std::make_tuple(ss, sigma_jet));
-            }
-        );
-        
-        //Sort the pairs by mand_s
-        std::sort
-        (
-            ret.begin(), 
-            ret.end(),
-            [](std::tuple<double, double> a, std::tuple<double, double> b)
-                {
-                    auto [ a0, ph1 ] = a;
-                    auto [ b0, ph2 ] = b;
-                    return a0 < b0;
-                }
-        );
-
-        std::vector<double> xs;
-        std::vector<double> ys;
-
-        for (auto p : ret)
-        {
-            auto [x, y] = p;
-            xs.push_back(x);
-            ys.push_back(y);
-        }
-
-        return std::make_tuple(xs, ys);
-    }
-
     /*
     * Struct needed by find_max_dsigma
     */
@@ -450,62 +373,8 @@ public:
         return -total_xsection;
     }
 
-    // static auto calculate_max_dsigmas_for_MC
-    // (
-    //     const double &kt0,
-    //     const double &sqrt_s,
-    //     std::shared_ptr<LHAPDF::GridPDF> p_pdf,    
-    //     pqcd::sigma_jet_params params,
-    //     const uint_fast16_t n_divisions = 100
-    // )
-    // {
-    //     const std::vector<double> sqrt_ss{helpers::linspace(kt0, sqrt_s, n_divisions)};
-    //     std::vector<std::tuple<double, std::tuple<double, double> > > ret;
-    //     std::mutex ret_mutex; 
-    //     ret.push_back(std::make_tuple(kt0, std::make_tuple(0.0, 0.0)));
-
-    //     std::for_each
-    //     (
-    //         std::execution::par, 
-    //         sqrt_ss.begin()+1, 
-    //         sqrt_ss.end(), 
-    //         [&](const double ss) 
-    //         {
-    //             auto max_dsigma = calcs::find_max_dsigma(kt0, ss, p_pdf, params, 30.5);
-    //             const std::lock_guard<std::mutex> lock(ret_mutex);
-    //             ret.push_back(std::make_tuple(ss, max_dsigma));
-    //         }
-    //     );
-        
-    //     //Sort the pairs by sqrt_s
-    //     std::sort
-    //     (
-    //         ret.begin(), 
-    //         ret.end(),
-    //         [](std::tuple<double, std::tuple<double, double> > a, std::tuple<double, std::tuple<double, double> > b)
-    //             {
-    //                 auto [ a0, ph1 ] = a;
-    //                 auto [ b0, ph2 ] = b;
-    //                 return a0 < b0;
-    //             }
-    //     );
-
-    //     std::vector<double> xs;
-    //     std::vector<std::tuple<double, double> > ys;
-
-    //     for (auto p : ret)
-    //     {
-    //         auto [x, y] = p;
-    //         xs.push_back(x);
-    //         ys.push_back(y);
-    //     }
-
-    //     return std::make_tuple(xs, ys);
-    // }
-
     static auto prepare_sigma_jets
     (
-        const bool reduce_nucleon_energies,
         const bool read_sigmajets_from_file,
         std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
         const double &mand_s,
@@ -536,114 +405,52 @@ public:
             !use_npdfs && !spatial_pdfs
         )
         {
-            if (!reduce_nucleon_energies) //Only one sigma_jet
-            {
-                std::cout<<"Calculating sigma_jet..."<<std::flush;
-                double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
-                std::cout<<"done!"<<std::endl;
+            std::cout<<"Calculating sigma_jet..."<<std::flush;
+            double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
+            std::cout<<"done!"<<std::endl;
 
-                dijet_norm = sigma_jet;
+            dijet_norm = sigma_jet;
 
-                std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
-                std::cout<<"done!"<<std::endl;
+            std::cout<<"Calculating envelope..."<<std::flush;
+            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            std::cout<<"done!"<<std::endl;
 
-                return std::make_tuple
-                    (
-                        dijet_norm,
-                        variant_sigma_jet(sigma_jet),
-                        std::nullopt,
-                        variant_envelope_pars(env_params),
-                        std::nullopt
-                    );
-            }
-            // else //sigma_jet depends on energy
-            // {
-            //     std::cout<<"Calculating sigma_jets..."<<std::flush;
-            //     auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
-            //     auto sigma_jet = linear_interpolator(mand_ss, sigmas);
-            //     std::cout<<"done!"<<std::endl;
-
-            //     dijet_norm = sigmas.back();
-
-            //     std::cout<<"Calculating envelope..."<<std::flush;
-            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-            //     std::vector<double> envelopes;
-            //     for (auto [ds, err] : max_dsigmas)
-            //     {
-            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-            //     }
-            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-            //     std::cout<<"done!"<<std::endl;
-
-            //     return std::make_tuple
-            //         (
-            //             dijet_norm,
-            //             variant_sigma_jet(sigma_jet),
-            //             mand_ss,
-            //             variant_envelope_pars(envelope_maximum),
-            //             sqrt_ss
-            //         );
-            // }
+            return std::make_tuple
+                (
+                    dijet_norm,
+                    variant_sigma_jet(sigma_jet),
+                    std::nullopt,
+                    variant_envelope_pars(env_params),
+                    std::nullopt
+                );
         }
         else if //nPDFS in use
         (
             !spatial_pdfs
         )
         {
-            if (!reduce_nucleon_energies) //Only one sigma_jet
-            {
-                std::cout<<"Calculating sigma_jet..."<<std::flush;
-                double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
-                std::cout<<"done!"<<std::endl;
+            std::cout<<"Calculating sigma_jet..."<<std::flush;
+            double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
+            std::cout<<"done!"<<std::endl;
 
-                dijet_norm = sigma_jet;
+            dijet_norm = sigma_jet;
 
-                std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
-                std::cout<<"done!"<<std::endl;
+            std::cout<<"Calculating envelope..."<<std::flush;
+            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            std::cout<<"done!"<<std::endl;
 
-                return std::make_tuple
-                    (
-                        dijet_norm,
-                        variant_sigma_jet(sigma_jet),
-                        std::nullopt,
-                        variant_envelope_pars(env_params),
-                        std::nullopt
-                    );
-            }
-            // else //sigma_jet depends on energy
-            // {
-            //     std::cout<<"Calculating sigma_jets..."<<std::flush;
-            //     auto [mand_ss, sigmas] = calcs::calculate_sigma_jets_for_MC(p_pdf, mand_s, kt02, jet_params);
-            //     auto sigma_jet = linear_interpolator(mand_ss, sigmas);
-            //     std::cout<<"done!"<<std::endl;
-
-            //     dijet_norm = sigmas.back();
-
-            //     std::cout<<"Calculating envelope..."<<std::flush;
-            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-            //     std::vector<double> envelopes;
-            //     for (auto [ds, err] : max_dsigmas)
-            //     {
-            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-            //     }
-            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-            //     std::cout<<"done!"<<std::endl;
-
-            //     return std::make_tuple
-            //         (
-            //             dijet_norm,
-            //             variant_sigma_jet(sigma_jet),
-            //             mand_ss,
-            //             variant_envelope_pars(envelope_maximum),
-            //             sqrt_ss
-            //         );
-            // }
+            return std::make_tuple
+                (
+                    dijet_norm,
+                    variant_sigma_jet(sigma_jet),
+                    std::nullopt,
+                    variant_envelope_pars(env_params),
+                    std::nullopt
+                );
         }
         else //spatial nPDFs
         {
-            if (!reduce_nucleon_energies && read_sigmajets_from_file) //sigma_jet does not depend on energy
+            if (read_sigmajets_from_file)
             {
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
                 variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial(s_jet_file_name, jet_params.d_params.K_factor);
@@ -668,7 +475,7 @@ public:
                         std::nullopt
                     );
             }
-            else if (!reduce_nucleon_energies)//sigma_jet does not depend on energy
+            else
             {
                 double tolerance=0.05,
                     upper_sumTpp_limit=/*0.21033,*/0.44,//0.61, 
@@ -711,84 +518,6 @@ public:
                         std::nullopt
                     );
             }
-            // else if (read_sigmajets_from_file)//sigma_jet depends on energy
-            // {
-            //     std::cout<<"Reading spatial sigma_jets..."<<std::flush;
-            //     variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial_MC("sigma_jet_grid_spatial_MC.dat");
-            //     std::cout<<"done!"<<std::endl;
-
-            //     std::cout<<"Calculating dijet_norm..."<<std::endl;
-            //     auto other_params = jet_params;
-            //     other_params.d_params.npdfs_spatial = false;
-            //     dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
-            //     //dijet_norm = 93.7604;
-            //     std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
-
-            //     std::cout<<"Calculating envelope..."<<std::flush;
-            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-            //     std::vector<double> envelopes;
-            //     for (auto [ds, err] : max_dsigmas)
-            //     {
-            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-            //     }
-            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-            //     std::cout<<"done!"<<std::endl;
-
-            //     return std::make_tuple
-            //         (
-            //             dijet_norm,
-            //             std::move(sigma_jet),
-            //             std::nullopt,
-            //             variant_envelope_pars(envelope_maximum),
-            //             sqrt_ss
-            //         );
-            // }
-            // else //sigma_jet depends on energy
-            // {
-            //     double tolerance=0.02,
-            //         upper_sumTpp_limit=0.61, 
-            //         lower_sumTpp_limit=0.01;
-
-            //     std::cout<<"Calculating spatial sigma_jets..."<<std::endl;
-            //     variant_sigma_jet sigma_jet 
-            //         = calcs::calculate_spatial_sigma_jets_MC
-            //             (
-            //                 tolerance, 
-            //                 p_pdf, 
-            //                 mand_s, 
-            //                 kt02, 
-            //                 jet_params, 
-            //                 upper_sumTpp_limit, 
-            //                 lower_sumTpp_limit
-            //             );
-            //     std::cout<<"done!"<<std::endl;
-
-            //     std::cout<<"Calculating dijet_norm..."<<std::endl;
-            //     auto other_params = jet_params;
-            //     other_params.d_params.npdfs_spatial = false;
-            //     dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
-            //     //dijet_norm = 93.7604;
-            //     std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
-
-            //     std::cout<<"Calculating envelope..."<<std::flush;
-            //     auto [sqrt_ss, max_dsigmas] = calcs::calculate_max_dsigmas_for_MC(kt0, sqrt_s, p_pdf, jet_params);
-            //     std::vector<double> envelopes;
-            //     for (auto [ds, err] : max_dsigmas)
-            //     {
-            //         envelopes.push_back((ds + fabs(err))*1.05*pow(kt0,power_law));
-            //     }
-            //     auto envelope_maximum = linear_interpolator(sqrt_ss, envelopes);
-            //     std::cout<<"done!"<<std::endl;
-
-            //     return std::make_tuple
-            //         (
-            //             dijet_norm,
-            //             std::move(sigma_jet),
-            //             std::nullopt,
-            //             variant_envelope_pars(envelope_maximum),
-            //             sqrt_ss
-            //         );
-            // }
         }
     }
 

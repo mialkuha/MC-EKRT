@@ -82,7 +82,6 @@ struct AA_collision_params
   bool pA_scattering;
   bool spatial_pdfs;
   bool calculate_end_state;
-  bool reduce_nucleon_energies;
   bool use_nn_b2_max;
   double sigma_inel;
   const std::function<double(const double&)> Tpp;

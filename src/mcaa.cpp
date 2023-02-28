@@ -45,17 +45,13 @@ mcaa::mcaa
         p_calculate_end_state,
         p_calculate_tata,
         p_save_endstate_jets,
-        p_save_events_plaintext,
-        p_are_ns_depleted,
         p_end_state_filtering,
         p_is_mom_cons,
-        p_reduce_nucleon_energies,
         p_is_saturation
     ] = io::read_conf(initfile);
 
     this->calculate_end_state        = p_calculate_end_state; 
     this->calculate_tata             = p_calculate_tata; 
-    this->deplete_nucleons           = p_are_ns_depleted; 
     this->end_state_filtering        = p_end_state_filtering; 
     this->is_AA                      = p_is_AA; 
     this->is_pA                      = p_is_pA; 
@@ -64,11 +60,9 @@ mcaa::mcaa
     this->MC_Glauber                 = p_is_mc_glauber; 
     this->mom_cons                   = p_is_mom_cons; 
     this->read_sigmajets_from_file   = p_read_sigmajets_from_file; 
-    this->reduce_nucleon_energies    = p_reduce_nucleon_energies; 
     this->proton_width_static        = p_proton_width_static; 
     this->saturation                 = p_is_saturation; 
-    this->save_endstate_jets         = p_save_endstate_jets; 
-    this->save_events_plaintext      = p_save_events_plaintext; 
+    this->save_endstate_jets         = p_save_endstate_jets;
     this->sigma_inel_from_sigma_jet  = p_sigma_inel_from_sigma_jet; 
     this->snPDFs                     = p_use_snpdfs;
     this->snPDFs_linear              = p_snpdfs_linear;
@@ -279,9 +273,6 @@ auto mcaa::throw_location_for_dijet
 
 auto mcaa::filter_end_state
 (
-    /*uint_fast64_t &nall,
-    uint_fast64_t &nmc,
-    uint_fast64_t &nsat,*/
     std::vector<nn_coll> &binary_collisions, 
     std::vector<dijet_with_coords> &filtered_scatterings,
     std::shared_ptr<std::mt19937> random_generator,
@@ -294,8 +285,6 @@ auto mcaa::filter_end_state
 
     std::unordered_map<nucleon*, double> x1s;
     std::unordered_map<nucleon*, double> x2s;
-    std::unordered_set<nucleon*> depleted_pro;
-    std::unordered_set<nucleon*> depleted_tar;
     
 
     std::normal_distribution<double> normal_dist(0,0);
@@ -312,9 +301,7 @@ auto mcaa::filter_end_state
     std::vector<std::tuple<double, double, double, uint_fast16_t> > final_circles;
     final_circles.reserve(candidates.size());
     filtered_scatterings.reserve(filtered_scatterings.size()+candidates.size());
-
-    //std::sort(collision_candidates.begin(), collision_candidates.end(), //Sort the candidates so that the one with the biggest kt is first
-    //          [](colls_with_ns &s1, colls_with_ns &s2) { return (s1.kt > s2.kt); });
+    
     std::sort(candidates.begin(), candidates.end(), //Sort the candidate events so that the one with the smallest t0 is first
               [](dijet_with_ns &s1, dijet_with_ns &s2) { return (s1.t0 < s2.t0); });
     
@@ -325,7 +312,6 @@ auto mcaa::filter_end_state
 
     for (auto & cand : candidates)
     {
-        /*nall++;*/
         kt = cand.dijet.kt;
         y1 = cand.dijet.y1;
         y2 = cand.dijet.y2;
@@ -333,11 +319,6 @@ auto mcaa::filter_end_state
         if (this->mom_cons)
         {
             //MOMENTUM CONSERVATION
-
-            if (this->deplete_nucleons && (depleted_pro.contains(cand.pro_nucleon) || depleted_tar.contains(cand.tar_nucleon)))
-            {
-                continue;
-            }
 
             auto x1 = (kt / this->sqrt_s) * (exp(y1) + exp(y2));
             auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
@@ -352,10 +333,6 @@ auto mcaa::filter_end_state
 
                 if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
                 {
-                    if (this->deplete_nucleons)
-                    {
-                        depleted_pro.insert(cand.pro_nucleon);
-                    }
                     continue;
                 }
             }
@@ -367,15 +344,10 @@ auto mcaa::filter_end_state
 
                 if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
                 {
-                    if (this->deplete_nucleons)
-                    {
-                        depleted_tar.insert(cand.tar_nucleon);
-                    }
                     continue;
                 }
             }
         }
-        /*nmc++;*/
         
         auto [cand_x, cand_y, cand_z] = this->throw_location_for_dijet(cand, normal_dist, random_generator);
 
@@ -402,7 +374,7 @@ auto mcaa::filter_end_state
             x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
             x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
         }
-        /*nsat++;*/
+
         filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
     }
 
@@ -524,7 +496,6 @@ auto mcaa::run() -> void
     ] = 
     calcs::prepare_sigma_jets
     (
-        this->reduce_nucleon_energies,
         this->read_sigmajets_from_file,
         this->p_pdf, 
         this->mand_s,
@@ -582,7 +553,6 @@ auto mcaa::run() -> void
     /*pA_scattering=            */this->is_pA,
     /*spatial_pdfs=             */this->snPDFs,
     /*calculate_end_state=      */this->calculate_end_state,
-    /*reduce_nucleon_energies=  */this->reduce_nucleon_energies,
     /*use_nn_b2_max=            */use_nn_b2_max,
     /*sigma_inel=               */this->sigma_inel,
     /*Tpp=                      */this->Tpp,
@@ -628,45 +598,6 @@ auto mcaa::run() -> void
  
     total_energy.open("total_energies_"+this->name+".dat");
     total_energy << "///Sum E_T Sum E" << std::endl;
-/*    std::ofstream different_ns;
-    std::mutex different_ns_mutex; 
- 
-    different_ns.open("different_ns_"+this->name+".dat");
-    different_ns << "///ET All MC SAT" << std::endl;*/
-    
-    std::ofstream event_file;
-    std::mutex event_file_mutex; 
-
-    if (save_events_plaintext)
-    {
-        event_file.open("event_log_"+this->name+".dat");
-
-        event_file << "///AA b: ["<<b_min<<", "<<b_max<<"] fm"<<std::endl;
-        event_file << "///"<<std::endl;
-        event_file << "///Nucleus params:"<<std::endl;
-        event_file << "///Nucleus r: ["<<rad_min<<", "<<rad_max<<"] fm"<<std::endl;
-        event_file << "///Correct overlap bias: "<<nuc_params.correct_overlap_bias<<std::endl;
-        event_file << "///Nucleon min_distance: "<<nuc_params.min_distance<<" fm"<<std::endl;
-        event_file << "///Shift CMS: "<<nuc_params.shift_cms<<std::endl;
-        event_file << "///"<<std::endl;
-        event_file << "///Collision params:"<<std::endl;
-        event_file << "///Proton width: "<<sqrt(proton_width_2)<<" fm"<<std::endl;
-        event_file << "///Sqrt(s): "<<sqrt_s<<" GeV"<<std::endl;
-        event_file << "///kt0: "<<kt0<<" GeV"<<std::endl;
-        event_file << "///Projectile with npdfs: "<<diff_params.projectile_with_npdfs<<std::endl;
-        event_file << "///Target with npdfs: "<<diff_params.target_with_npdfs<<std::endl;
-        event_file << "///double npdfs: "<<coll_params.spatial_pdfs<<std::endl;
-        event_file << "///Projectile isoscalar: "<<diff_params.isoscalar_projectile<<std::endl;
-        event_file << "///Target isoscalar: "<<diff_params.isoscalar_target<<std::endl;
-        event_file << "///Normalization mode: "<<coll_params.normalize_to<<std::endl;
-        event_file << "///Scale choice: "<<jet_params.scale_c<<std::endl;
-        event_file << "///Scalar: "<<jet_params.scalar<<std::endl;
-        event_file << "///"<<std::endl;
-        event_file << "///End state params:"<<std::endl;
-        event_file << "///Calculate end state: "<<coll_params.calculate_end_state<<std::endl;
-        event_file << "///Power law: "<<power_law<<std::endl;
-        event_file << "///"<<std::endl;
-    }
 
     std::vector<uint_fast64_t> event_indexes(this->desired_N_events);
     std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
@@ -704,7 +635,6 @@ auto mcaa::run() -> void
                 static_cast<void>(index);
                 do //while (g_bug_bool)
                 {
-                    /*uint_fast64_t nall = 0, nmc = 0, nsat = 0;*/
                     uint_fast32_t NColl = 0;
                     std::vector<nn_coll> binary_collisions;
                     std::vector<dijet_with_coords> filtered_scatterings;
@@ -807,19 +737,11 @@ auto mcaa::run() -> void
                     double sum_ET = 0;
                     double sum_ET_midrap = 0;
 
-                    if(!end_state_filtering && save_events_plaintext)
-                    {
-                        const std::lock_guard<std::mutex> lock(event_file_mutex);
-                        io::save_event(event_file, pro, tar, impact_parameter);
-                    }
-                    else if (end_state_filtering)
+                    if (end_state_filtering)
                     {
                         double sum_E = 0;
                         this->filter_end_state
                         (
-                            /*nall,
-                            nmc,
-                            nsat,*/
                             binary_collisions, 
                             filtered_scatterings, 
                             eng,
@@ -827,35 +749,35 @@ auto mcaa::run() -> void
                             tar
                         );
 
-                        //std::vector<std::tuple<double, double> > new_jets;
-                        //std::vector<std::tuple<double, double> > new_dijets;
-                        //std::vector<std::tuple<double, double> > new_ET_y;
-                        //std::vector<std::tuple<double, double> > new_E_y;
-                        //std::vector<std::tuple<double, double> > new_N_y;
-                        //std::vector<std::tuple<double, double> > new_ET_eta;
-                        //std::vector<std::tuple<double, double> > new_E_eta;
+                        // std::vector<std::tuple<double, double> > new_jets;
+                        // std::vector<std::tuple<double, double> > new_dijets;
+                        // std::vector<std::tuple<double, double> > new_ET_y;
+                        // std::vector<std::tuple<double, double> > new_E_y;
+                        // std::vector<std::tuple<double, double> > new_N_y;
+                        // std::vector<std::tuple<double, double> > new_ET_eta;
+                        // std::vector<std::tuple<double, double> > new_E_eta;
                         
                         for (auto e_co : filtered_scatterings)
                         {
                             auto e = e_co.dijet;
 
-                            //new_jets.emplace_back(e.kt, e.y1);
-                            //new_jets.emplace_back(e.kt, e.y2);
-                            //
-                            //new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
-                            //
-                            //new_ET_y.emplace_back(e.y1, e.kt);
-                            //new_ET_y.emplace_back(e.y2, e.kt);
-                            //
-                            //new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-                            //
-                            //new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                            //new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                            //
-                            //new_N_y.emplace_back(e.y1, 1);
-                            //new_N_y.emplace_back(e.y2, 1);
-                            //
-                            //new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                            // new_jets.emplace_back(e.kt, e.y1);
+                            // new_jets.emplace_back(e.kt, e.y2);
+                            
+                            // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                            
+                            // new_ET_y.emplace_back(e.y1, e.kt);
+                            // new_ET_y.emplace_back(e.y2, e.kt);
+                            
+                            // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                            
+                            // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                            // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                            
+                            // new_N_y.emplace_back(e.y1, 1);
+                            // new_N_y.emplace_back(e.y2, 1);
+                            
+                            // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
                             
                             sum_ET += 2*e.kt;
                             sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));
@@ -870,65 +792,59 @@ auto mcaa::run() -> void
                             }
                         }
 
-                        //{
+                        // {
                         //    const std::lock_guard<std::mutex> lock(jets_mutex);
                         //    jets.add(new_jets);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dijets_mutex);
                         //    dijets.add(new_dijets);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
                         //    dETdy.add(new_ET_y);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
                         //    dEdy.add(new_E_y);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
                         //    dNdy.add(new_N_y);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
                         //    dETdeta.add(new_ET_eta);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
                         //    dEdeta.add(new_E_eta);
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
                         //    dNdET.add(std::make_tuple(sum_ET, 1));
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
                         //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
-                        //}
-                        //
-                        //{
+                        // }
+                        
+                        // {
                         //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
                         //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
-                        //}
+                        // }
                         
                         {
                             const std::lock_guard<std::mutex> lock(total_energy_mutex);
                             total_energy << sum_ET << ' ' << sum_E << std::endl;
-                        }
-
-                        if (save_events_plaintext)
-                        {
-                            const std::lock_guard<std::mutex> lock(event_file_mutex);
-                            io::save_event(event_file, pro, tar, impact_parameter, filtered_scatterings);
                         }
                     }
 
@@ -972,11 +888,6 @@ auto mcaa::run() -> void
                             }
                         }
                     }
-                    /*{
-                        const std::lock_guard<std::mutex> lock(different_ns_mutex);
-                        different_ns << sum_ET << ' ' << nall << ' ' << nmc << ' ' << nsat << std::endl;
-                    }*/
-            
                 } while (g_bug_bool);
                 bool ret_value = user_aborted;
                 return ret_value;
@@ -1021,8 +932,6 @@ auto mcaa::run() -> void
     glauber_report_file.open(g_name_midrap, std::ios::out);
     io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
-
-    /*different_ns.close();*/
 
     if (save_endstate_jets)
     {

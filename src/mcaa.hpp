@@ -42,7 +42,6 @@ public:
     // technical flags
     bool calculate_end_state{true};        // false=no jets will be calculated, only collisions
     bool calculate_tata{true};             // if TA(x)TA(x) should be calculated for each dijet (takes time)
-    bool deplete_nucleons{false};          // probably always false here, kept for testing purposes for now
     bool end_state_filtering{true};        // false=no any filtering in the end state
     bool is_AA{true};                      // if the run is nucleus-nucleus
     bool is_pA{false};                     // if the run is proton-nucleus
@@ -51,11 +50,9 @@ public:
     bool MC_Glauber{true};                 // if true, nucleon-nucleon collisions are decided like with hard spheres
     bool mom_cons{true};                   // if the momentum should be conserved
     bool read_sigmajets_from_file{false};  // if the sigma_jets are precalculated
-    bool reduce_nucleon_energies{false};   // momentum conservation by reducing nucleon energies after each collision. Breaks factorization
     bool proton_width_static{false};       // if the proton width should be a static value or depend on sqrt(s)
     bool saturation{true};                 // if EKRT saturation is enforced
     bool save_endstate_jets{true};         // if all the jets should be saved in binary (see jet_reader.cpp)
-    bool save_events_plaintext{false};     // if all the jets should be saved in plaintext
     bool sigma_inel_from_sigma_jet{true};  // is sigma_inel static or from eikonal model
     bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
     bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)

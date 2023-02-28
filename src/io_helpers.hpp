@@ -771,11 +771,8 @@ public:
         bool calculate_end_state{true};
         bool calculate_tata{true};
         bool save_endstate_jets{true};
-        bool save_events_plaintext{false};
-        bool are_ns_depleted{false};
         bool end_state_filtering{true};
         bool is_mom_cons{true};
-        bool reduce_nucleon_energies{false};
         bool is_saturation{true};
 
         uint_fast16_t count = 0;
@@ -922,14 +919,6 @@ public:
                 {
                     line_stream >> std::boolalpha >> save_endstate_jets;
                 }
-                else if (param_name == "save_events_plaintext")
-                {
-                    line_stream >> std::boolalpha >> save_events_plaintext;
-                }
-                else if (param_name == "are_ns_depleted")
-                {
-                    line_stream >> std::boolalpha >> are_ns_depleted;
-                }
                 else if (param_name == "end_state_filtering")
                 {
                     line_stream >> std::boolalpha >> end_state_filtering;
@@ -937,10 +926,6 @@ public:
                 else if (param_name == "is_mom_cons")
                 {
                     line_stream >> std::boolalpha >> is_mom_cons;
-                }
-                else if (param_name == "reduce_nucleon_energies")
-                {
-                    line_stream >> std::boolalpha >> reduce_nucleon_energies;
                 }
                 else if (param_name == "is_saturation")
                 {
@@ -996,11 +981,8 @@ public:
                     calculate_end_state,
                     calculate_tata,
                     save_endstate_jets,
-                    save_events_plaintext,
-                    are_ns_depleted,
                     end_state_filtering,
                     is_mom_cons,
-                    reduce_nucleon_energies,
                     is_saturation
                 );
     }
