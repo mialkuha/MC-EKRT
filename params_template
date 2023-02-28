@@ -3,7 +3,7 @@
 # GENERAL PARAMETERS
 name example_name                # Name of the run, affects output filenames and such 
 sigmajet_filename example_sigma_jet.dat  # Filename for the spatially dependent sigma_jet grid
-n_events 500                     # How many events should be simulated
+n_events 10000                     # How many events should be simulated
 b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 

@@ -590,26 +590,26 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double sigma_jet;
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
-                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                    //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
                     
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            envelope_maximum
-                        );
-                    }
-                    else //Single sigma_jet
+                    //     pqcd::generate_bin_NN_coll
+                    //     (
+                    //         newpair, 
+                    //         sigma_jet, 
+                    //         AA_params.Tpp(newpair.getcr_bsquared()), 
+                    //         kt0,
+                    //         unirand, 
+                    //         eng,
+                    //         p_p_pdf,
+                    //         dsigma_params,
+                    //         power_law,
+                    //         envelope_maximum
+                    //     );
+                    // }
+                    // else //Single sigma_jet
                     {
                         sigma_jet = std::get<double>(sigma_jets);
                         auto env_func_ = std::get<envelope_func>(env_func);
@@ -628,11 +628,11 @@ public:
                         );
                     }
                     
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        newpair.reduce_energy_and_push_end_states_to_collider_frame();
-                    }
-                    else
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    // }
+                    // else
                     {
                         newpair.push_end_states_to_collider_frame();
                     }
@@ -643,11 +643,11 @@ public:
             else
             {
                 double sigma_jet;
-                if (AA_params.reduce_nucleon_energies)
-                {
-                    sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
-                }
-                else //Single sigma_jet
+                // if (AA_params.reduce_nucleon_energies)
+                // {
+                //     sigma_jet = std::get<linear_interpolator>(sigma_jets).value_at(pow(newpair.getcr_sqrt_s(), 2));
+                // }
+                // else //Single sigma_jet
                 {
                     sigma_jet = std::get<double>(sigma_jets);
                 }
@@ -667,25 +667,25 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double envelope_maximum;
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
                     
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            envelope_maximum
-                        );
-                    }
-                    else //Single sigma_jet
+                    //     pqcd::generate_bin_NN_coll
+                    //     (
+                    //         newpair, 
+                    //         sigma_jet, 
+                    //         AA_params.Tpp(newpair.getcr_bsquared()), 
+                    //         kt0,
+                    //         unirand, 
+                    //         eng,
+                    //         p_p_pdf,
+                    //         dsigma_params,
+                    //         power_law,
+                    //         envelope_maximum
+                    //     );
+                    // }
+                    // else //Single sigma_jet
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
                         pqcd::generate_bin_NN_coll
@@ -703,11 +703,11 @@ public:
                         );
                     }
                     
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        newpair.reduce_energy_and_push_end_states_to_collider_frame();
-                    }
-                    else
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    // }
+                    // else
                     {
                         newpair.push_end_states_to_collider_frame();
                     }
@@ -823,12 +823,12 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double sigma_jet;
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
-                        sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
-                    }
-                    else //Single sigma_jet
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
+                    //     sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
+                    // }
+                    // else //Single sigma_jet
                     {
                         array<double,2> args{*sum_tppa, *sum_tppb};
                         sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
@@ -908,24 +908,24 @@ public:
                         dsigma_params.d_params.rB_spatial = rB_spatial_;
                     }
 
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            envelope_maximum
-                        );
-                    }
-                    else
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                    //     pqcd::generate_bin_NN_coll
+                    //     (
+                    //         newpair, 
+                    //         sigma_jet, 
+                    //         AA_params.Tpp(newpair.getcr_bsquared()), 
+                    //         kt0,
+                    //         unirand, 
+                    //         eng,
+                    //         p_p_pdf,
+                    //         dsigma_params,
+                    //         power_law,
+                    //         envelope_maximum
+                    //     );
+                    // }
+                    // else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
                         pqcd::generate_bin_NN_coll
@@ -943,11 +943,11 @@ public:
                         );
                     }
 
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        newpair.reduce_energy_and_push_end_states_to_collider_frame();
-                    }
-                    else
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    // }
+                    // else
                     {
                         newpair.push_end_states_to_collider_frame();
                     }
@@ -958,12 +958,12 @@ public:
             else
             {
                 double sigma_jet;
-                if (AA_params.reduce_nucleon_energies) 
-                {
-                    array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
-                    sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
-                }
-                else
+                // if (AA_params.reduce_nucleon_energies) 
+                // {
+                //     array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
+                //     sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
+                // }
+                // else
                 {
                     array<double,2> args{*sum_tppa, *sum_tppb};
                     sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
@@ -1058,24 +1058,24 @@ public:
                         dsigma_params.d_params.rB_spatial = rB_spatial_;
                     }
 
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            envelope_maximum
-                        );
-                    }
-                    else
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
+                    //     pqcd::generate_bin_NN_coll
+                    //     (
+                    //         newpair, 
+                    //         sigma_jet, 
+                    //         AA_params.Tpp(newpair.getcr_bsquared()), 
+                    //         kt0,
+                    //         unirand, 
+                    //         eng,
+                    //         p_p_pdf,
+                    //         dsigma_params,
+                    //         power_law,
+                    //         envelope_maximum
+                    //     );
+                    // }
+                    // else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
                         pqcd::generate_bin_NN_coll
@@ -1093,11 +1093,11 @@ public:
                         );
                     }
 
-                    if (AA_params.reduce_nucleon_energies)
-                    {
-                        newpair.reduce_energy_and_push_end_states_to_collider_frame();
-                    }
-                    else
+                    // if (AA_params.reduce_nucleon_energies)
+                    // {
+                    //     newpair.reduce_energy_and_push_end_states_to_collider_frame();
+                    // }
+                    // else
                     {
                         newpair.push_end_states_to_collider_frame();
                     }

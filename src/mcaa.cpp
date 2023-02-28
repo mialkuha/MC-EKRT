@@ -414,8 +414,8 @@ auto mcaa::run() -> void
         radial_sampler->throw_one(*eng);
     } while (radial_sampler->is_adaptive());
 
-    std::vector<io::Coll> collisions_for_reporting;
-    std::vector<io::Coll> collisions_for_reporting_midrap;
+    std::vector<io::Coll> collisions_for_reporting;/////
+    std::vector<io::Coll> collisions_for_reporting_midrap;/////
     std::mutex colls_mutex; 
     std::vector<double> kt_bins{helpers::loglinspace(kt0, 100, 16u)};
     auto kt_v_dummy = helpers::loglinspace(200, sqrt_s/2.0, 5u);
@@ -566,6 +566,9 @@ auto mcaa::run() -> void
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
 
+    // auto cmpLambda = [](const std::tuple<double, double> &lhs, const std::tuple<double, double> &rhs) { return std::get<0>(lhs) < std::get<0>(rhs); }; /////
+    // std::map<io::Coll, std::tuple<double, double>, decltype(cmpLambda)> colls_sumet_midet(cmpLambda); /////
+
 //    OBSERVABLES TO BE SAVED
 //
 //    histo_2d jets{kt_bins, y_bins};
@@ -593,11 +596,11 @@ auto mcaa::run() -> void
 //    std::mutex dEdb_mutex;
 
 
-    std::ofstream total_energy;
-    std::mutex total_energy_mutex;
+    std::ofstream total_energy;/////
+    std::mutex total_energy_mutex;/////
  
-    total_energy.open("total_energies_"+this->name+".dat");
-    total_energy << "///Sum E_T Sum E" << std::endl;
+    total_energy.open("total_energies_"+this->name+".dat");/////
+    total_energy << "///Sum E_T Sum E" << std::endl;/////
 
     std::vector<uint_fast64_t> event_indexes(this->desired_N_events);
     std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
@@ -629,7 +632,8 @@ auto mcaa::run() -> void
             [&,verbose=this->verbose,
              &sigma_jet=sigma_jet,
              &env_func=env_func,
-             &colls_scatterings=colls_scatterings
+             &colls_scatterings=colls_scatterings/////
+            //  &colls_sumet_midet=colls_sumet_midet/////
             ](const uint_fast64_t index) 
             {
                 static_cast<void>(index);
@@ -780,7 +784,7 @@ auto mcaa::run() -> void
                             // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
                             
                             sum_ET += 2*e.kt;
-                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));
+                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
 
                             if (e.y1 >= -0.5 && e.y1 <= 0.5)
                             {
@@ -842,10 +846,10 @@ auto mcaa::run() -> void
                         //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
                         // }
                         
-                        {
-                            const std::lock_guard<std::mutex> lock(total_energy_mutex);
-                            total_energy << sum_ET << ' ' << sum_E << std::endl;
-                        }
+                        {/////
+                            const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
+                            total_energy << sum_ET << ' ' << sum_E << std::endl;/////
+                        }/////
                     }
 
                     {
@@ -875,17 +879,14 @@ auto mcaa::run() -> void
 
                     {
                         const std::lock_guard<std::mutex> lock(colls_mutex);
-                        for (uint_fast8_t i=0; i<4; i++)
+                        io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
+                        io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
+                        collisions_for_reporting.push_back(coll);
+                        collisions_for_reporting_midrap.push_back(coll_midrap);
+                        
+                        if (save_endstate_jets)
                         {
-                            io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
-                            io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
-                            collisions_for_reporting.push_back(coll);
-                            collisions_for_reporting_midrap.push_back(coll_midrap);
-                            
-                            if (save_endstate_jets)
-                            {
-                                colls_scatterings.insert({coll, filtered_scatterings});
-                            }
+                            colls_scatterings.insert({coll, filtered_scatterings});
                         }
                     }
                 } while (g_bug_bool);
@@ -927,10 +928,10 @@ auto mcaa::run() -> void
     std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
                                               
     glauber_report_file.open(g_name, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
+    io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
     glauber_report_file.open(g_name_midrap, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, this->desired_N_events, nBins, binsLow, binsHigh, glauber_report_file);
+    io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
 
     if (save_endstate_jets)
