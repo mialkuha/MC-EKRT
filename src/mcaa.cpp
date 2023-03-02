@@ -414,8 +414,8 @@ auto mcaa::run() -> void
         radial_sampler->throw_one(*eng);
     } while (radial_sampler->is_adaptive());
 
-    std::vector<io::Coll> collisions_for_reporting;/////
-    std::vector<io::Coll> collisions_for_reporting_midrap;/////
+    // std::vector<io::Coll> collisions_for_reporting;
+    // std::vector<io::Coll> collisions_for_reporting_midrap;
     std::mutex colls_mutex; 
     std::vector<double> kt_bins{helpers::loglinspace(kt0, 100, 16u)};
     auto kt_v_dummy = helpers::loglinspace(200, sqrt_s/2.0, 5u);
@@ -566,8 +566,8 @@ auto mcaa::run() -> void
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
 
-    // auto cmpLambda = [](const std::tuple<double, double> &lhs, const std::tuple<double, double> &rhs) { return std::get<0>(lhs) < std::get<0>(rhs); }; /////
-    // std::map<io::Coll, std::tuple<double, double>, decltype(cmpLambda)> colls_sumet_midet(cmpLambda); /////
+    auto cmpLambda = [](const double &lhs, const double &rhs) { return lhs < rhs; };
+    std::map<double, double, decltype(cmpLambda)> colls_sumet_midet(cmpLambda);
 
 //    OBSERVABLES TO BE SAVED
 //
@@ -596,11 +596,11 @@ auto mcaa::run() -> void
 //    std::mutex dEdb_mutex;
 
 
-    std::ofstream total_energy;/////
-    std::mutex total_energy_mutex;/////
+    // std::ofstream total_energy;
+    // std::mutex total_energy_mutex;
  
-    total_energy.open("total_energies_"+this->name+".dat");/////
-    total_energy << "///Sum E_T Sum E" << std::endl;/////
+    // total_energy.open("total_energies_"+this->name+".dat");
+    // total_energy << "///Sum E_T Sum E" << std::endl;
 
     std::vector<uint_fast64_t> event_indexes(this->desired_N_events);
     std::iota(event_indexes.begin(), event_indexes.end(), 0); //generates the list as {0,1,2,3,...}
@@ -632,8 +632,8 @@ auto mcaa::run() -> void
             [&,verbose=this->verbose,
              &sigma_jet=sigma_jet,
              &env_func=env_func,
-             &colls_scatterings=colls_scatterings/////
-            //  &colls_sumet_midet=colls_sumet_midet/////
+            //  &colls_scatterings=colls_scatterings
+             &colls_sumet_midet=colls_sumet_midet
             ](const uint_fast64_t index) 
             {
                 static_cast<void>(index);
@@ -784,7 +784,7 @@ auto mcaa::run() -> void
                             // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
                             
                             sum_ET += 2*e.kt;
-                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
+                            // sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));
 
                             if (e.y1 >= -0.5 && e.y1 <= 0.5)
                             {
@@ -846,19 +846,10 @@ auto mcaa::run() -> void
                         //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
                         // }
                         
-                        {/////
-                            const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
-                            total_energy << sum_ET << ' ' << sum_E << std::endl;/////
-                        }/////
-                    }
-
-                    {
-                        const std::lock_guard<std::mutex> lock(AA_events_mutex);
-                        AA_events_done++;
-                        if (AA_events_done % 100 == 0 )
-                        {
-                            std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
-                        }
+                        // {
+                        //     const std::lock_guard<std::mutex> lock(total_energy_mutex);
+                        //     total_energy << sum_ET << ' ' << sum_E << std::endl;
+                        // }
                     }
 
                     uint_fast32_t Npart=0;
@@ -879,16 +870,61 @@ auto mcaa::run() -> void
 
                     {
                         const std::lock_guard<std::mutex> lock(colls_mutex);
-                        io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
-                        io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
-                        collisions_for_reporting.push_back(coll);
-                        collisions_for_reporting_midrap.push_back(coll_midrap);
+                        // io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
+                        // io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
+                        // collisions_for_reporting.push_back(coll);
+                        // collisions_for_reporting_midrap.push_back(coll_midrap);
                         
-                        if (save_endstate_jets)
-                        {
-                            colls_scatterings.insert({coll, filtered_scatterings});
-                        }
+                        // if (save_endstate_jets)
+                        // {
+                        //     colls_scatterings.insert({coll, filtered_scatterings});
+                        // }
+
+                        colls_sumet_midet.insert({sum_ET, sum_ET_midrap});
                     }
+
+                    {
+                        const std::lock_guard<std::mutex> lock(AA_events_mutex);
+                        AA_events_done++;
+                        if (AA_events_done % 100 == 0 )
+                        {
+                            std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
+                        }
+        //                 if (AA_events_done % 1000 == 0 )
+        //                 {
+        // const std::array<std::tuple<double,double>, 8> centBins{std::tuple<double,double>{0.0, 0.05},
+        //                                                         std::tuple<double,double>{0.0, 0.1},
+        //                                                         std::tuple<double,double>{0.1, 0.2},
+        //                                                         std::tuple<double,double>{0.2, 0.3},
+        //                                                         std::tuple<double,double>{0.3, 0.4},
+        //                                                         std::tuple<double,double>{0.4, 0.5},
+        //                                                         std::tuple<double,double>{0.5, 0.7},
+        //                                                         std::tuple<double,double>{0.7, 1.0}};
+        //                     std::cout <<"\r" << AA_events_done << ": (" << std::flush;
+        // for (auto [centLow, centHigh] : centBins)
+        // {
+        //     double eps = 0.1/static_cast<double>(AA_events_done);
+
+        //     uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(AA_events_done)+eps);
+        //     uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(AA_events_done)+eps);
+        //     uint_fast64_t n_in_bin = upper_ind - lower_ind;
+
+        //     auto it = colls_sumet_midet.crbegin();
+        //     std::advance(it, lower_ind);
+
+        //     double sum_sumet=0, sum_midet=0;
+        //     for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+        //     {
+        //         auto [sumet, midet] = *it;
+        //         sum_sumet += sumet;
+        //         sum_midet += midet;
+        //     }
+        //     std::cout <<"{"<<sum_sumet/n_in_bin<<','<<sum_midet/n_in_bin<<"},";
+        // }
+        // std::cout<<std::endl;
+        //                 }
+                    }
+                    
                 } while (g_bug_bool);
                 bool ret_value = user_aborted;
                 return ret_value;
@@ -920,95 +956,137 @@ auto mcaa::run() -> void
     //    AA_events_done
     //);
     
-    uint_fast8_t nBins = 18;
-    double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
-    double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
-    std::ofstream glauber_report_file;
-    std::string g_name{"g_report_"+this->name+".dat"};
-    std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
-                                              
-    glauber_report_file.open(g_name, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_midrap, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
+    // const std::array<std::tuple<double,double>, 8> centBins{std::tuple<double,double>{0.0, 0.05},
+    //                                                         std::tuple<double,double>{0.0, 0.1},
+    //                                                         std::tuple<double,double>{0.1, 0.2},
+    //                                                         std::tuple<double,double>{0.2, 0.3},
+    //                                                         std::tuple<double,double>{0.3, 0.4},
+    //                                                         std::tuple<double,double>{0.4, 0.5},
+    //                                                         std::tuple<double,double>{0.5, 0.7},
+    //                                                         std::tuple<double,double>{0.7, 1.0}};
+    //                     std::cout <<"\r" << AA_events_done << ": (" << std::flush;
+    // for (auto [centLow, centHigh] : centBins)
+    // {
+    //     double eps = 0.1/static_cast<double>(AA_events_done);
 
-    if (save_endstate_jets)
+    //     uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(AA_events_done)+eps);
+    //     uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(AA_events_done)+eps);
+    //     uint_fast64_t n_in_bin = upper_ind - lower_ind;
+
+    //     auto it = colls_sumet_midet.crbegin();
+    //     std::advance(it, lower_ind);
+
+    //     double sum_sumet=0, sum_midet=0;
+    //     for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+    //     {
+    //         auto [sumet, midet] = *it;
+    //         sum_sumet += sumet;
+    //         sum_midet += midet;
+    //     }
+    //     std::cout <<"{"<<sum_sumet/n_in_bin<<','<<sum_midet/n_in_bin<<"},";
+    // }
+    // std::cout<<std::endl;
+    
+    std::stringstream fname{""};
+    fname<<"sumets_midets_K="<<this->K_factor<<"_M="<<this->M_factor<<".csv";
+    std::ofstream outfile;
+    outfile.open(fname.str());
+    outfile<<"sumet,midet"<<std::endl;
+    for (auto [sumet, midet] : colls_sumet_midet)
     {
-        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.02},
-                                                                std::tuple<double,double>{0.0, 0.05},
-                                                                std::tuple<double,double>{0.6, 0.8}};
-
-        std::string name_pfs{this->name+".dat"};
-
-        std::ofstream jet_file;
-
-        for (auto [centLow, centHigh] : centBins)
-        {
-            std::stringstream jetsname{""};
-            jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
-
-            histo_1d dETdy_by_cent{y_bins};
-            histo_1d dEdy_by_cent{y_bins};
-            std::vector<std::tuple<double, double> > new_ET_y;
-            std::vector<std::tuple<double, double> > new_E_y;
-
-            uint_fast64_t N_evts_tot = colls_scatterings.size();
-            // Make sure that no rounding downwards.
-            double eps = 0.1/static_cast<double>(N_evts_tot);
-
-            uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t n_in_bin = upper_ind - lower_ind;
-
-            //total number of events in this bin
-            jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
-
-            auto it = colls_scatterings.crbegin();
-            std::advance(it, lower_ind);
-
-            for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
-            {
-                for (auto e_co : it->second)
-                {
-                    auto e = e_co.dijet;
-
-                    new_ET_y.emplace_back(e.y1, e.kt);
-                    new_ET_y.emplace_back(e.y2, e.kt);
-
-                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                }
-                io::append_single_coll_binary(jet_file, it->second, unirand, eng);
-            }
-            jet_file.close();
-            std::cout<<n_in_bin<<std::endl;
-
-            dETdy_by_cent.add(new_ET_y);
-            dEdy_by_cent.add(new_E_y);
-
-            std::stringstream outname{""};
-
-            outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dEdy_by_cent, 
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-            outname.seekp(0);
-            outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dETdy_by_cent,
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-        }
+        outfile<<sumet<<','<<midet<<std::endl;
     }
+    outfile.close();
+    
+    // uint_fast8_t nBins = 18;
+    // double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
+    // double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
+    // std::ofstream glauber_report_file;
+    // std::string g_name{"g_report_"+this->name+".dat"};
+    // std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
+                                              
+    // glauber_report_file.open(g_name, std::ios::out);
+    // io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
+    // glauber_report_file.close();
+    // glauber_report_file.open(g_name_midrap, std::ios::out);
+    // io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
+    // glauber_report_file.close();
+
+    // if (save_endstate_jets)
+    // {
+    //     const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.02},
+    //                                                             std::tuple<double,double>{0.0, 0.05},
+    //                                                             std::tuple<double,double>{0.6, 0.8}};
+
+    //     std::string name_pfs{this->name+".dat"};
+
+    //     std::ofstream jet_file;
+
+    //     for (auto [centLow, centHigh] : centBins)
+    //     {
+    //         std::stringstream jetsname{""};
+    //         jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+    //         jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
+
+    //         histo_1d dETdy_by_cent{y_bins};
+    //         histo_1d dEdy_by_cent{y_bins};
+    //         std::vector<std::tuple<double, double> > new_ET_y;
+    //         std::vector<std::tuple<double, double> > new_E_y;
+
+    //         uint_fast64_t N_evts_tot = colls_scatterings.size();
+    //         // Make sure that no rounding downwards.
+    //         double eps = 0.1/static_cast<double>(N_evts_tot);
+
+    //         uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
+    //         uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
+    //         uint_fast64_t n_in_bin = upper_ind - lower_ind;
+
+    //         //total number of events in this bin
+    //         jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
+
+    //         auto it = colls_scatterings.crbegin();
+    //         std::advance(it, lower_ind);
+
+    //         for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+    //         {
+    //             for (auto e_co : it->second)
+    //             {
+    //                 auto e = e_co.dijet;
+
+    //                 new_ET_y.emplace_back(e.y1, e.kt);
+    //                 new_ET_y.emplace_back(e.y2, e.kt);
+
+    //                 new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+    //                 new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+    //             }
+    //             io::append_single_coll_binary(jet_file, it->second, unirand, eng);
+    //         }
+    //         jet_file.close();
+    //         std::cout<<n_in_bin<<std::endl;
+
+    //         dETdy_by_cent.add(new_ET_y);
+    //         dEdy_by_cent.add(new_E_y);
+
+    //         std::stringstream outname{""};
+
+    //         outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+    //         io::print_1d_histo
+    //         (
+    //             dEdy_by_cent, 
+    //             outname.str(), 
+    //             1.0/ static_cast<double>(n_in_bin),
+    //             false
+    //         );
+    //         outname.seekp(0);
+    //         outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+    //         io::print_1d_histo
+    //         (
+    //             dETdy_by_cent,
+    //             outname.str(), 
+    //             1.0/ static_cast<double>(n_in_bin),
+    //             false
+    //         );
+    //     }
+    // }
 }
 
