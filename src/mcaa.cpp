@@ -25,6 +25,7 @@ mcaa::mcaa
         p_T_AA_0_for_snpdfs,
         p_spatial_cutoff,
         p_A,
+        p_ZA,
         p_M_factor,
         p_nn_min_dist,
         p_nuclear_RA,
@@ -70,6 +71,7 @@ mcaa::mcaa
     this->sigmajet_filename          = p_sjet_name;
     this->desired_N_events           = p_n_events;
     this->A                          = p_A;
+    this->ZA                         = p_ZA;
     this->b_max                      = p_b_max;
     this->b_min                      = p_b_min;
     this->K_factor                   = p_K_factor;
@@ -155,10 +157,10 @@ mcaa::mcaa
     /*npdf_setnumber=           */1,
     /*spatial_cutoff=           */this->spatial_cutoff,
     /*K_factor=                 */K_factor,
-    /*A=                        */(p_is_AA)? 208u : 1u, //Pb 
-    /*B=                        */(p_is_pp)? 1u : 208u, //Pb
-    /*ZA=                       */(p_is_AA)? 82u : 1u,  //Pb
-    /*ZB=                       */(p_is_pp)? 1u : 82u   //Pb
+    /*A=                        */(p_is_AA)? p_A : 1u,  //Pb 
+    /*B=                        */(p_is_pp)? 1u : p_A,  //Pb
+    /*ZA=                       */(p_is_AA)? p_ZA : 1u, //Pb
+    /*ZB=                       */(p_is_pp)? 1u : p_ZA  //Pb
     /*p_n_pdf=                  */
     /*rA_spatial=               */
     /*rB_spatial=               */);
@@ -170,13 +172,13 @@ mcaa::mcaa
     /*use_ses=                  */false);
 
     this->nuc_params = nucleus_generator::nucleus_params(
-    /* .A=                      */(this->is_AA)? 208u : 1u,
-    /* .ZA=                     */(this->is_AA)? 82u : 1u,  
-    /* .B=                      */(this->is_pp)? 1u : 208u, 
-    /* .ZB=                     */(this->is_pp)? 1u : 82u,  
-    /* .min_distance=           */p_nn_min_dist, 
-    /* .shift_cms=              */true, 
-    /* .correct_overlap_bias=   */true);
+    /*A=                        */(p_is_AA)? p_A : 1u,  //Pb 
+    /*ZA=                       */(p_is_AA)? p_ZA : 1u, //Pb
+    /*B=                        */(p_is_pp)? 1u : p_A,  //Pb
+    /*ZB=                       */(p_is_pp)? 1u : p_ZA, //Pb
+    /*min_distance=             */p_nn_min_dist, 
+    /*shift_cms=                */true, 
+    /*correct_overlap_bias=     */true);
 }
 
 auto mcaa::fit_sigma_jet_pt0_cutoff

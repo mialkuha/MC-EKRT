@@ -1,5 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha 
-//TODO get rid of all the hardcoded "208"s
+//Copyright (c) 2023 Mikko Kuha 
 
 #include "mcaa.hpp"
 

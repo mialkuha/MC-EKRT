@@ -16,6 +16,7 @@ T_AA_0_for_snpdfs 0              # (fm^-2) T_AA(0) for the normalization of c_A(
 spatial_cutoff 0                 # If calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below (Only relevant with linear snPDFs)
 # NUCLEAR PARAMETERS
 A 208                            # Mass number of the colliding nucleus
+ZA 82                            # Atomic number of the colliding nucleus
 M_factor 2.5                     # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
 nn_min_dist 0.4                  # (fm) minimum distance between the nucleons in a nucleus
 nuclear_RA 6.62435               # (fm) nucleus RA for the 2pF-distribution

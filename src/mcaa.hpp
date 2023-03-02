@@ -62,6 +62,7 @@ public:
     std::string sigmajet_filename{"sigma_jet.dat"}; // filename for the spatially dependent sigma_jet grid 
     uint_fast32_t desired_N_events{500};            // how many events should be simulated
     uint_fast16_t A{208};                           // mass number of the colliding nucleus
+    uint_fast16_t ZA{82};                           // atomic number of the colliding nucleus
     double b_max{20.0};                             // (fm) maximum of the impact parameter
     double b_min{0.0};                              // (fm) minimum of the impact parameter 
     double K_factor{1.0};                           // pQCD K-factor to account for the higher order corrections

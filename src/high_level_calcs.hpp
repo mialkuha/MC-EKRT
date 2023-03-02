@@ -1294,40 +1294,35 @@ public:
             if (verbose) std::cout<<"Done!"<<std::endl;
         }
 
-        //if (verbose) std::cout<<"Shuffling nuclei..."<<std::flush;
-        //std::shuffle(pro.begin(), pro.end(), *eng);
-        //std::shuffle(tar.begin(), tar.end(), *eng);
-        //if (verbose) std::cout<<"Done!"<<std::endl;
-
         return std::make_tuple(pro, tar);
     }
 
-    static auto ta_ws_folded
-    (
-        const double &r
-    ) noexcept -> double
-    {
-        if ((r > 0)&&(r < 2.99327))
-        {
-            return 2.1033+0.0387749*r-0.0641807*std::pow(r,1.5);
-        }
-        else if (r < 6.72925)
-        {
-            return 5.07336-2.16827*r+2.72582*std::pow(std::log(r),2);
-        }
-        else if (r < 9.12769)
-        {
-            return 13.4654+1.24837*r-11.2333*std::log(r);
-        }
-        else if (r < 15.6368)
-        {
-            return 0.00718685-0.000521874*r;
-        }
-        else 
-        {
-            return 0.0;
-        }
-    }
+    // static auto ta_ws_folded
+    // (
+    //     const double &r
+    // ) noexcept -> double
+    // {
+    //     if ((r > 0)&&(r < 2.99327))
+    //     {
+    //         return 2.1033+0.0387749*r-0.0641807*std::pow(r,1.5);
+    //     }
+    //     else if (r < 6.72925)
+    //     {
+    //         return 5.07336-2.16827*r+2.72582*std::pow(std::log(r),2);
+    //     }
+    //     else if (r < 9.12769)
+    //     {
+    //         return 13.4654+1.24837*r-11.2333*std::log(r);
+    //     }
+    //     else if (r < 15.6368)
+    //     {
+    //         return 0.00718685-0.000521874*r;
+    //     }
+    //     else 
+    //     {
+    //         return 0.0;
+    //     }
+    // }
     
     static auto calculate_sum_tpp
     (
@@ -1405,9 +1400,9 @@ public:
                 [&](const uint_fast8_t block_index) 
                 {
                     std::vector<nucleon> nucl, other;
-                    std::vector<uint_fast8_t> nucl_indexes(208);
+                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
                     std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                    std::vector<double> sum_tpps(208);
+                    std::vector<double> sum_tpps(nuc_params.A);
 
                     nucl = nucleus_generator::generate_nucleus
                         (
@@ -1483,9 +1478,13 @@ public:
                 [&](const uint_fast8_t block_index) 
                 {
                     std::vector<nucleon> nucl, other;
-                    std::vector<uint_fast8_t> nucl_indexes(208);
+                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
                     std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                    std::array<std::array<double, 208>, 25> sum_tpps;
+                    std::array<std::vector<double>, 25> sum_tpps;
+                    for (uint_fast8_t i=0; i<25; i++)
+                    {
+                        sum_tpps[i] = std::vector<double>(nuc_params.A);
+                    }
 
                     nucl = nucleus_generator::generate_nucleus
                         (
@@ -1508,13 +1507,12 @@ public:
                             {
                                 sum_tpps[i][index] = std::exp(c_vector[i]*calculate_sum_tpp(nucl[index], nucl, Tpp));
                             }
-                            //sum_tpps[index] = calculate_sum_tpp(nucl[index], nucl, Tpp);
                         }
                     );
 
                     for (uint_fast8_t i=0; i<25; i++)
                     {
-                        R_vectors[i][block_index] = std::reduce(std::execution::par, sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / 208.0;
+                        R_vectors[i][block_index] = std::reduce(std::execution::par, sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
                     }
                 }
             );
@@ -1537,102 +1535,6 @@ public:
 
     
 private:
-
-    static auto read_sigma_jets_spatial_MC
-    (
-        const std::string &filename
-    ) noexcept -> InterpMultilinear<3, double>
-    {
-
-        std::ifstream input(filename);
-
-        std::array<uint_fast16_t,3> dim_Ns;
-        std::vector<double> grid1, grid2, grid3;
-        std::vector< std::vector<double>::iterator > grid_iter_list;
-        std::vector<double> f_values;
-
-        if (input.is_open())
-        {
-            std::string line;
-            std::getline(input, line); //#1 Don't need anything from here
-
-            std::getline(input, line); //#2
-            std::istringstream line_stream(line);
-            uint_fast64_t num_elements;
-            line_stream.ignore(256,'=');
-            line_stream >> num_elements;
-
-            std::getline(input, line); //#3
-            line_stream = std::istringstream(line);
-            line_stream.ignore(256,'=');
-            line_stream >> dim_Ns[0];
-            std::getline(input, line); //#4
-            line_stream = std::istringstream(line);
-            line_stream.ignore(256,'=');
-            line_stream >> dim_Ns[1];
-            std::getline(input, line); //#5
-            line_stream = std::istringstream(line);
-            line_stream.ignore(256,'=');
-            line_stream >> dim_Ns[2];
-
-            std::getline(input, line); //#6 empty
-            std::getline(input, line); //#7 Don't need anything from here
-            std::getline(input, line); //#8
-            line_stream = std::istringstream(line);
-            double num;
-            while (line_stream >> num)
-            {
-                grid1.push_back(num);
-            }
-            std::getline(input, line); //#9 empty
-            std::getline(input, line); //#10 Don't need anything from here
-            std::getline(input, line); //#11
-            line_stream = std::istringstream(line);
-            while (line_stream >> num)
-            {
-                grid2.push_back(num);
-            }
-            std::getline(input, line); //#12 empty
-            std::getline(input, line); //#13 Don't need anything from here
-            std::getline(input, line); //#14
-            line_stream = std::istringstream(line);
-            while (line_stream >> num)
-            {
-                grid3.push_back(num);
-            }
-            grid_iter_list.push_back(grid1.begin());
-            grid_iter_list.push_back(grid2.begin());
-            grid_iter_list.push_back(grid3.begin());
-            
-            std::getline(input, line); //#15 empty
-            std::getline(input, line); //#16 Don't need anything from here
-            f_values.reserve(num_elements);
-            uint_fast64_t k=0;
-            double sigma_jet;
-
-            for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
-            {
-                for (uint_fast64_t j=0; j<dim_Ns[1]; j++)
-                {
-                    std::getline(input, line);
-                    line_stream = std::istringstream(line);
-                    while (line_stream >> sigma_jet)
-                    {
-                        f_values[i*dim_Ns[1]*dim_Ns[2] + j*dim_Ns[2] + k] = sigma_jet;
-                        k++;
-                    }
-                    k=0;
-                }
-                std::getline(input, line); //empty
-            }
-
-            return InterpMultilinear<3, double>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data() + num_elements);
-        }
-
-        std::cout<<"ERROR READING SIGMA_JETS"<<std::endl;
-        
-        return InterpMultilinear<3, double>(grid_iter_list.begin(), dim_Ns.begin(), f_values.data(), f_values.data());
-    }
 
     static auto read_sigma_jets_spatial
     (

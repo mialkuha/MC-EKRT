@@ -751,6 +751,7 @@ public:
         double T_AA_0_for_snpdfs{0.0};
         double spatial_cutoff{0.0};
         uint_fast16_t A{208};
+        uint_fast16_t ZA{82};
         double M_factor{2.5};
         double nn_min_dist{0.4};
         double nuclear_RA{6.62435};
@@ -838,6 +839,10 @@ public:
                 else if (param_name == "A")
                 {
                     line_stream >> A;
+                }
+                else if (param_name == "ZA")
+                {
+                    line_stream >> ZA;
                 }
                 else if (param_name == "M_factor")
                 {
@@ -961,6 +966,7 @@ public:
                     T_AA_0_for_snpdfs,
                     spatial_cutoff,
                     A,
+                    ZA,
                     M_factor,
                     nn_min_dist,
                     nuclear_RA,
