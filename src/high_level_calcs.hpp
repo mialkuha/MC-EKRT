@@ -666,7 +666,7 @@ public:
                 }
                 if (AA_params.calculate_end_state)
                 {
-                    double envelope_maximum;
+                    // double envelope_maximum;
                     // if (AA_params.reduce_nucleon_energies)
                     // {
                     //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());

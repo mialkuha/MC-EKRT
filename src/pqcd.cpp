@@ -26,6 +26,9 @@ auto pqcd::diff_sigma::make_pdfs
     const bool &target_with_npdfs,
     const bool &isoscalar_projectile,
     const bool &isoscalar_target,
+    const bool &use_neutrons,
+    const bool &projectile_neutron,
+    const bool &target_neutron,
     const bool &npdfs_spatial,
     const int &npdf_setnumber,
     const uint_fast16_t &A,
@@ -145,6 +148,31 @@ auto pqcd::diff_sigma::make_pdfs
         f_i_x2[2] = ZoA * d + NoA * u;
         f_ai_x2[1] = ZoA * ub + NoA * db;
         f_ai_x2[2] = ZoA * db + NoA * ub;
+    }
+
+    if (use_neutrons && projectile_neutron)
+    {
+        double u, ub, d, db;
+        u  = f_i_x1[1];
+        d  = f_i_x1[2];
+        ub = f_ai_x1[1];
+        db = f_ai_x1[2];
+        f_i_x1[1] = d;
+        f_i_x1[2] = u;
+        f_ai_x1[1] = db;
+        f_ai_x1[2] = ub;
+    }    
+    if (use_neutrons && target_neutron)
+    {
+        double u, ub, d, db;
+        u  = f_i_x2[1];
+        d  = f_i_x2[2];
+        ub = f_ai_x2[1];
+        db = f_ai_x2[2];
+        f_i_x2[1] = d;
+        f_i_x2[2] = u;
+        f_ai_x2[1] = db;
+        f_ai_x2[2] = ub;
     }
 
     return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);
