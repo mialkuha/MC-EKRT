@@ -11,7 +11,8 @@ sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process
 K_factor 1.0                     # pQCD K-factor to account for the higher order corrections
 kt0 1.0                          # (GeV) jet k_T lower cutoff
 proton_width 0.573               # (fm) proton width (Only used if proton_width_static==true)
-sigma_inel 70.0                  # (mb) inelastic nucleon-nucleon cross section of the event
+sigma_inel 70.0                  # (mb) inelastic nucleon-nucleon cross section of the NN event
+sigma_inel_AA 0                  # (mb) inelastic cross section for the triggering. 0 = calculate at the start.
 T_AA_0_for_snpdfs 0              # (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
 spatial_cutoff 0                 # If calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below (Only relevant with linear snPDFs)
 # NUCLEAR PARAMETERS
@@ -32,6 +33,8 @@ read_sigmajets_from_file false   # If the sigma_jets are precalculated
 # QCD FLAGS
 proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
+AA_inel_same_as_NN false         # Is the triggering sigma the same as NN-sigma
+only_protons false               # If the nucleons are all protons
 use_npdfs true                   # If there should be nuclear corrections in nucleus' PDFs
 use_snpdfs false                 # If the used nPDF should be spatially dependent or average
 snpdfs_linear false              # If the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)

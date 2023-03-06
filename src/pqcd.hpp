@@ -40,6 +40,7 @@ public:
             bool isoscalar_projectile{false};
             bool isoscalar_target{false};
             bool npdfs_spatial{false};
+            bool only_protons{false};
             int npdf_setnumber{1};
             double spatial_cutoff{0.0};
             double K_factor{1};
@@ -58,6 +59,7 @@ public:
               auto isoscalar_projectile_,  
               auto isoscalar_target_,
               auto npdfs_spatial_,
+              auto only_protons_,
               auto npdf_setnumber_,        
               auto spatial_cutoff_,
               auto K_factor_,
@@ -74,6 +76,7 @@ public:
               isoscalar_projectile(isoscalar_projectile_), 
               isoscalar_target(isoscalar_target_), 
               npdfs_spatial(npdfs_spatial_), 
+              only_protons(only_protons_), 
               npdf_setnumber(npdf_setnumber_),
               spatial_cutoff(spatial_cutoff_),
               K_factor(K_factor_), 
@@ -93,6 +96,7 @@ public:
               auto isoscalar_projectile_,  
               auto isoscalar_target_,  
               auto npdfs_spatial_, 
+              auto only_protons_,
               auto npdf_setnumber_,  
               auto spatial_cutoff_,     
               auto K_factor_,      
@@ -106,6 +110,7 @@ public:
               isoscalar_projectile(isoscalar_projectile_), 
               isoscalar_target(isoscalar_target_), 
               npdfs_spatial(npdfs_spatial_), 
+              only_protons(only_protons_), 
               npdf_setnumber(npdf_setnumber_),
               spatial_cutoff(spatial_cutoff_),
               K_factor(K_factor_), 
@@ -121,6 +126,7 @@ public:
               this->isoscalar_projectile = rhs.isoscalar_projectile;
               this->isoscalar_target = rhs.isoscalar_target;
               this->npdfs_spatial = rhs.npdfs_spatial;
+              this->only_protons = rhs.only_protons;
               this->npdf_setnumber = rhs.npdf_setnumber;
               this->spatial_cutoff = rhs.spatial_cutoff;
               this->K_factor = rhs.K_factor;
@@ -325,6 +331,8 @@ public:
       const double &y2,
       std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
       pqcd::sigma_jet_params sigma_params,
+      const bool target_neutron,
+      const bool projectile_neutron,
       bool debug = false //true prints the calculated processes
     ) noexcept -> std::vector<xsection_id>;
 
@@ -345,7 +353,9 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        double &envelope_maximum
+        double &envelope_maximum,
+        const bool target_neutron,
+        const bool projectile_neutron
       ) noexcept -> dijet_specs;
 
     static auto generate_2_to_2_scatt
@@ -358,7 +368,9 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        envelope_func &env_func
+        envelope_func &env_func,
+        const bool target_neutron,
+        const bool projectile_neutron
       ) noexcept -> dijet_specs;
 
     static auto generate_bin_NN_coll
@@ -372,7 +384,9 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        double &envelope_maximum
+        double &envelope_maximum,
+        const bool target_neutron,
+        const bool projectile_neutron
       ) noexcept -> void;
 
     static auto generate_bin_NN_coll
@@ -386,7 +400,9 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        envelope_func &env_func
+        envelope_func &env_func,
+        const bool target_neutron,
+        const bool projectile_neutron
       ) noexcept -> void;
 
     static auto sigma_jet_integrand

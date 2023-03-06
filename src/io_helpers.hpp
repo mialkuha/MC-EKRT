@@ -748,6 +748,7 @@ public:
         double kt0{1.0};
         double proton_width{0.573};
         double sigma_inel{70.0};
+        double sigma_inel_AA{70.0};
         double T_AA_0_for_snpdfs{0.0};
         double spatial_cutoff{0.0};
         uint_fast16_t A{208};
@@ -765,6 +766,8 @@ public:
         bool read_sigmajets_from_file{false};
         bool proton_width_static{false};
         bool sigma_inel_from_sigma_jet{true};
+        bool AA_inel_same_as_NN{false};
+        bool only_protons{false};
         bool use_npdfs{true};
         bool use_snpdfs{false}; 
         bool snpdfs_linear{false};
@@ -827,6 +830,10 @@ public:
                 else if (param_name == "sigma_inel")
                 {
                     line_stream >> sigma_inel;
+                }
+                else if (param_name == "sigma_inel_AA")
+                {
+                    line_stream >> sigma_inel_AA;
                 }
                 else if (param_name == "T_AA_0_for_snpdfs")
                 {
@@ -896,6 +903,14 @@ public:
                 {
                     line_stream >> std::boolalpha >> sigma_inel_from_sigma_jet;
                 }
+                else if (param_name == "AA_inel_same_as_NN")
+                {
+                    line_stream >> std::boolalpha >> AA_inel_same_as_NN;
+                }
+                else if (param_name == "only_protons")
+                {
+                    line_stream >> std::boolalpha >> only_protons;
+                }
                 else if (param_name == "use_npdfs")
                 {
                     line_stream >> std::boolalpha >> use_npdfs;
@@ -963,6 +978,7 @@ public:
                     kt0,
                     proton_width,
                     sigma_inel,
+                    sigma_inel_AA,
                     T_AA_0_for_snpdfs,
                     spatial_cutoff,
                     A,
@@ -980,6 +996,8 @@ public:
                     read_sigmajets_from_file,
                     proton_width_static,
                     sigma_inel_from_sigma_jet,
+                    AA_inel_same_as_NN,
+                    only_protons,
                     use_npdfs,
                     use_snpdfs,
                     snpdfs_linear,

@@ -363,7 +363,7 @@ public:
         y1 = gsl_vector_get(v, 0);
         y2 = gsl_vector_get(v, 1);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, sigma_params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, sigma_params, false, false);
         double total_xsection = 0;
         for (auto xsect : xsection)
         {
@@ -624,7 +624,9 @@ public:
                             p_p_pdf,
                             dsigma_params,
                             power_law,
-                            env_func_
+                            env_func_,
+                            B->is_neutron,
+                            A->is_neutron
                         );
                     }
                     
@@ -699,7 +701,9 @@ public:
                             p_p_pdf,
                             dsigma_params,
                             power_law,
-                            env_func_
+                            env_func_,
+                            B->is_neutron,
+                            A->is_neutron
                         );
                     }
                     
@@ -939,7 +943,9 @@ public:
                             p_p_pdf,
                             dsigma_params,
                             power_law,
-                            env_func_
+                            env_func_,
+                            B->is_neutron,
+                            A->is_neutron
                         );
                     }
 
@@ -1089,7 +1095,9 @@ public:
                             p_p_pdf,
                             dsigma_params,
                             power_law,
-                            env_func_
+                            env_func_,
+                            B->is_neutron,
+                            A->is_neutron
                         );
                     }
 

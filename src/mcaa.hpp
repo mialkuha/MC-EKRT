@@ -54,6 +54,8 @@ public:
     bool saturation{true};                 // if EKRT saturation is enforced
     bool save_endstate_jets{true};         // if all the jets should be saved in binary (see jet_reader.cpp)
     bool sigma_inel_from_sigma_jet{true};  // is sigma_inel static or from eikonal model
+    bool AA_inel_same_as_NN{false};        // is the triggering sigma the same as NN-sigma
+    bool only_protons{false};              // if the nucleons are all protons
     bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
     bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
     bool verbose{false};                   // lots of printing all around
@@ -77,7 +79,8 @@ public:
     double nuclear_d{0.573};                        // (fm) nucleus d for the 2pF-distribution
     double rad_max{30.0};                           // (fm) nucleons' maximum distance from the center of the nucleus
     double rad_min{0.0};                            // (fm) nucleons' minimum distance from the center of the nucleus
-    double sigma_inel{70.0};                        // (mb) inelastic cross section of the event
+    double sigma_inel{70.0};                        // (mb) inelastic cross section of the NN event
+    double sigma_inel_AA{70.0};                     // (mb) inelastic cross section for the triggering
     double sqrt_s{5020.0};                          // (GeV) sqrt(s) for the hard process 
     double T_AA_0{0.0};                             // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
     double spatial_cutoff{0.0};                     // if calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below.

@@ -26,10 +26,10 @@ auto pqcd::diff_sigma::make_pdfs
     const bool &target_with_npdfs,
     const bool &isoscalar_projectile,
     const bool &isoscalar_target,
-    const bool &use_neutrons,
+    const bool &npdfs_spatial,
+    const bool &only_protons,
     const bool &projectile_neutron,
     const bool &target_neutron,
-    const bool &npdfs_spatial,
     const int &npdf_setnumber,
     const uint_fast16_t &A,
     const uint_fast16_t &B,
@@ -150,7 +150,7 @@ auto pqcd::diff_sigma::make_pdfs
         f_ai_x2[2] = ZoA * db + NoA * ub;
     }
 
-    if (use_neutrons && projectile_neutron)
+    if (!only_protons && projectile_neutron)
     {
         double u, ub, d, db;
         u  = f_i_x1[1];
@@ -162,7 +162,7 @@ auto pqcd::diff_sigma::make_pdfs
         f_ai_x1[1] = db;
         f_ai_x1[2] = ub;
     }    
-    if (use_neutrons && target_neutron)
+    if (!only_protons && target_neutron)
     {
         double u, ub, d, db;
         u  = f_i_x2[1];
@@ -372,7 +372,9 @@ auto pqcd::generate_2_to_2_scatt
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    double &envelope_maximum
+    double &envelope_maximum,
+    const bool target_neutron,
+    const bool projectile_neutron
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -403,7 +405,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, target_neutron, projectile_neutron);
 
         double total_xsection = 0;
 
@@ -471,7 +473,9 @@ auto pqcd::generate_2_to_2_scatt
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    envelope_func &env_func
+    envelope_func &env_func,
+    const bool target_neutron,
+    const bool projectile_neutron
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -505,7 +509,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, target_neutron, projectile_neutron);
 
         double total_xsection = 0;
 
@@ -567,7 +571,9 @@ auto pqcd::generate_bin_NN_coll
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    double &envelope_maximum
+    double &envelope_maximum,
+    const bool target_neutron,
+    const bool projectile_neutron
 ) noexcept -> void
 {
     //First generate the number of produced dijets from zero-truncated Poissonian distribution
@@ -588,7 +594,9 @@ auto pqcd::generate_bin_NN_coll
             p_p_pdf,
             params,
             power_law,
-            envelope_maximum
+            envelope_maximum,
+            target_neutron,
+            projectile_neutron
         ));
     }
 }
@@ -604,7 +612,9 @@ auto pqcd::generate_bin_NN_coll
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
-    envelope_func &env_func
+    envelope_func &env_func,
+    const bool target_neutron,
+    const bool projectile_neutron
 ) noexcept -> void
 {
     //First generate the number of produced dijets from zero-truncated Poissonian distribution
@@ -625,7 +635,9 @@ auto pqcd::generate_bin_NN_coll
             p_p_pdf,
             params,
             power_law,
-            env_func
+            env_func,
+            target_neutron,
+            projectile_neutron
         ));
     }
 }
@@ -1033,6 +1045,8 @@ auto pqcd::diff_cross_section_2jet
     const double &y2,
     std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
     pqcd::sigma_jet_params sigma_params,
+    const bool target_neutron,
+    const bool projectile_neutron,
     bool debug// = false //true prints the calculated processes
 ) noexcept -> std::vector<xsection_id>
 {
@@ -1098,6 +1112,9 @@ auto pqcd::diff_cross_section_2jet
               diff_params.isoscalar_projectile,
               diff_params.isoscalar_target,
               diff_params.npdfs_spatial,
+              diff_params.only_protons,
+              projectile_neutron,
+              target_neutron,
               diff_params.npdf_setnumber,
               diff_params.A,
               diff_params.B,
@@ -1430,6 +1447,9 @@ auto pqcd::diff_sigma::sigma_jet
               params.isoscalar_projectile,
               params.isoscalar_target,
               params.npdfs_spatial,
+              true,
+              false,
+              false,
               params.npdf_setnumber,
               params.A,
               params.B,
@@ -1483,6 +1503,9 @@ auto pqcd::diff_sigma::sigma_1jet
               params.isoscalar_projectile,
               params.isoscalar_target,
               params.npdfs_spatial,
+              true,
+              false,
+              false,
               params.npdf_setnumber,
               params.A,
               params.B,

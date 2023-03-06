@@ -6,7 +6,7 @@ mcaa::mcaa
 (
     const std::string &initfile
 ) 
-: diff_params(false,false,false,false,false,1,0,1,1u,1u,1u,1u),
+: diff_params(false,false,false,false,false,false,1,0,1,1u,1u,1u,1u),
   jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
   nuc_params(1u,1u,1u,1u,1.0,false,false)
 {
@@ -22,6 +22,7 @@ mcaa::mcaa
         p_kt0,
         p_proton_width,
         p_sigma_inel,
+        p_sigma_inel_AA,
         p_T_AA_0_for_snpdfs,
         p_spatial_cutoff,
         p_A,
@@ -39,6 +40,8 @@ mcaa::mcaa
         p_read_sigmajets_from_file,
         p_proton_width_static,
         p_sigma_inel_from_sigma_jet,
+        p_AA_inel_same_as_NN,
+        p_only_protons,
         p_use_npdfs,
         p_use_snpdfs,
         p_snpdfs_linear,
@@ -65,6 +68,8 @@ mcaa::mcaa
     this->saturation                 = p_is_saturation; 
     this->save_endstate_jets         = p_save_endstate_jets;
     this->sigma_inel_from_sigma_jet  = p_sigma_inel_from_sigma_jet; 
+    this->AA_inel_same_as_NN         = p_AA_inel_same_as_NN; 
+    this->only_protons               = p_only_protons; 
     this->snPDFs                     = p_use_snpdfs;
     this->snPDFs_linear              = p_snpdfs_linear;
     this->name                       = p_name;
@@ -83,6 +88,7 @@ mcaa::mcaa
     this->rad_max                    = p_rad_max;
     this->rad_min                    = p_rad_min;
     this->sigma_inel                 = p_sigma_inel;
+    this->sigma_inel_AA              = p_sigma_inel_AA;
     this->sqrt_s                     = p_sqrt_s;
     this->T_AA_0                     = p_T_AA_0_for_snpdfs;
     this->spatial_cutoff             = p_spatial_cutoff;
@@ -92,6 +98,17 @@ mcaa::mcaa
     this->mand_s                     = p_sqrt_s*p_sqrt_s;
 
 
+    if (!this->AA_inel_same_as_NN && almostEqual(p_sigma_inel_AA, 0.0)) // triggering sigma from parametrization
+    {
+        auto s = this->mand_s;
+        // fit by COMPETE https://doi.org/10.1103/PhysRevLett.89.201801
+        auto sigmatot = 42.6*std::pow(s,-0.46) -33.4*std::pow(s,-0.545) +0.307*std::pow(std::log(s/29.1),2) +35.5;
+        // fit by TOTEM https://doi.org/10.1140/epjc/s10052-019-6567-0
+        auto sigmael = -1.617*std::log(s) +0.1359*std::pow(std::log(s),2) +11.84;
+
+        this->sigma_inel_AA = sigmatot - sigmael;
+        std::cout<<"Triggering sigma_inel from parametrization: "<<this->sigma_inel_AA<<std::endl;
+    }
 
     if (this->proton_width_static)
     {
@@ -154,6 +171,7 @@ mcaa::mcaa
     /*isoscalar_projectile=     */false,
     /*isoscalar_target=         */false,
     /*npdfs_spatial=            */p_use_snpdfs,
+    /*only_protons=             */p_only_protons,
     /*npdf_setnumber=           */1,
     /*spatial_cutoff=           */this->spatial_cutoff,
     /*K_factor=                 */K_factor,
@@ -528,6 +546,11 @@ auto mcaa::run() -> void
         std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
     }
 
+    if (this->AA_inel_same_as_NN)
+    {
+        this->sigma_inel_AA = this->sigma_inel;
+    }
+
     bool use_nn_b2_max = true; //TODO GET RID OF MAGIC NUMBERS
     double tpp_min = 1e-8; //TODO GET RID OF MAGIC NUMBERS
 
@@ -654,12 +677,11 @@ auto mcaa::run() -> void
                     //Demand at least one hard scattering
                     do //while (NColl<1)
                     {
-                        //Keep generating nuclei until there are nucleons close enough to each other
-                        //so that a collision is probable
-                        bool bugged, probably_collided;
+                        //Keep generating nuclei until the triggering condition is met
+                        bool bugged, triggered;
                         // "ball" diameter = distance at which two nucleons interact in MC Glauber
-                        const double d2 = this->sigma_inel/(M_PI*10.0); // in fm^2
-                        do //while (!probably_collided || bugged)  
+                        const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
+                        do //while (!triggered || bugged)  
                         {
                             //B^2 from a uniform distribution
                             impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
@@ -674,7 +696,7 @@ auto mcaa::run() -> void
                             }
 
                             bugged = false;
-                            probably_collided = false;
+                            triggered = false;
                             try
                             {
                                 auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
@@ -702,19 +724,19 @@ auto mcaa::run() -> void
                                     // "ball" diameter = distance at which two nucleons interact
                                     const double dij2 = A.calculate_bsquared(B);
 
-                                    if (dij2 <= d2) //Probably at least one collision
+                                    if (dij2 <= d2) // triggering condition
                                     {
-                                        probably_collided = true;
+                                        triggered = true;
                                         continue;
                                     }
                                 }
-                                if (probably_collided)
+                                if (triggered)
                                 {
                                     continue;
                                 }
                             }
 
-                        } while (!probably_collided || bugged);
+                        } while (!triggered || bugged);
 
                         binary_collisions.clear();
                         if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
