@@ -654,9 +654,26 @@ public:
                     sigma_jet = std::get<double>(sigma_jets);
                 }
                 
-                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
-                auto ran = unirand(*eng)*M_PI;
+                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
+                auto ran = unirand(*eng);
+                switch (AA_params.normalize_to)
+                {
+                case B2_normalization_mode::total:
+                    ran *= newpair.getcr_max_tot_xsect();
+                    break;
                 
+                case B2_normalization_mode::inelastic:
+                    ran *= newpair.getcr_max_inel_xsect();
+                    break;
+                
+                case B2_normalization_mode::nothing:
+                    break;
+                
+                default:
+                    ran *= newpair.getcr_max_inel_xsect();
+                    break;
+                }
+
                 if (ran > newpair.getcr_effective_inel_xsect())
                 {
                     if (ran > newpair.getcr_effective_tot_xsect())
@@ -975,10 +992,27 @@ public:
                     sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
                     //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                 }
-                    
-                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared(), AA_params.normalize_to);
-                auto ran = unirand(*eng)*M_PI;
-                    
+                
+                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
+                auto ran = unirand(*eng);
+                switch (AA_params.normalize_to)
+                {
+                case B2_normalization_mode::total:
+                    ran *= newpair.getcr_max_tot_xsect();
+                    break;
+                
+                case B2_normalization_mode::inelastic:
+                    ran *= newpair.getcr_max_inel_xsect();
+                    break;
+                
+                case B2_normalization_mode::nothing:
+                    break;
+                
+                default:
+                    ran *= newpair.getcr_max_inel_xsect();
+                    break;
+                }
+
                 if (ran > newpair.getcr_effective_inel_xsect())
                 {
                     if (ran > newpair.getcr_effective_tot_xsect())

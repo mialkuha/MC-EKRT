@@ -23,42 +23,14 @@ void nn_coll::wound() noexcept
     this->target->wounded = true;
 }
 
-void nn_coll::calculate_xsects(const double &sigma_jet, const std::function<double(const double&)> &Tpp, const double &b2, const B2_normalization_mode & mode) noexcept
+void nn_coll::calculate_xsects(const double &sigma_jet, const std::function<double(const double&)> &Tpp, const double &b2) noexcept
 {
-    double normalization=1., max_tot=1., max_inel=1., eff_tot=1., eff_inel=1.;
+    double max_tot=1., max_inel=1., eff_tot=1., eff_inel=1.;
 
-    switch (mode)
-    {
-    case B2_normalization_mode::total:
-        normalization = 2. * (1. - exp(-0.5 * sigma_jet * Tpp(0.))); 
-        max_tot = M_PI;
-        eff_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(b2/normalization))) / normalization;
-        max_inel = M_PI * (1. - exp(-sigma_jet * Tpp(0.))) / normalization;
-        eff_inel = M_PI * (1. - exp(-sigma_jet * Tpp(b2/normalization))) / normalization;
-        break;
-    
-    case B2_normalization_mode::inelastic:
-        normalization = (1. - exp(-sigma_jet * Tpp(0.))); 
-        max_inel = M_PI;
-        eff_inel = M_PI * (1. - exp(-sigma_jet * Tpp(b2/normalization))) / normalization;
-        max_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(0.))) / normalization;
-        eff_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(b2/normalization))) / normalization;
-        break;
-    
-    case B2_normalization_mode::nothing:
-        max_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(0.)));
-        eff_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(b2)));
-        max_inel = M_PI * (1. - exp(-sigma_jet * Tpp(0.)));
-        eff_inel = M_PI * (1. - exp(-sigma_jet * Tpp(b2)));
-        break;
-    
-    default:
-        max_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(0.)));
-        eff_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(b2)));
-        max_inel = M_PI * (1. - exp(-sigma_jet * Tpp(0.)));
-        eff_inel = M_PI * (1. - exp(-sigma_jet * Tpp(b2)));
-        break;
-    }
+    max_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(0.)));
+    eff_tot = 2. * M_PI * (1. - exp(-0.5 * sigma_jet * Tpp(b2)));
+    max_inel = M_PI * (1. - exp(-sigma_jet * Tpp(0.)));
+    eff_inel = M_PI * (1. - exp(-sigma_jet * Tpp(b2)));
 
     this->max_inel_xsect = max_inel; //sigma_inel
     this->max_tot_xsect = max_tot; //sigma_tot

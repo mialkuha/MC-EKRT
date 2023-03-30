@@ -29,7 +29,7 @@ public:
     
     void reduce_energy() noexcept;
     void wound() noexcept;
-    void calculate_xsects(const double &sigma_jet, const std::function<double(const double&)> &Tpp, const double &bsquared, const B2_normalization_mode & mode)  noexcept;
+    void calculate_xsects(const double &sigma_jet, const std::function<double(const double&)> &Tpp, const double &bsquared)  noexcept;
     void push_end_states_to_collider_frame() noexcept;
     void reduce_energy_and_push_end_states_to_collider_frame() noexcept;
     double randomize_bsquared_for_this(const double & min, const double & max, std::mt19937 random_generator_) noexcept;
