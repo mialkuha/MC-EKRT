@@ -739,7 +739,7 @@ public:
         std::ifstream input(filename);
         
         std::string name{"example_name"};
-        std::string sigmajet_filename{"sigma_jet.dat"}; 
+        std::string sigmajet_filename{"example_sigma_jet.dat"}; 
         uint_fast32_t n_events{10000};
         double b_max{20.0};
         double b_min{0.0};
