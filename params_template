@@ -28,15 +28,15 @@ rad_min 0.0                      # (fm) nucleons' minimum distance from the cent
 is_aa true                       # If the run is nucleus-nucleus
 is_pa false                      # If the run is proton-nucleus
 is_pp false                      # If the run is proton-proton 
-is_mc_glauber true               # If true, nucleon-nucleon collisions are decided like with hard spheres
-read_sigmajets_from_file false   # If the sigma_jets are precalculated
+is_mc_glauber false               # If true, nucleon-nucleon collisions are decided like with hard spheres
+read_sigmajets_from_file true   # If the sigma_jets are precalculated
 # QCD FLAGS
 proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
 AA_inel_same_as_NN false         # Is the triggering sigma the same as NN-sigma
 only_protons false               # If the nucleons are all protons
 use_npdfs true                   # If there should be nuclear corrections in nucleus' PDFs
-use_snpdfs false                 # If the used nPDF should be spatially dependent or average
+use_snpdfs true                 # If the used nPDF should be spatially dependent or average
 snpdfs_linear false              # If the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
 calculate_spatial_cutoff false   # If to calculate the spatial cutoff (T_p(0))/(3T_A(0)) or if it's something user provided (Only relevant with linear snPDFs)
 # OUTPUT FLAGS

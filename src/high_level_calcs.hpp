@@ -1545,9 +1545,10 @@ public:
                         nucl_indexes.end(),
                         [&](const uint_fast8_t index) 
                         {
+                            auto dummy = calculate_sum_tpp(nucl[index], nucl, Tpp);
                             for (uint_fast8_t i=0; i<25; i++)
                             {
-                                sum_tpps[i][index] = std::exp(c_vector[i]*calculate_sum_tpp(nucl[index], nucl, Tpp));
+                                sum_tpps[i][index] = std::exp(c_vector[i]*dummy);
                             }
                         }
                     );
