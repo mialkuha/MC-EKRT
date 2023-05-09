@@ -740,7 +740,7 @@ public:
         
         std::string name{"example_name"};
         std::string sigmajet_filename{"sigma_jet.dat"}; 
-        uint_fast32_t n_events{500};
+        uint_fast32_t n_events{10000};
         double b_max{20.0};
         double b_min{0.0};
         double sqrt_s{5020.0};
@@ -748,7 +748,7 @@ public:
         double kt0{1.0};
         double proton_width{0.573};
         double sigma_inel{70.0};
-        double sigma_inel_AA{70.0};
+        double sigma_inel_AA{0.0};
         double T_AA_0_for_snpdfs{0.0};
         double spatial_cutoff{0.0};
         uint_fast16_t A{208};
@@ -762,16 +762,16 @@ public:
         bool is_AA{true};
         bool is_pA{false};
         bool is_pp{false};
-        bool is_mc_glauber{true};
+        bool is_mc_glauber{false};
         bool read_sigmajets_from_file{false};
         bool proton_width_static{false};
         bool sigma_inel_from_sigma_jet{true};
         bool AA_inel_same_as_NN{false};
         bool only_protons{false};
         bool use_npdfs{true};
-        bool use_snpdfs{false}; 
+        bool use_snpdfs{true}; 
         bool snpdfs_linear{false};
-        bool calculate_spatial_cutoff{true};
+        bool calculate_spatial_cutoff{false};
         bool calculate_end_state{true};
         bool calculate_tata{true};
         bool save_endstate_jets{true};
