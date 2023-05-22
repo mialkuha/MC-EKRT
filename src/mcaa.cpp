@@ -51,7 +51,10 @@ mcaa::mcaa
         p_save_endstate_jets,
         p_end_state_filtering,
         p_is_mom_cons,
-        p_is_saturation
+        p_is_saturation,
+        p_is_sat_y_dep,
+        p_is_pt_ordering,
+        p_is_t03_ordering
     ] = io::read_conf(initfile);
 
     this->calculate_end_state        = p_calculate_end_state; 
@@ -72,6 +75,9 @@ mcaa::mcaa
     this->only_protons               = p_only_protons; 
     this->snPDFs                     = p_use_snpdfs;
     this->snPDFs_linear              = p_snpdfs_linear;
+    this->is_sat_y_dep               = p_is_sat_y_dep;
+    this->pt_ordering                = p_is_pt_ordering;
+    this->t03_ordering               = p_is_t03_ordering;
     this->name                       = p_name;
     this->sigmajet_filename          = p_sjet_name;
     this->desired_N_events           = p_n_events;
@@ -252,18 +258,34 @@ auto mcaa::find_sigma_jet_cutoff_Q
 
 auto mcaa::check_and_place_circle_among_others
 (
-    std::tuple<double, double, double, uint_fast16_t> cand_circle, 
-    std::vector<std::tuple<double, double, double, uint_fast16_t> > &final_circles
+    std::tuple<double, double, double, uint_fast16_t, double, double> cand_circle, 
+    std::vector<std::tuple<double, double, double, uint_fast16_t, double, double> > &final_circles,
+    bool is_sat_y_dep
 ) noexcept -> bool
 {
-    auto & [cand_x, cand_y, cand_r, cand_overlap] = cand_circle;
+    auto & [cand_x, cand_y, cand_r, cand_overlap, cand_y1, cand_y2] = cand_circle;
     
-    for (auto & [circ_x, circ_y, circ_r, circ_overlap] : final_circles)
+    for (auto & [circ_x, circ_y, circ_r, circ_overlap, y1, y2] : final_circles)
     {
         //If the any of the circles radii overlap with the candidate, just return false
         if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
         {
-            return false;
+            if (is_sat_y_dep)
+            {
+                auto miy = std::min(y1,y2);
+                auto may = std::max(y1,y2);
+                auto mciy = std::min(cand_y1,cand_y2);
+                auto mcay = std::max(cand_y1,cand_y2);
+                
+                if (!(miy>mcay || may<mciy))
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 
@@ -313,12 +335,12 @@ auto mcaa::filter_end_state
     {
         for (auto &dij : col.dijets)
         {
-            candidates.emplace_back(std::move(dij), col.projectile, col.target);
+            candidates.emplace_back(std::move(dij), col.projectile, col.target, this->pt_ordering, this->t03_ordering);
         }
     }
     candidates.shrink_to_fit();
     
-    std::vector<std::tuple<double, double, double, uint_fast16_t> > final_circles;
+    std::vector<std::tuple<double, double, double, uint_fast16_t, double, double> > final_circles;
     final_circles.reserve(candidates.size());
     filtered_scatterings.reserve(filtered_scatterings.size()+candidates.size());
     
@@ -375,10 +397,12 @@ auto mcaa::filter_end_state
         {
             //SATURATION
 
-            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*this->M_factor*FMGEV), 1);
+            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
 
-            if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles))
+            if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
             {
+
+
                 continue; //Did not fit into saturated PS --> discard
             }
         }
@@ -673,71 +697,71 @@ auto mcaa::run() -> void
 
                     std::vector<nucleon> pro, tar;
                     uint_fast16_t times_discarded = 0;
+                    
+                    //Keep generating nuclei until the triggering condition is met
+                    bool bugged, triggered;
+                    // "ball" diameter = distance at which two nucleons interact in MC Glauber
+                    const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
+                    do //while (!triggered || bugged)  
+                    {
+                        //B^2 from a uniform distribution
+                        impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
+                
+                        times_discarded++;
+                        if (times_discarded > 1000)
+                        {
+                            std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
+                                        <<"Check impact parameters and/or collsion probabilities."
+                                        <<std::endl;
+                            times_discarded = 0;
+                        }
+
+                        bugged = false;
+                        triggered = false;
+                        try
+                        {
+                            auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
+                            (
+                                this->nuc_params, 
+                                this->sqrt_s, 
+                                impact_parameter, 
+                                eng, 
+                                radial_sampler, 
+                                verbose
+                            );
+                            pro = std::move(pro_dummy);
+                            tar = std::move(tar_dummy);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            std::cout << e.what() << " in main, trying again"<<std::endl;
+                            bugged = true;
+                        }
+
+                        for (auto A : pro)
+                        {
+                            for (auto B : tar)
+                            {
+                                // "ball" diameter = distance at which two nucleons interact
+                                const double dij2 = A.calculate_bsquared(B);
+
+                                if (dij2 <= d2) // triggering condition
+                                {
+                                    triggered = true;
+                                    continue;
+                                }
+                            }
+                            if (triggered)
+                            {
+                                continue;
+                            }
+                        }
+
+                    } while (!triggered || bugged);
 
                     //Demand at least one hard scattering
                     do //while (NColl<1)
                     {
-                        //Keep generating nuclei until the triggering condition is met
-                        bool bugged, triggered;
-                        // "ball" diameter = distance at which two nucleons interact in MC Glauber
-                        const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
-                        do //while (!triggered || bugged)  
-                        {
-                            //B^2 from a uniform distribution
-                            impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
-                    
-                            times_discarded++;
-                            if (times_discarded > 1000)
-                            {
-                                std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
-                                         <<"Check impact parameters and/or collsion probabilities."
-                                         <<std::endl;
-                                times_discarded = 0;
-                            }
-
-                            bugged = false;
-                            triggered = false;
-                            try
-                            {
-                                auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
-                                (
-                                    this->nuc_params, 
-                                    this->sqrt_s, 
-                                    impact_parameter, 
-                                    eng, 
-                                    radial_sampler, 
-                                    verbose
-                                );
-                                pro = std::move(pro_dummy);
-                                tar = std::move(tar_dummy);
-                            }
-                            catch(const std::exception& e)
-                            {
-                                std::cout << e.what() << " in main, trying again"<<std::endl;
-                                bugged = true;
-                            }
-
-                            for (auto A : pro)
-                            {
-                                for (auto B : tar)
-                                {
-                                    // "ball" diameter = distance at which two nucleons interact
-                                    const double dij2 = A.calculate_bsquared(B);
-
-                                    if (dij2 <= d2) // triggering condition
-                                    {
-                                        triggered = true;
-                                        continue;
-                                    }
-                                }
-                                if (triggered)
-                                {
-                                    continue;
-                                }
-                            }
-
-                        } while (!triggered || bugged);
-
                         binary_collisions.clear();
                         if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
@@ -960,8 +984,8 @@ auto mcaa::run() -> void
 
     if (save_endstate_jets)
     {
-        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.02},
-                                                                std::tuple<double,double>{0.0, 0.05},
+        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.05},
+                                                                std::tuple<double,double>{0.2, 0.3},
                                                                 std::tuple<double,double>{0.6, 0.8}};
 
         std::string name_pfs{this->name+".dat"};

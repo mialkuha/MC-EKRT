@@ -59,6 +59,9 @@ public:
     bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
     bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
     bool verbose{false};                   // lots of printing all around
+    bool is_sat_y_dep{false};              // if the saturation criterion should be y-dependent
+    bool pt_ordering{false};               // if the jets should be ordered by p_T
+    bool t03_ordering{false};              // if the jets should be ordered by t03
     // simulation parameters 
     std::string name{"example_name"};               // name of the run, affects output filenames and such 
     std::string sigmajet_filename{"sigma_jet.dat"}; // filename for the spatially dependent sigma_jet grid 
@@ -165,15 +168,34 @@ private:
         double t01;
         double t02;
         double t0; //Larger of the formation times := the formation time of the process
-        dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_)
+        dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_, bool pt_ordering, bool t03_ordering)
             : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
         {
-            auto y1 = dijet.y1;
-            auto y2 = dijet.y2;
-            auto max_t_u = dijet.kt*(1+std::exp(-std::abs(y1-y2)));
-            t01 = std::cosh(std::abs(y1))/max_t_u;
-            t02 = std::cosh(std::abs(y2))/max_t_u;
-            t0 = std::max(t01, t02);
+            if (pt_ordering)
+            {
+                t0 = 1.0/dijet.kt;
+            }
+            else
+            {
+                if (t03_ordering)
+                {
+                    auto y1 = dijet.y1;
+                    auto y2 = dijet.y2;
+                    t0 = std::cosh((y1+y2)/2)/(dijet.kt*std::sqrt(1+std::exp(-std::abs(y1-y2))));
+                }
+                else
+                {
+                    auto y1 = dijet.y1;
+                    auto y2 = dijet.y2;
+
+                    auto max_t_u = dijet.kt*(1+std::exp(-std::abs(y1-y2)));
+                    t01 = std::cosh(std::abs(y1))/max_t_u;
+                    t02 = std::cosh(std::abs(y2))/max_t_u;
+                    t0 = std::max(t01, t02);
+                }
+            }
+
+            // t0 = (std::cosh(y1)+std::cosh(y2))/(2*dijet.kt*(1+std::cosh(y1-y2)));
         }
     };
 
@@ -192,8 +214,9 @@ private:
     */
     static auto check_and_place_circle_among_others
     (
-        std::tuple<double, double, double, uint_fast16_t> cand_circle, 
-        std::vector<std::tuple<double, double, double, uint_fast16_t> > &final_circles
+        std::tuple<double, double, double, uint_fast16_t, double, double> cand_circle, 
+        std::vector<std::tuple<double, double, double, uint_fast16_t, double, double> > &final_circles,
+        bool is_sat_y_dep
     ) noexcept -> bool;
 
     /**

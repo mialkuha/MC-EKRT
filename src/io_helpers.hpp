@@ -778,6 +778,9 @@ public:
         bool end_state_filtering{true};
         bool is_mom_cons{true};
         bool is_saturation{true};
+        bool is_sat_y_dep{false};
+        bool pt_ordering{false};
+        bool t03_ordering{false};
 
         uint_fast16_t count = 0;
 
@@ -951,6 +954,18 @@ public:
                 {
                     line_stream >> std::boolalpha >> is_saturation;
                 }
+                else if (param_name == "is_sat_y_dep")
+                {
+                    line_stream >> std::boolalpha >> is_sat_y_dep;
+                }
+                else if (param_name == "pt_ordering")
+                {
+                    line_stream >> std::boolalpha >> pt_ordering;
+                }
+                else if (param_name == "t03_ordering")
+                {
+                    line_stream >> std::boolalpha >> t03_ordering;
+                }
                 else
                 {
                     continue;
@@ -1007,7 +1022,10 @@ public:
                     save_endstate_jets,
                     end_state_filtering,
                     is_mom_cons,
-                    is_saturation
+                    is_saturation,
+                    is_sat_y_dep,
+                    pt_ordering,
+                    t03_ordering
                 );
     }
 

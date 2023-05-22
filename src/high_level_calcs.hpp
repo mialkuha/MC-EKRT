@@ -613,21 +613,46 @@ public:
                     {
                         sigma_jet = std::get<double>(sigma_jets);
                         auto env_func_ = std::get<envelope_func>(env_func);
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            env_func_,
-                            B->is_neutron,
-                            A->is_neutron
-                        );
+
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        uint_fast8_t nof_dijets = dist(*eng);
+                        newpair.dijets.reserve(nof_dijets);
+
+                        const double sqrt_s = newpair.getcr_sqrt_s();
+
+                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        {
+                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            (
+                                sqrt_s,
+                                kt0,
+                                sqrt_s / 2.0,
+                                unirand,
+                                eng,
+                                p_p_pdf,
+                                dsigma_params,
+                                power_law,
+                                env_func_,
+                                B->is_neutron,
+                                A->is_neutron
+                            ));
+                        }
+
+                        // pqcd::generate_bin_NN_coll
+                        // (
+                        //     newpair, 
+                        //     sigma_jet, 
+                        //     AA_params.Tpp(newpair.getcr_bsquared()), 
+                        //     kt0,
+                        //     unirand, 
+                        //     eng,
+                        //     p_p_pdf,
+                        //     dsigma_params,
+                        //     power_law,
+                        //     env_func_,
+                        //     B->is_neutron,
+                        //     A->is_neutron
+                        // );
                     }
                     
                     // if (AA_params.reduce_nucleon_energies)
@@ -654,35 +679,35 @@ public:
                     sigma_jet = std::get<double>(sigma_jets);
                 }
                 
-                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
-                auto ran = unirand(*eng);
-                switch (AA_params.normalize_to)
-                {
-                case B2_normalization_mode::total:
-                    ran *= newpair.getcr_max_tot_xsect();
-                    break;
+                // newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
+                // auto ran = unirand(*eng);
+                // switch (AA_params.normalize_to)
+                // {
+                // case B2_normalization_mode::total:
+                //     ran *= newpair.getcr_max_tot_xsect();
+                //     break;
                 
-                case B2_normalization_mode::inelastic:
-                    ran *= newpair.getcr_max_inel_xsect();
-                    break;
+                // case B2_normalization_mode::inelastic:
+                //     ran *= newpair.getcr_max_inel_xsect();
+                //     break;
                 
-                case B2_normalization_mode::nothing:
-                    break;
+                // case B2_normalization_mode::nothing:
+                //     break;
                 
-                default:
-                    ran *= newpair.getcr_max_inel_xsect();
-                    break;
-                }
+                // default:
+                //     ran *= newpair.getcr_max_inel_xsect();
+                //     break;
+                // }
 
-                if (ran > newpair.getcr_effective_inel_xsect())
-                {
-                    if (ran > newpair.getcr_effective_tot_xsect())
-                    {
-                        continue;
-                    }
-                    nof_softs++;
-                    continue;
-                }
+                // if (ran > newpair.getcr_effective_inel_xsect())
+                // {
+                //     if (ran > newpair.getcr_effective_tot_xsect())
+                //     {
+                //         continue;
+                //     }
+                //     nof_softs++;
+                //     continue;
+                // }
                 if (AA_params.calculate_end_state)
                 {
                     // double envelope_maximum;
@@ -707,21 +732,46 @@ public:
                     // else //Single sigma_jet
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            env_func_,
-                            B->is_neutron,
-                            A->is_neutron
-                        );
+
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        uint_fast8_t nof_dijets = dist(*eng);
+                        newpair.dijets.reserve(nof_dijets);
+
+                        const double sqrt_s = newpair.getcr_sqrt_s();
+
+                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        {
+                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            (
+                                sqrt_s,
+                                kt0,
+                                sqrt_s / 2.0,
+                                unirand,
+                                eng,
+                                p_p_pdf,
+                                dsigma_params,
+                                power_law,
+                                env_func_,
+                                B->is_neutron,
+                                A->is_neutron
+                            ));
+                        }
+
+                        // pqcd::generate_bin_NN_coll
+                        // (
+                        //     newpair, 
+                        //     sigma_jet, 
+                        //     AA_params.Tpp(newpair.getcr_bsquared()), 
+                        //     kt0,
+                        //     unirand, 
+                        //     eng,
+                        //     p_p_pdf,
+                        //     dsigma_params,
+                        //     power_law,
+                        //     env_func_,
+                        //     B->is_neutron,
+                        //     A->is_neutron
+                        // );
                     }
                     
                     // if (AA_params.reduce_nucleon_energies)
@@ -949,21 +999,46 @@ public:
                     // else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            env_func_,
-                            B->is_neutron,
-                            A->is_neutron
-                        );
+
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        uint_fast8_t nof_dijets = dist(*eng);
+                        newpair.dijets.reserve(nof_dijets);
+
+                        const double sqrt_s = newpair.getcr_sqrt_s();
+
+                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        {
+                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            (
+                                sqrt_s,
+                                kt0,
+                                sqrt_s / 2.0,
+                                unirand,
+                                eng,
+                                p_p_pdf,
+                                dsigma_params,
+                                power_law,
+                                env_func_,
+                                B->is_neutron,
+                                A->is_neutron
+                            ));
+                        }
+
+                        // pqcd::generate_bin_NN_coll
+                        // (
+                        //     newpair, 
+                        //     sigma_jet, 
+                        //     AA_params.Tpp(newpair.getcr_bsquared()), 
+                        //     kt0,
+                        //     unirand, 
+                        //     eng,
+                        //     p_p_pdf,
+                        //     dsigma_params,
+                        //     power_law,
+                        //     env_func_,
+                        //     B->is_neutron,
+                        //     A->is_neutron
+                        // );
                     }
 
                     // if (AA_params.reduce_nucleon_energies)
@@ -993,35 +1068,35 @@ public:
                     //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                 }
                 
-                newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
-                auto ran = unirand(*eng);
-                switch (AA_params.normalize_to)
-                {
-                case B2_normalization_mode::total:
-                    ran *= newpair.getcr_max_tot_xsect();
-                    break;
+                // newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
+                // auto ran = unirand(*eng);
+                // switch (AA_params.normalize_to)
+                // {
+                // case B2_normalization_mode::total:
+                //     ran *= newpair.getcr_max_tot_xsect();
+                //     break;
                 
-                case B2_normalization_mode::inelastic:
-                    ran *= newpair.getcr_max_inel_xsect();
-                    break;
+                // case B2_normalization_mode::inelastic:
+                //     ran *= newpair.getcr_max_inel_xsect();
+                //     break;
                 
-                case B2_normalization_mode::nothing:
-                    break;
+                // case B2_normalization_mode::nothing:
+                //     break;
                 
-                default:
-                    ran *= newpair.getcr_max_inel_xsect();
-                    break;
-                }
+                // default:
+                //     ran *= newpair.getcr_max_inel_xsect();
+                //     break;
+                // }
 
-                if (ran > newpair.getcr_effective_inel_xsect())
-                {
-                    if (ran > newpair.getcr_effective_tot_xsect())
-                    {
-                        continue;
-                    }
-                    nof_softs++;
-                    continue;
-                }
+                // if (ran > newpair.getcr_effective_inel_xsect())
+                // {
+                //     if (ran > newpair.getcr_effective_tot_xsect())
+                //     {
+                //         continue;
+                //     }
+                //     nof_softs++;
+                //     continue;
+                // }
                 if (AA_params.calculate_end_state)
                 {
                     
@@ -1118,21 +1193,46 @@ public:
                     // else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
-                        pqcd::generate_bin_NN_coll
-                        (
-                            newpair, 
-                            sigma_jet, 
-                            AA_params.Tpp(newpair.getcr_bsquared()), 
-                            kt0,
-                            unirand, 
-                            eng,
-                            p_p_pdf,
-                            dsigma_params,
-                            power_law,
-                            env_func_,
-                            B->is_neutron,
-                            A->is_neutron
-                        );
+
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        uint_fast8_t nof_dijets = dist(*eng);
+                        newpair.dijets.reserve(nof_dijets);
+
+                        const double sqrt_s = newpair.getcr_sqrt_s();
+
+                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        {
+                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            (
+                                sqrt_s,
+                                kt0,
+                                sqrt_s / 2.0,
+                                unirand,
+                                eng,
+                                p_p_pdf,
+                                dsigma_params,
+                                power_law,
+                                env_func_,
+                                B->is_neutron,
+                                A->is_neutron
+                            ));
+                        }
+
+                        // pqcd::generate_bin_NN_coll
+                        // (
+                        //     newpair, 
+                        //     sigma_jet, 
+                        //     AA_params.Tpp(newpair.getcr_bsquared()), 
+                        //     kt0,
+                        //     unirand, 
+                        //     eng,
+                        //     p_p_pdf,
+                        //     dsigma_params,
+                        //     power_law,
+                        //     env_func_,
+                        //     B->is_neutron,
+                        //     A->is_neutron
+                        // );
                     }
 
                     // if (AA_params.reduce_nucleon_energies)
