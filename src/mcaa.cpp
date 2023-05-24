@@ -14,6 +14,7 @@ mcaa::mcaa
     [
         p_name,
         p_sjet_name,
+        p_cent_name,
         p_n_events,
         p_b_max,
         p_b_min,
@@ -80,6 +81,7 @@ mcaa::mcaa
     this->t03_ordering               = p_is_t03_ordering;
     this->name                       = p_name;
     this->sigmajet_filename          = p_sjet_name;
+    this->centrality_filename        = p_cent_name;
     this->desired_N_events           = p_n_events;
     this->A                          = p_A;
     this->ZA                         = p_ZA;
@@ -984,9 +986,26 @@ auto mcaa::run() -> void
 
     if (save_endstate_jets)
     {
-        const std::array<std::tuple<double,double>, 3> centBins{std::tuple<double,double>{0.0, 0.05},
-                                                                std::tuple<double,double>{0.2, 0.3},
-                                                                std::tuple<double,double>{0.6, 0.8}};
+        std::vector<std::tuple<double,double> > centBins;
+        std::ifstream cents_input(this->centrality_filename);
+        if (!cents_input.is_open())
+        {
+            std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
+            centBins.push_back(std::tuple<double,double>{0.0, 1.0});
+            return;
+        }
+        std::string line;
+        for (; std::getline(cents_input, line);)
+        {
+            std::stringstream ss(line);
+            std::string token;
+            std::getline(ss, token, ',');
+            double centLow = std::stod(token);
+            std::getline(ss, token, ',');
+            double centHigh = std::stod(token);
+            centBins.push_back(std::tuple<double,double>{centLow, centHigh});
+        }
+        cents_input.close();
 
         std::string name_pfs{this->name+".dat"};
 

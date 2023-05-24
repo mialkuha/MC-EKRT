@@ -65,6 +65,7 @@ public:
     // simulation parameters 
     std::string name{"example_name"};               // name of the run, affects output filenames and such 
     std::string sigmajet_filename{"sigma_jet.dat"}; // filename for the spatially dependent sigma_jet grid 
+    std::string centrality_filename{"centrality_bins.csv"}; // filename for the centrality bins for the reporting
     uint_fast32_t desired_N_events{500};            // how many events should be simulated
     uint_fast16_t A{208};                           // mass number of the colliding nucleus
     uint_fast16_t ZA{82};                           // atomic number of the colliding nucleus

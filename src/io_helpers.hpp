@@ -740,6 +740,7 @@ public:
         
         std::string name{"example_name"};
         std::string sigmajet_filename{"example_sigma_jet.dat"}; 
+        std::string centrality_filename{"centrality_bins.csv"}; 
         uint_fast32_t n_events{10000};
         double b_max{20.0};
         double b_min{0.0};
@@ -801,6 +802,10 @@ public:
                 else if (param_name == "sigmajet_filename")
                 {
                     line_stream >> sigmajet_filename;
+                }
+                else if (param_name == "centrality_filename")
+                {
+                    line_stream >> centrality_filename;
                 }
                 else if (param_name == "n_events")
                 {
@@ -985,6 +990,7 @@ public:
                 (
                     name,
                     sigmajet_filename,
+                    centrality_filename,
                     n_events,
                     b_max,
                     b_min,
