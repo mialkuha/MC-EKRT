@@ -790,6 +790,8 @@ auto mcaa::run() -> void
 
                     double sum_ET = 0;
                     double sum_ET_midrap = 0;
+                    double sum_ET_plusrap = 0;
+                    double sum_ET_minusrap = 0;
 
                     if (end_state_filtering)
                     {
@@ -833,17 +835,39 @@ auto mcaa::run() -> void
                             
                             // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
                             
-                            sum_ET += 2*e.kt;
-                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
+                            // sum_ET += 2*e.kt;
+                            // sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
 
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                            {
-                                sum_ET_midrap += e.kt;
-                            }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                            {
-                                sum_ET_midrap += e.kt;
-                            }
+                            // if (e.y1 >= -0.5 && e.y1 <= 0.5)
+                            // {
+                            //     sum_ET_midrap += e.kt;
+                            // }
+                            // if (e.y2 >= -0.5 && e.y2 <= 0.5)
+                            // {
+                            //     sum_ET_midrap += e.kt;
+                            // }
+
+                            // if (e.y1 >= 3.5 && e.y1 <= 4.5)
+                            // {
+                            //     sum_ET_plusrap += e.kt;
+                            // }
+                            // if (e.y2 >= 3.5 && e.y2 <= 4.5)
+                            // {
+                            //     sum_ET_plusrap += e.kt;
+                            // }
+
+                            // if (e.y1 >= -4.5 && e.y1 <= -3.5)
+                            // {
+                            //     sum_ET_minusrap += e.kt;
+                            // }
+                            // if (e.y2 >= -4.5 && e.y2 <= -3.5)
+                            // {
+                            //     sum_ET_minusrap += e.kt;
+                            // }
+                            {/////
+                                const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
+                                total_energy << index << ',' << e.kt << ',' << e.y1 << ',' << e.y2 << std::endl;/////
+                            }/////
                         }
 
                         // {
@@ -896,10 +920,10 @@ auto mcaa::run() -> void
                         //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
                         // }
                         
-                        {/////
-                            const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
-                            total_energy << sum_ET << ' ' << sum_E << std::endl;/////
-                        }/////
+                        // for (auto e_co : filtered_scatterings)
+                        // {
+                            
+                        // }
                     }
 
                     {

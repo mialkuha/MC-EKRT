@@ -1,15 +1,15 @@
 # Example of a parameter initialization file. Not all of the parameters need to be explicitly stated,
 # these are the default values
 # GENERAL PARAMETERS
-name example_name                # Name of the run, affects output filenames and such 
+name pA_RHIC                # Name of the run, affects output filenames and such 
 sigmajet_filename example_sigma_jet.dat  # Filename for the spatially dependent sigma_jet grid
 centrality_filename centrality_bins.csv  # Filename for the centrality bins for the reporting
-n_events 10000                   # How many events should be simulated
+n_events 10000000                   # How many events should be simulated
 b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
-sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
+sqrt_s 200.0                    # (GeV) sqrt(s) for the hard process 
 # QCD PARAMETERS
-K_factor 1.0                     # pQCD K-factor to account for the higher order corrections
+K_factor 2.0                     # pQCD K-factor to account for the higher order corrections
 kt0 1.0                          # (GeV) jet k_T lower cutoff
 proton_width 0.573               # (fm) proton width (Only used if proton_width_static==true)
 sigma_inel 70.0                  # (mb) inelastic nucleon-nucleon cross section of the NN event
@@ -17,17 +17,17 @@ sigma_inel_AA 0                  # (mb) inelastic cross section for the triggeri
 T_AA_0_for_snpdfs 0              # (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
 spatial_cutoff 0                 # If calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below (Only relevant with linear snPDFs)
 # NUCLEAR PARAMETERS
-A 208                            # Mass number of the colliding nucleus
-ZA 82                            # Atomic number of the colliding nucleus
-M_factor 2.5                     # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
+A 197                            # Mass number of the colliding nucleus
+ZA 79                            # Atomic number of the colliding nucleus
+M_factor 2.0                     # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
 nn_min_dist 0.4                  # (fm) minimum distance between the nucleons in a nucleus
-nuclear_RA 6.62435               # (fm) nucleus RA for the 2pF-distribution
-nuclear_d 0.5498                 # (fm) nucleus d for the 2pF-distribution
+nuclear_RA 6.37997               # (fm) nucleus RA for the 2pF-distribution
+nuclear_d 0.535                 # (fm) nucleus d for the 2pF-distribution
 rad_max 30.0                     # (fm) nucleons' maximum distance from the center of the nucleus
 rad_min 0.0                      # (fm) nucleons' minimum distance from the center of the nucleus
 # GENERAL FLAGS
-is_aa true                       # If the run is nucleus-nucleus
-is_pa false                      # If the run is proton-nucleus
+is_aa false                       # If the run is nucleus-nucleus
+is_pa true                      # If the run is proton-nucleus
 is_pp false                      # If the run is proton-proton 
 is_mc_glauber false              # If true, nucleon-nucleon collisions are decided like with hard spheres
 read_sigmajets_from_file false   # If the sigma_jets are precalculated
@@ -36,8 +36,8 @@ proton_width_static false        # If the proton width should be a static value 
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
 AA_inel_same_as_NN false         # Is the triggering sigma the same as NN-sigma
 only_protons false               # If the nucleons are all protons
-use_npdfs true                   # If there should be nuclear corrections in nucleus' PDFs
-use_snpdfs true                  # If the used nPDF should be spatially dependent or average
+use_npdfs false                   # If there should be nuclear corrections in nucleus' PDFs
+use_snpdfs false                  # If the used nPDF should be spatially dependent or average
 snpdfs_linear false              # If the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
 calculate_spatial_cutoff false   # If to calculate the spatial cutoff (T_p(0))/(3T_A(0)) or if it's something user provided (Only relevant with linear snPDFs)
 # OUTPUT FLAGS
