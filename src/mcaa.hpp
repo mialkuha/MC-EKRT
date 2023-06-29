@@ -11,6 +11,7 @@
 #include <gsl/gsl_sf_expint.h>
 #include <iostream>
 #include <mutex>
+#include <omp.h>
 #include <random>
 #include <tuple>
 #include <unordered_set>

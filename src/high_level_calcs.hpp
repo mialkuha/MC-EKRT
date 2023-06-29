@@ -10,6 +10,7 @@
 #include <iostream>
 #include <numeric>
 #include <memory>
+#include <omp.h>
 #include <optional>
 #include <sstream>
 #include <variant>
@@ -1511,70 +1512,57 @@ public:
         const nucleus_generator::nucleus_params &nuc_params,
         const double &rel_tolerance,
         const std::function<double(const double&)> Tpp,
-        std::shared_ptr<std::mt19937> eng,
         std::shared_ptr<ars> radial_sampler,
         const bool verbose
     ) -> double
     {
-        double ave_T_AA_0 = 0.0;
-        
         std::vector<uint_fast8_t> block_indexes(200);
         std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        //int inte=0;
-        //do
-        //{
-        //int expo=0;
-        //do
-        //{
-        double rel_delta = 1.0;
-        ave_T_AA_0 = 0.0;
-        uint_fast16_t blocks_calculated = 0;
-        do
+        
+        uint_fast8_t block_amount = 50;
+        std::vector<double> block_averages(block_amount);
+
+        #pragma omp parallel
         {
-            std::vector<double> T_AA_0s(200);
+            auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
             #pragma omp parallel for
-            for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
+            for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
             {
-                std::vector<nucleon> nucl, other;
-                std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
-                std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                std::vector<double> sum_tpps(nuc_params.A);
-
-                nucl = nucleus_generator::generate_nucleus
-                    (
-                        nuc_params,
-                        false,
-                        0.0, 
-                        0.0, 
-                        eng, 
-                        radial_sampler
-                    );
-
-                for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
+                std::vector<double> T_AA_0s(200);
+                #pragma omp parallel for
+                for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
                 {
-                    sum_tpps[*itt] = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
+                    std::vector<nucleon> nucl, other;
+                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::vector<double> sum_tpps(nuc_params.A);
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng, 
+                            radial_sampler
+                        );
+
+                    for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
+                    {
+                        sum_tpps[*itt] = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
+                    }
+
+                    T_AA_0s[*it] = std::reduce(sum_tpps.begin(), sum_tpps.end(), 0.0);
                 }
 
-                T_AA_0s[*it] = std::reduce(sum_tpps.begin(), sum_tpps.end(), 0.0);
+                block_averages[block_index] = std::reduce(T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
             }
+        }
 
-            double block_average = std::reduce(T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
+        double ave_T_AA_0 = std::reduce(block_averages.begin(), block_averages.end(), 0.0) / block_amount;
 
-            double old_ave = ave_T_AA_0; 
-            double dummy = ave_T_AA_0 * blocks_calculated;
-            blocks_calculated++;
-            ave_T_AA_0 = (dummy + block_average) / blocks_calculated;
-
-            rel_delta = std::abs(old_ave - ave_T_AA_0) / old_ave;
-
-            std::cout<<"\rT_AAs calculated: "<<blocks_calculated*200<<" current average: "<<ave_T_AA_0<<" last rel_delta: "<<rel_delta<<"            "<<std::flush;
-
-        } while (blocks_calculated<50);//5*std::pow(10,expo));//2500);//(rel_delta > rel_tolerance);
-        //expo++;
-        std::cout<<std::endl;
-        //} while (expo<3);
-        //} while (inte++<5);
+        std::cout<<"A-configs calculated: "<<block_amount*200<<std::endl;
 
         return ave_T_AA_0;
     }
@@ -1584,7 +1572,6 @@ public:
         const nucleus_generator::nucleus_params &nuc_params,
         const double &rel_tolerance,
         const std::function<double(const double&)> Tpp,
-        std::shared_ptr<std::mt19937> eng,
         std::shared_ptr<ars> radial_sampler,
         const bool verbose
     ) -> std::tuple<std::array<double, 25>, std::array<double, 25> >
@@ -1594,62 +1581,66 @@ public:
         
         std::array<double, 25> c_vector{-15.0,-14.0,-13.0,-12.0,-11.0,-10.0,-9.0,-8.0,-7.0,-6.0,-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0,10.0,15.0,20.0,25.0};
         std::array<double, 25> ave_R_vector{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-        
-        uint_fast16_t blocks_calculated = 0;
-        do
+
+        uint_fast8_t block_amount = 50;
+        std::array<std::array<double, 50>, 25> block_averages;
+
+        #pragma omp parallel
         {
-            std::array<std::array<double, 200>, 25> R_vectors;
+            auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
             #pragma omp parallel for
-            for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
+            for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
             {
-                std::vector<nucleon> nucl, other;
-                std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
-                std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                std::array<std::vector<double>, 25> sum_tpps;
-                for (uint_fast8_t i=0; i<25; i++)
+                std::array<std::array<double, 200>, 25> R_vectors;
+                for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
                 {
-                    sum_tpps[i] = std::vector<double>(nuc_params.A);
-                }
-
-                nucl = nucleus_generator::generate_nucleus
-                    (
-                        nuc_params,
-                        false,
-                        0.0, 
-                        0.0, 
-                        eng, 
-                        radial_sampler
-                    );
-
-                for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
-                {
-                    auto dummy = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
+                    std::vector<nucleon> nucl, other;
+                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::array<std::vector<double>, 25> sum_tpps;
                     for (uint_fast8_t i=0; i<25; i++)
                     {
-                        sum_tpps[i][*itt] = std::exp(c_vector[i]*dummy);
+                        sum_tpps[i] = std::vector<double>(nuc_params.A);
+                    }
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng, 
+                            radial_sampler
+                        );
+
+                    for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
+                    {
+                        auto dummy = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
+                        for (uint_fast8_t i=0; i<25; i++)
+                        {
+                            sum_tpps[i][*itt] = std::exp(c_vector[i]*dummy);
+                        }
+                    }
+
+                    for (uint_fast8_t i=0; i<25; i++)
+                    {
+                        R_vectors[i][*it] = std::reduce(sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
                     }
                 }
 
                 for (uint_fast8_t i=0; i<25; i++)
                 {
-                    R_vectors[i][*it] = std::reduce(sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
+                    block_averages[i][block_index] = std::reduce(R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
                 }
             }
+        }
 
-            #pragma omp parallel for
-            for (uint_fast8_t i=0; i<25; i++)
-            {
-                double block_average = std::reduce(R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
-                double dummy = ave_R_vector[i] * blocks_calculated;
-                ave_R_vector[i] = (dummy + block_average) / (blocks_calculated + 1.0);
-            }
-            blocks_calculated++;
-
-            std::cout<<"\rA-configs calculated: "<<blocks_calculated*200<<std::flush;
-
-        } while (blocks_calculated<50);
-        std::cout<<std::endl;
+        for (uint_fast8_t i=0; i<25; i++)
+        {
+            ave_R_vector[i] = std::reduce(block_averages[i].begin(), block_averages[i].end(), 0.0) / block_amount;
+        }
+        std::cout<<"A-configs calculated: "<<block_amount*200<<std::endl;
 
         return std::make_tuple(ave_R_vector,c_vector);
     }
