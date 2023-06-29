@@ -27,7 +27,8 @@ target_compile_features(mcaa PUBLIC cxx_std_20)
 
 target_compile_options(mcaa PUBLIC
 	-Wall
-	#-fconcepts #COMMENT THIS IF YOU USE CLANG
+	-fconcepts #COMMENT THIS IF YOU USE CLANG
+	-fopenmp
 )
 
 target_include_directories(mcaa PUBLIC 
@@ -45,7 +46,7 @@ target_link_directories(mcaa PUBLIC
 target_link_libraries(mcaa PUBLIC 
 	GSL::gsl
 	GSL::gslcblas
-	-ltbb
+	-fopenmp
 	-lpthread
 	-lm
 	-lLHAPDF

@@ -4,7 +4,6 @@
 #define HIGH_LEVEL_CALCS_HPP
 
 #include <algorithm>
-#include <execution>
 #include <fstream>
 #include <future>
 #include <gsl/gsl_multimin.h>
@@ -1534,44 +1533,33 @@ public:
         {
             std::vector<double> T_AA_0s(200);
 
-            std::for_each
-            (
-                std::execution::par, 
-                block_indexes.begin(), 
-                block_indexes.end(),
-                [&](const uint_fast8_t block_index) 
-                {
-                    std::vector<nucleon> nucl, other;
-                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
-                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                    std::vector<double> sum_tpps(nuc_params.A);
+            #pragma omp parallel for
+            for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
+            {
+                std::vector<nucleon> nucl, other;
+                std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
+                std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                std::vector<double> sum_tpps(nuc_params.A);
 
-                    nucl = nucleus_generator::generate_nucleus
-                        (
-                            nuc_params,
-                            false,
-                            0.0, 
-                            0.0, 
-                            eng, 
-                            radial_sampler
-                        );
-
-                    std::for_each
+                nucl = nucleus_generator::generate_nucleus
                     (
-                        std::execution::par, 
-                        nucl_indexes.begin(), 
-                        nucl_indexes.end(),
-                        [&](const uint_fast8_t index) 
-                        {
-                            sum_tpps[index] = calculate_sum_tpp(nucl[index], nucl, Tpp);
-                        }
+                        nuc_params,
+                        false,
+                        0.0, 
+                        0.0, 
+                        eng, 
+                        radial_sampler
                     );
 
-                    T_AA_0s[block_index] = std::reduce(std::execution::par, sum_tpps.begin(), sum_tpps.end(), 0.0);
+                for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
+                {
+                    sum_tpps[*itt] = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
                 }
-            );
 
-            double block_average = std::reduce(std::execution::par, T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
+                T_AA_0s[*it] = std::reduce(sum_tpps.begin(), sum_tpps.end(), 0.0);
+            }
+
+            double block_average = std::reduce(T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
 
             double old_ave = ave_T_AA_0; 
             double dummy = ave_T_AA_0 * blocks_calculated;
@@ -1612,57 +1600,47 @@ public:
         {
             std::array<std::array<double, 200>, 25> R_vectors;
 
-            std::for_each
-            (
-                std::execution::par, 
-                block_indexes.begin(), 
-                block_indexes.end(),
-                [&](const uint_fast8_t block_index) 
+            #pragma omp parallel for
+            for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
+            {
+                std::vector<nucleon> nucl, other;
+                std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
+                std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                std::array<std::vector<double>, 25> sum_tpps;
+                for (uint_fast8_t i=0; i<25; i++)
                 {
-                    std::vector<nucleon> nucl, other;
-                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
-                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                    std::array<std::vector<double>, 25> sum_tpps;
-                    for (uint_fast8_t i=0; i<25; i++)
-                    {
-                        sum_tpps[i] = std::vector<double>(nuc_params.A);
-                    }
+                    sum_tpps[i] = std::vector<double>(nuc_params.A);
+                }
 
-                    nucl = nucleus_generator::generate_nucleus
-                        (
-                            nuc_params,
-                            false,
-                            0.0, 
-                            0.0, 
-                            eng, 
-                            radial_sampler
-                        );
-
-                    std::for_each
+                nucl = nucleus_generator::generate_nucleus
                     (
-                        std::execution::par, 
-                        nucl_indexes.begin(), 
-                        nucl_indexes.end(),
-                        [&](const uint_fast8_t index) 
-                        {
-                            auto dummy = calculate_sum_tpp(nucl[index], nucl, Tpp);
-                            for (uint_fast8_t i=0; i<25; i++)
-                            {
-                                sum_tpps[i][index] = std::exp(c_vector[i]*dummy);
-                            }
-                        }
+                        nuc_params,
+                        false,
+                        0.0, 
+                        0.0, 
+                        eng, 
+                        radial_sampler
                     );
 
+                for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
+                {
+                    auto dummy = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
                     for (uint_fast8_t i=0; i<25; i++)
                     {
-                        R_vectors[i][block_index] = std::reduce(std::execution::par, sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
+                        sum_tpps[i][*itt] = std::exp(c_vector[i]*dummy);
                     }
                 }
-            );
 
+                for (uint_fast8_t i=0; i<25; i++)
+                {
+                    R_vectors[i][*it] = std::reduce(sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
+                }
+            }
+
+            #pragma omp parallel for
             for (uint_fast8_t i=0; i<25; i++)
             {
-                double block_average = std::reduce(std::execution::par, R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
+                double block_average = std::reduce(R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
                 double dummy = ave_R_vector[i] * blocks_calculated;
                 ave_R_vector[i] = (dummy + block_average) / (blocks_calculated + 1.0);
             }
@@ -2042,36 +2020,30 @@ private:
         uint_fast64_t running_count{num_elements};
         std::mutex count_mutex;
         
-        std::for_each
-        (
-            std::execution::par, 
-            c_style_indexes.begin(), 
-            c_style_indexes.end(), 
-            [=, &f_values, &running_count, &count_mutex]
-            (const uint_fast64_t index) 
+        #pragma omp parallel for
+        for (auto it = c_style_indexes.begin(); it < c_style_indexes.end(); it++)
+        {
+            uint_fast64_t jj = *it % rad;
+            uint_fast64_t ii = (*it - jj) / rad;
+            double dummy = pqcd::calculate_spatial_sigma_jet
+                            (
+                                p_p_pdf, 
+                                /*p_n_pdf,*/ 
+                                &mand_s, 
+                                &kt02, 
+                                jet_params, 
+                                grid1[ii], 
+                                grid2[jj], 
+                                tAA_0, 
+                                tBB_0
+                            );
+            f_values[*it] = dummy;
             {
-                uint_fast64_t jj = index % rad;
-                uint_fast64_t ii = (index - jj) / rad;
-                double dummy = pqcd::calculate_spatial_sigma_jet
-                                (
-                                    p_p_pdf, 
-                                    /*p_n_pdf,*/ 
-                                    &mand_s, 
-                                    &kt02, 
-                                    jet_params, 
-                                    grid1[ii], 
-                                    grid2[jj], 
-                                    tAA_0, 
-                                    tBB_0
-                                );
-                f_values[index] = dummy;
-                {
-                    const std::lock_guard<std::mutex> lock(count_mutex);
-                    std::cout <<'\r'<<--running_count<<" left of "
-                        <<num_elements<<" grid points to be calculated"<<std::flush;
-                }
+                const std::lock_guard<std::mutex> lock(count_mutex);
+                std::cout <<'\r'<<--running_count<<" left of "
+                    <<num_elements<<" grid points to be calculated"<<std::flush;
             }
-        );
+        }
         
         double K_fac = jet_params.d_params.K_factor;
 

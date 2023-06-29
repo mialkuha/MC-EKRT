@@ -675,275 +675,267 @@ auto mcaa::run() -> void
         // INCLUDES NUCLEUS GENERATION, COLLISION CALCULATIONS, FILTERING //
         // AND OBSERVABLE CALCULATIONS                                    //
         //----------------------------------------------------------------//
-        std::find_if
-        (
-            std::execution::par, 
-            event_indexes.begin(), 
-            event_indexes.end(), 
-            [&,verbose=this->verbose,
-             &sigma_jet=sigma_jet,
-             &env_func=env_func,
-             &colls_scatterings=colls_scatterings/////
-            //  &colls_sumet_midet=colls_sumet_midet/////
-            ](const uint_fast64_t index) 
+        
+        #pragma omp parallel for
+        for (auto it = event_indexes.begin(); it < event_indexes.end(); it++)
+        {
+            if (user_aborted)
             {
-                static_cast<void>(index);
-                do //while (g_bug_bool)
-                {
-                    uint_fast32_t NColl = 0;
-                    std::vector<nn_coll> binary_collisions;
-                    std::vector<dijet_with_coords> filtered_scatterings;
-                    double impact_parameter;
-                    double b_min2 = this->b_min*this->b_min;
-                    double b_max2 = this->b_max*this->b_max;
+                continue;
+            }
+            do //while (g_bug_bool)
+            {
+                uint_fast32_t NColl = 0;
+                std::vector<nn_coll> binary_collisions;
+                std::vector<dijet_with_coords> filtered_scatterings;
+                double impact_parameter;
+                double b_min2 = this->b_min*this->b_min;
+                double b_max2 = this->b_max*this->b_max;
 
-                    std::vector<nucleon> pro, tar;
-                    uint_fast16_t times_discarded = 0;
-                    
-                    //Keep generating nuclei until the triggering condition is met
-                    bool bugged, triggered;
-                    // "ball" diameter = distance at which two nucleons interact in MC Glauber
-                    const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
-                    do //while (!triggered || bugged)  
-                    {
-                        //B^2 from a uniform distribution
-                        impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
+                std::vector<nucleon> pro, tar;
+                uint_fast16_t times_discarded = 0;
                 
-                        times_discarded++;
-                        if (times_discarded > 1000)
-                        {
-                            std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
-                                        <<"Check impact parameters and/or collsion probabilities."
-                                        <<std::endl;
-                            times_discarded = 0;
-                        }
+                //Keep generating nuclei until the triggering condition is met
+                bool bugged, triggered;
+                // "ball" diameter = distance at which two nucleons interact in MC Glauber
+                const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
+                do //while (!triggered || bugged)  
+                {
+                    //B^2 from a uniform distribution
+                    impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
+            
+                    times_discarded++;
+                    if (times_discarded > 1000)
+                    {
+                        std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
+                                    <<"Check impact parameters and/or collsion probabilities."
+                                    <<std::endl;
+                        times_discarded = 0;
+                    }
 
-                        bugged = false;
-                        triggered = false;
-                        try
-                        {
-                            auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
-                            (
-                                this->nuc_params, 
-                                this->sqrt_s, 
-                                impact_parameter, 
-                                eng, 
-                                radial_sampler, 
-                                verbose
-                            );
-                            pro = std::move(pro_dummy);
-                            tar = std::move(tar_dummy);
-                        }
-                        catch(const std::exception& e)
-                        {
-                            std::cout << e.what() << " in main, trying again"<<std::endl;
-                            bugged = true;
-                        }
+                    bugged = false;
+                    triggered = false;
+                    try
+                    {
+                        auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
+                        (
+                            this->nuc_params, 
+                            this->sqrt_s, 
+                            impact_parameter, 
+                            eng, 
+                            radial_sampler, 
+                            verbose
+                        );
+                        pro = std::move(pro_dummy);
+                        tar = std::move(tar_dummy);
+                    }
+                    catch(const std::exception& e)
+                    {
+                        std::cout << e.what() << " in main, trying again"<<std::endl;
+                        bugged = true;
+                    }
 
-                        for (auto A : pro)
+                    for (auto A : pro)
+                    {
+                        for (auto B : tar)
                         {
-                            for (auto B : tar)
+                            // "ball" diameter = distance at which two nucleons interact
+                            const double dij2 = A.calculate_bsquared(B);
+
+                            if (dij2 <= d2) // triggering condition
                             {
-                                // "ball" diameter = distance at which two nucleons interact
-                                const double dij2 = A.calculate_bsquared(B);
-
-                                if (dij2 <= d2) // triggering condition
-                                {
-                                    triggered = true;
-                                    continue;
-                                }
-                            }
-                            if (triggered)
-                            {
+                                triggered = true;
                                 continue;
                             }
                         }
+                        if (triggered)
+                        {
+                            continue;
+                        }
+                    }
 
-                    } while (!triggered || bugged);
+                } while (!triggered || bugged);
 
-                    //Demand at least one hard scattering
-                    do //while (NColl<1)
-                    {
-                        binary_collisions.clear();
-                        if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
+                //Demand at least one hard scattering
+                do //while (NColl<1)
+                {
+                    binary_collisions.clear();
+                    if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
-                        calcs::collide_nuclei
-                        (
-                            pro, 
-                            tar, 
-                            binary_collisions, 
-                            sigma_jet,
-                            unirand, 
-                            eng, 
-                            coll_params, 
-                            this->jet_params,
-                            this->kt0,
-                            this->p_pdf,
-                            this->power_law,
-                            env_func,
-                            verbose
-                        );
-                        
-                        NColl = static_cast<uint_fast32_t>(binary_collisions.size());
-                    } while (NColl<1);
+                    calcs::collide_nuclei
+                    (
+                        pro, 
+                        tar, 
+                        binary_collisions, 
+                        sigma_jet,
+                        unirand, 
+                        eng, 
+                        coll_params, 
+                        this->jet_params,
+                        this->kt0,
+                        this->p_pdf,
+                        this->power_law,
+                        env_func,
+                        verbose
+                    );
                     
+                    NColl = static_cast<uint_fast32_t>(binary_collisions.size());
+                } while (NColl<1);
+                
 
-                    double sum_ET = 0;
-                    double sum_ET_midrap = 0;
+                double sum_ET = 0;
+                double sum_ET_midrap = 0;
 
-                    if (end_state_filtering)
+                if (end_state_filtering)
+                {
+                    double sum_E = 0;
+                    this->filter_end_state
+                    (
+                        binary_collisions, 
+                        filtered_scatterings, 
+                        eng,
+                        pro,
+                        tar
+                    );
+
+                    // std::vector<std::tuple<double, double> > new_jets;
+                    // std::vector<std::tuple<double, double> > new_dijets;
+                    // std::vector<std::tuple<double, double> > new_ET_y;
+                    // std::vector<std::tuple<double, double> > new_E_y;
+                    // std::vector<std::tuple<double, double> > new_N_y;
+                    // std::vector<std::tuple<double, double> > new_ET_eta;
+                    // std::vector<std::tuple<double, double> > new_E_eta;
+                    
+                    for (auto e_co : filtered_scatterings)
                     {
-                        double sum_E = 0;
-                        this->filter_end_state
-                        (
-                            binary_collisions, 
-                            filtered_scatterings, 
-                            eng,
-                            pro,
-                            tar
-                        );
+                        auto e = e_co.dijet;
 
-                        // std::vector<std::tuple<double, double> > new_jets;
-                        // std::vector<std::tuple<double, double> > new_dijets;
-                        // std::vector<std::tuple<double, double> > new_ET_y;
-                        // std::vector<std::tuple<double, double> > new_E_y;
-                        // std::vector<std::tuple<double, double> > new_N_y;
-                        // std::vector<std::tuple<double, double> > new_ET_eta;
-                        // std::vector<std::tuple<double, double> > new_E_eta;
+                        // new_jets.emplace_back(e.kt, e.y1);
+                        // new_jets.emplace_back(e.kt, e.y2);
                         
-                        for (auto e_co : filtered_scatterings)
+                        // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                        
+                        // new_ET_y.emplace_back(e.y1, e.kt);
+                        // new_ET_y.emplace_back(e.y2, e.kt);
+                        
+                        // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                        
+                        // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                        // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                        
+                        // new_N_y.emplace_back(e.y1, 1);
+                        // new_N_y.emplace_back(e.y2, 1);
+                        
+                        // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                        
+                        sum_ET += 2*e.kt;
+                        sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
+
+                        if (e.y1 >= -0.5 && e.y1 <= 0.5)
                         {
-                            auto e = e_co.dijet;
-
-                            // new_jets.emplace_back(e.kt, e.y1);
-                            // new_jets.emplace_back(e.kt, e.y2);
-                            
-                            // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
-                            
-                            // new_ET_y.emplace_back(e.y1, e.kt);
-                            // new_ET_y.emplace_back(e.y2, e.kt);
-                            
-                            // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-                            
-                            // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                            // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                            
-                            // new_N_y.emplace_back(e.y1, 1);
-                            // new_N_y.emplace_back(e.y2, 1);
-                            
-                            // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
-                            
-                            sum_ET += 2*e.kt;
-                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
-
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                            {
-                                sum_ET_midrap += e.kt;
-                            }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                            {
-                                sum_ET_midrap += e.kt;
-                            }
+                            sum_ET_midrap += e.kt;
                         }
-
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(jets_mutex);
-                        //    jets.add(new_jets);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dijets_mutex);
-                        //    dijets.add(new_dijets);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
-                        //    dETdy.add(new_ET_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
-                        //    dEdy.add(new_E_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
-                        //    dNdy.add(new_N_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
-                        //    dETdeta.add(new_ET_eta);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
-                        //    dEdeta.add(new_E_eta);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
-                        //    dNdET.add(std::make_tuple(sum_ET, 1));
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
-                        //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
-                        //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
-                        // }
-                        
-                        {/////
-                            const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
-                            total_energy << sum_ET << ' ' << sum_E << std::endl;/////
-                        }/////
-                    }
-
-                    {
-                        const std::lock_guard<std::mutex> lock(AA_events_mutex);
-                        AA_events_done++;
-                        if (AA_events_done % 100 == 0 )
+                        if (e.y2 >= -0.5 && e.y2 <= 0.5)
                         {
-                            std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
+                            sum_ET_midrap += e.kt;
                         }
                     }
 
-                    uint_fast32_t Npart=0;
-                    for (auto &A : pro)
-                    {
-                        if (A.wounded)
-                        {
-                            Npart++;
-                        }
-                    }
-                    for (auto &B : tar)
-                    {
-                        if (B.wounded)
-                        {
-                            Npart++;
-                        }
-                    }
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(jets_mutex);
+                    //    jets.add(new_jets);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dijets_mutex);
+                    //    dijets.add(new_dijets);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
+                    //    dETdy.add(new_ET_y);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
+                    //    dEdy.add(new_E_y);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
+                    //    dNdy.add(new_N_y);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
+                    //    dETdeta.add(new_ET_eta);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
+                    //    dEdeta.add(new_E_eta);
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
+                    //    dNdET.add(std::make_tuple(sum_ET, 1));
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
+                    //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
+                    // }
+                    
+                    // {
+                    //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
+                    //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
+                    // }
+                    
+                    {/////
+                        const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
+                        total_energy << sum_ET << ' ' << sum_E << std::endl;/////
+                    }/////
+                }
 
+                {
+                    const std::lock_guard<std::mutex> lock(AA_events_mutex);
+                    AA_events_done++;
+                    if (AA_events_done % 100 == 0 )
                     {
-                        const std::lock_guard<std::mutex> lock(colls_mutex);
-                        io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
-                        io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
-                        collisions_for_reporting.push_back(coll);
-                        collisions_for_reporting_midrap.push_back(coll_midrap);
-                        
-                        if (save_endstate_jets)
-                        {
-                            colls_scatterings.insert({coll, filtered_scatterings});
-                        }
+                        std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
                     }
-                } while (g_bug_bool);
-                bool ret_value = user_aborted;
-                return ret_value;
-            }
-        );
+                }
+
+                uint_fast32_t Npart=0;
+                for (auto &A : pro)
+                {
+                    if (A.wounded)
+                    {
+                        Npart++;
+                    }
+                }
+                for (auto &B : tar)
+                {
+                    if (B.wounded)
+                    {
+                        Npart++;
+                    }
+                }
+
+                {
+                    const std::lock_guard<std::mutex> lock(colls_mutex);
+                    io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
+                    io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
+                    collisions_for_reporting.push_back(coll);
+                    collisions_for_reporting_midrap.push_back(coll_midrap);
+                    
+                    if (save_endstate_jets)
+                    {
+                        colls_scatterings.insert({coll, filtered_scatterings});
+                    }
+                }
+            } while (g_bug_bool);
+        }
     }
     catch(const std::exception& e)
     {

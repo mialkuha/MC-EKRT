@@ -7,7 +7,6 @@
 #include <atomic>
 #include <chrono>
 #include <csignal>
-#include <execution>
 #include <fstream>
 #include <gsl/gsl_sf_expint.h>
 #include <iostream>

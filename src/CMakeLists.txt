@@ -32,7 +32,8 @@ target_compile_features(Parts PUBLIC cxx_std_20)
 
 target_compile_options(Parts PUBLIC
 	-Wall
-	#-fconcepts #COMMENT THIS IF YOU USE CLANG
+	-fconcepts #COMMENT THIS IF YOU USE CLANG
+	-fopenmp
 )
 
 find_package(Boost REQUIRED)
@@ -45,7 +46,7 @@ target_link_directories(Parts PUBLIC
 target_link_libraries(Parts PUBLIC 
 	GSL::gsl
 	GSL::gslcblas
-	-ltbb
+	-fopenmp
 	-lpthread
 	-lm
 	-lLHAPDF
