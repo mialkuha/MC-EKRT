@@ -663,7 +663,7 @@ auto mcaa::run() -> void
     std::signal(SIGINT, abort_handler);
     std::set_terminate([](){
         std::cout << std::endl << "Unhandled exception" << std::endl;
-        g_bug_bool = true;
+        //g_bug_bool = true;
     });
 
     try
@@ -678,7 +678,7 @@ auto mcaa::run() -> void
         {
             auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
-            #pragma omp parallel for
+            #pragma omp for
             for (auto it = event_indexes.begin(); it < event_indexes.end(); it++)
             {
                 if (user_aborted)

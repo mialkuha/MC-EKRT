@@ -1526,11 +1526,10 @@ public:
         {
             auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
-            #pragma omp parallel for
+            #pragma omp for
             for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
             {
                 std::vector<double> T_AA_0s(200);
-                #pragma omp parallel for
                 for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
                 {
                     std::vector<nucleon> nucl, other;
@@ -1589,7 +1588,7 @@ public:
         {
             auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
-            #pragma omp parallel for
+            #pragma omp for
             for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
             {
                 std::array<std::array<double, 200>, 25> R_vectors;
