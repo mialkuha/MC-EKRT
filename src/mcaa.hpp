@@ -59,7 +59,7 @@ public:
     bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
     bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
     bool verbose{false};                   // lots of printing all around
-    bool is_sat_y_dep{false};              // if the saturation criterion should be y-dependent
+    uint_fast16_t is_sat_y_dep{0};              // if the saturation criterion should be y-dependent
     bool pt_ordering{false};               // if the jets should be ordered by p_T
     bool t03_ordering{false};              // if the jets should be ordered by t03
     // simulation parameters 
@@ -217,7 +217,7 @@ private:
     (
         std::tuple<double, double, double, uint_fast16_t, double, double> cand_circle, 
         std::vector<std::tuple<double, double, double, uint_fast16_t, double, double> > &final_circles,
-        bool is_sat_y_dep
+        uint_fast16_t is_sat_y_dep
     ) noexcept -> bool;
 
     /**

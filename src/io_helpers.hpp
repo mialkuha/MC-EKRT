@@ -779,7 +779,7 @@ public:
         bool end_state_filtering{true};
         bool is_mom_cons{true};
         bool is_saturation{true};
-        bool is_sat_y_dep{false};
+        uint_fast16_t is_sat_y_dep{0};
         bool pt_ordering{false};
         bool t03_ordering{false};
 
@@ -961,7 +961,7 @@ public:
                 }
                 else if (param_name == "is_sat_y_dep")
                 {
-                    line_stream >> std::boolalpha >> is_sat_y_dep;
+                    line_stream >> is_sat_y_dep;
                 }
                 else if (param_name == "pt_ordering")
                 {

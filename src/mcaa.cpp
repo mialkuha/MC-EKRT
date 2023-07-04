@@ -262,7 +262,7 @@ auto mcaa::check_and_place_circle_among_others
 (
     std::tuple<double, double, double, uint_fast16_t, double, double> cand_circle, 
     std::vector<std::tuple<double, double, double, uint_fast16_t, double, double> > &final_circles,
-    bool is_sat_y_dep
+    uint_fast16_t is_sat_y_dep
 ) noexcept -> bool
 {
     auto & [cand_x, cand_y, cand_r, cand_overlap, cand_y1, cand_y2] = cand_circle;
@@ -272,7 +272,7 @@ auto mcaa::check_and_place_circle_among_others
         //If the any of the circles radii overlap with the candidate, just return false
         if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
         {
-            if (is_sat_y_dep)
+            if (is_sat_y_dep == 1) // Henry's old idea
             {
                 auto miy = std::min(y1,y2);
                 auto may = std::max(y1,y2);
@@ -280,6 +280,28 @@ auto mcaa::check_and_place_circle_among_others
                 auto mcay = std::max(cand_y1,cand_y2);
                 
                 if (!(miy>mcay || may<mciy))
+                {
+                    return false;
+                }
+            }
+            else if (is_sat_y_dep == 2) // all jets have cones
+            {
+                double delta = 0.5;
+                if ((std::abs(y1-cand_y1) <= delta)
+                 || (std::abs(y1-cand_y2) <= delta)
+                 || (std::abs(y2-cand_y1) <= delta)
+                 || (std::abs(y2-cand_y2) <= delta))
+                {
+                    return false;
+                }
+            }
+            else if (is_sat_y_dep == 3) // both dijets have cones
+            {
+                double delta = 0.5;
+                auto dy = 0.5*(y1+y2);
+                auto cand_dy = 0.5*(cand_y1+cand_y2);
+
+                if ((std::abs(dy-cand_dy) <= delta))
                 {
                     return false;
                 }

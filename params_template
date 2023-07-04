@@ -4,7 +4,7 @@
 name example_name                # Name of the run, affects output filenames and such 
 sigmajet_filename example_sigma_jet.dat  # Filename for the spatially dependent sigma_jet grid
 centrality_filename centrality_bins.csv  # Filename for the centrality bins for the reporting
-n_events 10000                   # How many events should be simulated
+n_events 2000                   # How many events should be simulated
 b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
@@ -48,6 +48,6 @@ save_endstate_jets true          # If all the jets should be saved in binary (se
 end_state_filtering true         # false=no any filtering in the end state
 is_mom_cons true                 # If the momentum conservation should be forced
 is_saturation true               # If the EKRT saturation should be used
-is_sat_y_dep false               # If the saturation criterion should be y-dependent
+is_sat_y_dep 2               # If the saturation criterion should be y-dependent
 pt_ordering false                # If the jets should be ordered by p_T
 t03_ordering false               # If the jets should be ordered by t03
