@@ -220,6 +220,8 @@ private:
         uint_fast16_t is_sat_y_dep
     ) noexcept -> bool;
 
+    auto sqrtalphas(double Q) noexcept -> double;
+
     /**
      * @brief Sample the coordinates for a given dijet from the Gaussian distribution
      * that is the product of the two Gaussian distributions that are associated with

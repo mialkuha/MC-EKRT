@@ -337,6 +337,12 @@ auto mcaa::throw_location_for_dijet
     return std::make_tuple(retx, rety, dz);
 }
 
+auto mcaa::sqrtalphas(double Q) noexcept -> double
+{
+    auto alphas = this->p_pdf->alphasQ(Q);
+    return std::sqrt(alphas);
+}
+
 auto mcaa::filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
@@ -421,7 +427,19 @@ auto mcaa::filter_end_state
         {
             //SATURATION
 
-            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
+            double upstairs = 1.0;
+            if (this->is_sat_y_dep == 4)
+            {
+                upstairs = this->sqrtalphas(cand.dijet.kt);
+            }
+            else if  (this->is_sat_y_dep == 5)
+            {
+                double dy = y1-y2;
+                double dsigma = std::pow((1 + 2.0*std::cosh(dy))/(2 + 2.0*std::cosh(dy)), 1.5);
+                upstairs = this->sqrtalphas(cand.dijet.kt)*dsigma;
+            }
+
+            auto cand_circle = std::make_tuple(cand_x, cand_y, upstairs/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
 
             if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
             {
@@ -800,7 +818,9 @@ auto mcaa::run() -> void
                             this->p_pdf,
                             this->power_law,
                             env_func,
-                            verbose
+                            verbose,
+                            this->M_factor,
+                            this->proton_width
                         );
                         
                         NColl = static_cast<uint_fast32_t>(binary_collisions.size());

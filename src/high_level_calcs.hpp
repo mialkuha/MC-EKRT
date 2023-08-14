@@ -810,7 +810,9 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
-        const bool &verbose
+        const bool &verbose,
+        const double &M_factor,
+        const double &proton_width
     ) noexcept -> void
     {
 
@@ -878,13 +880,13 @@ public:
                 continue;
             }
 
-            nn_coll newpair(A, B, 2 * sqrt(A->mom * B->mom));
+            nn_coll new_pair(A, B, 2 * sqrt(A->mom * B->mom));
             
             if (AA_params.mc_glauber_mode)
             {
                 // "ball" diameter = distance at which two nucleons interact
                 const double d2 = AA_params.sigma_inel/(M_PI*10); // in fm^2
-                const double dij2 = newpair.getcr_bsquared();
+                const double dij2 = new_pair.getcr_bsquared();
                 
                 if (dij2 > d2) //no collision
                 {
@@ -1000,15 +1002,15 @@ public:
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
-                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(new_pair.getcr_bsquared()));
                         uint_fast8_t nof_dijets = dist(*eng);
-                        newpair.dijets.reserve(nof_dijets);
+                        new_pair.dijets.reserve(nof_dijets);
 
-                        const double sqrt_s = newpair.getcr_sqrt_s();
+                        const double sqrt_s = new_pair.getcr_sqrt_s();
 
                         for (uint_fast8_t i=0; i < nof_dijets; i++)
                         {
-                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
                                 kt0,
@@ -1047,11 +1049,11 @@ public:
                     // }
                     // else
                     {
-                        newpair.push_end_states_to_collider_frame();
+                        new_pair.push_end_states_to_collider_frame();
                     }
                 }
-                newpair.wound();
-                binary_collisions.push_back(std::move(newpair));
+                new_pair.wound();
+                binary_collisions.push_back(std::move(new_pair));
             }
             else
             {
@@ -1194,15 +1196,15 @@ public:
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
-                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(new_pair.getcr_bsquared()));
                         uint_fast8_t nof_dijets = dist(*eng);
-                        newpair.dijets.reserve(nof_dijets);
+                        new_pair.dijets.reserve(nof_dijets);
 
-                        const double sqrt_s = newpair.getcr_sqrt_s();
+                        const double sqrt_s = new_pair.getcr_sqrt_s();
 
                         for (uint_fast8_t i=0; i < nof_dijets; i++)
                         {
-                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            auto new_dijet = pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
                                 kt0,
@@ -1215,7 +1217,34 @@ public:
                                 env_func_,
                                 B->is_neutron,
                                 A->is_neutron
-                            ));
+                            );
+
+                            auto kt2 = std::pow(new_dijet.kt,2);
+                            auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
+
+                            auto param = std::normal_distribution<double>::param_type{0., proton_width};
+                            std::normal_distribution<double> normal_dist(0,0);
+                            auto dx = normal_dist(*eng,param);
+                            auto dy = normal_dist(*eng,param);
+
+                            auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
+                            auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
+                            nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0};
+                            auto dijet_tppa = calculate_sum_tpp(dummy_nucleon, pro, AA_params.Tpp);
+                            auto dijet_tppb = calculate_sum_tpp(dummy_nucleon, tar, AA_params.Tpp);
+
+                            if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
+                            {
+                                continue;
+                            }
+                            else if (dijet_tppb * new_dijet.pro_pdf * dijet_area > M_factor)
+                            {
+                                continue;
+                            }
+                            else
+                            {
+                                new_pair.dijets.push_back(new_dijet);
+                            }
                         }
 
                         // pqcd::generate_bin_NN_coll
@@ -1241,11 +1270,11 @@ public:
                     // }
                     // else
                     {
-                        newpair.push_end_states_to_collider_frame();
+                        new_pair.push_end_states_to_collider_frame();
                     }
                 }
-                newpair.wound();
-                binary_collisions.push_back(std::move(newpair));
+                new_pair.wound();
+                binary_collisions.push_back(std::move(new_pair));
             }
         }
 
@@ -1269,7 +1298,9 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
-        const bool &verbose
+        const bool &verbose,
+        const double &M_factor,
+        const double &proton_width
     ) noexcept -> void
     {
         if (AA_params.spatial_pdfs)
@@ -1288,7 +1319,9 @@ public:
                 p_p_pdf,
                 power_law,
                 env_func,
-                verbose
+                verbose,
+                M_factor,
+                proton_width 
             );
         }
         else

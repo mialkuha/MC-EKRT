@@ -9,7 +9,7 @@ b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
 # QCD PARAMETERS
-K_factor 1.0                     # pQCD K-factor to account for the higher order corrections
+K_factor 1.75                     # pQCD K-factor to account for the higher order corrections
 kt0 1.0                          # (GeV) jet k_T lower cutoff
 proton_width 0.573               # (fm) proton width (Only used if proton_width_static==true)
 sigma_inel 70.0                  # (mb) inelastic nucleon-nucleon cross section of the NN event
@@ -19,7 +19,7 @@ spatial_cutoff 0                 # If calculate_spatial_cutoff is false, this va
 # NUCLEAR PARAMETERS
 A 208                            # Mass number of the colliding nucleus
 ZA 82                            # Atomic number of the colliding nucleus
-M_factor 2.5                     # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
+M_factor 0.1                     # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
 nn_min_dist 0.4                  # (fm) minimum distance between the nucleons in a nucleus
 nuclear_RA 6.62435               # (fm) nucleus RA for the 2pF-distribution
 nuclear_d 0.5498                 # (fm) nucleus d for the 2pF-distribution
@@ -30,7 +30,7 @@ is_aa true                       # If the run is nucleus-nucleus
 is_pa false                      # If the run is proton-nucleus
 is_pp false                      # If the run is proton-proton 
 is_mc_glauber false              # If true, nucleon-nucleon collisions are decided like with hard spheres
-read_sigmajets_from_file false   # If the sigma_jets are precalculated
+read_sigmajets_from_file true   # If the sigma_jets are precalculated
 # QCD FLAGS
 proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
@@ -47,7 +47,7 @@ save_endstate_jets true          # If all the jets should be saved in binary (se
 # FILTERING FLAGS
 end_state_filtering true         # false=no any filtering in the end state
 is_mom_cons true                 # If the momentum conservation should be forced
-is_saturation true               # If the EKRT saturation should be used
-is_sat_y_dep 2               # If the saturation criterion should be y-dependent
+is_saturation false               # If the EKRT saturation should be used
+is_sat_y_dep 0               # If the saturation criterion should be y-dependent
 pt_ordering false                # If the jets should be ordered by p_T
 t03_ordering false               # If the jets should be ordered by t03

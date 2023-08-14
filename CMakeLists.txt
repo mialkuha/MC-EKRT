@@ -31,8 +31,8 @@ target_compile_options(mcaa PUBLIC
 	-Wall
 	-fconcepts #COMMENT THIS IF YOU USE CLANG
 	-fopenmp
-	-fsanitize=undefined
-	-fsanitize=address
+	#-fsanitize=undefined
+	#-fsanitize=address
 	-O2
 )
 
@@ -53,8 +53,8 @@ target_link_libraries(mcaa PUBLIC
 	GSL::gslcblas
 	-fopenmp
 	-lpthread
-	-fsanitize=undefined
-	-fsanitize=address
+	#-fsanitize=undefined
+	#-fsanitize=address
 	-lm
 	-lLHAPDF
 	Parts

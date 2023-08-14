@@ -34,8 +34,8 @@ target_compile_options(Parts PUBLIC
 	-Wall
 	-fconcepts #COMMENT THIS IF YOU USE CLANG
 	-fopenmp
-	-fsanitize=undefined
-	-fsanitize=address
+	#-fsanitize=undefined
+	#-fsanitize=address
 	-O2
 )
 
@@ -50,8 +50,8 @@ target_link_libraries(Parts PUBLIC
 	GSL::gsl
 	GSL::gslcblas
 	-fopenmp
-	-fsanitize=undefined
-	-fsanitize=address
+	#-fsanitize=undefined
+	#-fsanitize=address
 	-lpthread
 	-lm
 	-lLHAPDF
