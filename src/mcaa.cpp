@@ -719,7 +719,7 @@ auto mcaa::run() -> void
             auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
             #pragma omp for
-            for (auto it = event_indexes.begin(); it < event_indexes.end(); it++)
+            for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
             {
                 if (user_aborted)
                 {
@@ -820,7 +820,8 @@ auto mcaa::run() -> void
                             env_func,
                             verbose,
                             this->M_factor,
-                            this->proton_width
+                            this->proton_width,
+                            this->is_sat_y_dep
                         );
                         
                         NColl = static_cast<uint_fast32_t>(binary_collisions.size());

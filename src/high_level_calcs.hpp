@@ -812,7 +812,8 @@ public:
         variant_envelope_pars &env_func,
         const bool &verbose,
         const double &M_factor,
-        const double &proton_width
+        const double &proton_width,
+        const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
 
@@ -1219,27 +1220,35 @@ public:
                                 A->is_neutron
                             );
 
-                            auto kt2 = std::pow(new_dijet.kt,2);
-                            auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
 
-                            auto param = std::normal_distribution<double>::param_type{0., proton_width};
-                            std::normal_distribution<double> normal_dist(0,0);
-                            auto dx = normal_dist(*eng,param);
-                            auto dy = normal_dist(*eng,param);
-
-                            auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
-                            auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
-                            nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0};
-                            auto dijet_tppa = calculate_sum_tpp(dummy_nucleon, pro, AA_params.Tpp);
-                            auto dijet_tppb = calculate_sum_tpp(dummy_nucleon, tar, AA_params.Tpp);
-
-                            if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
+                            if (is_sat_y_dep == 6)
                             {
-                                continue;
-                            }
-                            else if (dijet_tppb * new_dijet.pro_pdf * dijet_area > M_factor)
-                            {
-                                continue;
+                                auto kt2 = std::pow(new_dijet.kt,2);
+                                auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
+
+                                auto param = std::normal_distribution<double>::param_type{0., proton_width};
+                                std::normal_distribution<double> normal_dist(0,0);
+                                auto dx = normal_dist(*eng,param);
+                                auto dy = normal_dist(*eng,param);
+
+                                auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
+                                auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
+                                nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0};
+                                auto dijet_tppa = calculate_sum_tpp(dummy_nucleon, pro, AA_params.Tpp);
+                                auto dijet_tppb = calculate_sum_tpp(dummy_nucleon, tar, AA_params.Tpp);
+
+                                if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
+                                {
+                                    continue;
+                                }
+                                else if (dijet_tppb * new_dijet.pro_pdf * dijet_area > M_factor)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    new_pair.dijets.push_back(new_dijet);
+                                }
                             }
                             else
                             {
@@ -1300,7 +1309,8 @@ public:
         variant_envelope_pars &env_func,
         const bool &verbose,
         const double &M_factor,
-        const double &proton_width
+        const double &proton_width,
+        const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
         if (AA_params.spatial_pdfs)
@@ -1321,7 +1331,8 @@ public:
                 env_func,
                 verbose,
                 M_factor,
-                proton_width 
+                proton_width,
+                is_sat_y_dep
             );
         }
         else
