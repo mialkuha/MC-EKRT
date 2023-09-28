@@ -24,7 +24,7 @@ struct dijet
  
 int main()
 {
-    std::string filename = "jets_60_80_example_name.dat";
+    std::string filename = "jets_0_5_LHC_onoff.dat";
     std::ifstream jet_file(filename, std::ios::in | std::ios::binary);
 
     if (!jet_file.is_open())
@@ -50,7 +50,6 @@ int main()
     events_jets.reserve(n_events);
 
     uint_fast16_t n_bins = 20;
-    double largest_tata = 0;
 
     uint_fast64_t n_dijet_total = 0;
     for (uint_fast64_t i=0; i<n_events; i++)
@@ -62,43 +61,37 @@ int main()
 
         for (uint_fast64_t ii=0; ii<n_jets; ii++, n_dijet_total++)
         {
-            jet_file.read(reinterpret_cast<char*>(&t01)  , sizeof t01);  //t01
-            jet_file.read(reinterpret_cast<char*>(&t02)  , sizeof t02);  //t02
-            jet_file.read(reinterpret_cast<char*>(&x)    , sizeof x);    //x
-            jet_file.read(reinterpret_cast<char*>(&y)    , sizeof y);    //y
-            jet_file.read(reinterpret_cast<char*>(&pt)   , sizeof pt);   //pT
-            jet_file.read(reinterpret_cast<char*>(&y1)   , sizeof y1);   //y1
-            jet_file.read(reinterpret_cast<char*>(&y2)   , sizeof y2);   //y2
-            jet_file.read(reinterpret_cast<char*>(&phi)  , sizeof phi);  //phi_1
-            jet_file.read(reinterpret_cast<char*>(&tata) , sizeof tata); //T_A * T_A
+            jet_file.read(reinterpret_cast<char*>(&t01)  , sizeof t01);  
+            jet_file.read(reinterpret_cast<char*>(&t02)  , sizeof t02);  
+            jet_file.read(reinterpret_cast<char*>(&x)    , sizeof x);    
+            jet_file.read(reinterpret_cast<char*>(&y)    , sizeof y);    
+            jet_file.read(reinterpret_cast<char*>(&pt)   , sizeof pt);   
+            jet_file.read(reinterpret_cast<char*>(&y1)   , sizeof y1);   
+            jet_file.read(reinterpret_cast<char*>(&y2)   , sizeof y2);   
+            jet_file.read(reinterpret_cast<char*>(&phi)  , sizeof phi);  
+            jet_file.read(reinterpret_cast<char*>(&tata) , sizeof tata); 
 
             jets.emplace_back(t01, t02, x, y, pt, y1, y2, phi, tata);
-			//std::cout<<t01<<' '<<t02<<' '<<x<<' '<<y<<' '<<pt<<' '<<y1<<' '<<y2<<' '<<phi<<' '<<tata<<std::endl;
-            if (largest_tata < tata)
-            {
-                largest_tata = tata;
-            }
         }
         events_jets.emplace_back(std::move(jets));
     }
     jet_file.close();
 
     std::cout << "Done! Read " << events_jets.size() << " events totaling "
-              << n_dijet_total << " dijets, the largest tata was "
-              << largest_tata <<std::endl;
+              << n_dijet_total << " dijets" <<std::endl;
 
-    double delta = largest_tata*1.01/n_bins;
-    std::ofstream smallest_pts;
-    smallest_pts.open("smallest_pts_60_80.csv");
-    for (uint i = 0; i < n_bins; i++)
+    double delta = (20.0-1.0)/n_bins;
+    std::ofstream dNdpt;
+    dNdpt.open("dNdpt.csv");
+    for (int i = 0; i < n_bins+1; i++)
     {
-        smallest_pts << (i+1)*delta << ',';
+        dNdpt << 1.0+i*delta << ',';
     }
-    smallest_pts << std::endl;
+    dNdpt << std::endl;
 
-    std::vector<std::vector<double> > pts_in_event
+    std::vector<std::vector<double> > pts_in_bin
     (
-        n_bins, 
+        n_bins+1, 
         std::vector<double>()
     );
 
@@ -106,33 +99,28 @@ int main()
     {
         for (auto dijet : event)
         {
-            //std::cout << dijet.tata << ' '; 
-            for (uint i = 0; i < n_bins; i++)
+            bool found =false;
+            for (int i = 0; i < n_bins; i++)
             {
-                if ( (i+1)*delta > dijet.tata)
+                if ( 1.0+(i+1)*delta > dijet.pt)
                 {
-                    //std::cout << (i+1)*delta << ' ' << ;
-                    pts_in_event[i].push_back(dijet.pt);
+                    found = true;
+                    pts_in_bin[i].push_back(dijet.pt);
                     break;
                 }
             }
-        }
-        
-        for (uint i = 0; i < n_bins; i++)
-        {
-            if (pts_in_event[i].size() != 0)
+            if (!found)
             {
-                std::sort(pts_in_event[i].begin(),pts_in_event[i].end());
-                smallest_pts << pts_in_event[i][0] << ',';
-                pts_in_event[i].clear();
-            }
-            else
-            {
-                smallest_pts << "-1" << ',';
+                pts_in_bin[n_bins].push_back(dijet.pt);
             }
         }
-        smallest_pts << std::endl;
     }
-    smallest_pts.close();
+        
+    for (int i = 0; i < n_bins+1; i++)
+    {
+        dNdpt << pts_in_bin[i].size() << ',';
+    }
+    dNdpt << std::endl;
+    dNdpt.close();
 }
 
