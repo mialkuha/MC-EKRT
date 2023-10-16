@@ -347,9 +347,6 @@ auto mcaa::filter_end_state
 (
     std::vector<nn_coll> &binary_collisions, 
     std::vector<dijet_with_coords> &filtered_scatterings,
-    std::vector<dijet_with_coords> &filtered_scatterings_nomc,
-    std::vector<dijet_with_coords> &filtered_scatterings_nosat,
-    std::vector<dijet_with_coords> &filtered_scatterings_neither, 
     std::shared_ptr<std::mt19937> random_generator,
     const std::vector<nucleon> &pro, 
     const std::vector<nucleon> &tar
@@ -388,9 +385,6 @@ auto mcaa::filter_end_state
 
     for (auto & cand : candidates)
     {
-        bool mc_broke = false;
-        bool sat_broke = false;
-
         kt = cand.dijet.kt;
         y1 = cand.dijet.y1;
         y2 = cand.dijet.y2;
@@ -412,7 +406,7 @@ auto mcaa::filter_end_state
 
                 if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
                 {
-                    mc_broke = true;
+                    continue;
                 }
             }
 
@@ -423,7 +417,7 @@ auto mcaa::filter_end_state
 
                 if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
                 {
-                    mc_broke = true;
+                    continue;
                 }
             }
         }
@@ -450,7 +444,7 @@ auto mcaa::filter_end_state
 
             if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
             {
-                sat_broke = true;
+                continue; //Did not fit into saturated PS --> discard
             }
         }
 
@@ -460,33 +454,13 @@ auto mcaa::filter_end_state
             tata = calcs::calculate_sum_tpp(dummy, pro, this->Tpp) * calcs::calculate_sum_tpp(dummy, tar, this->Tpp);
         }
 
-        if (this->mom_cons && !mc_broke)
+        if (this->mom_cons)
         {
             x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
             x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
         }
-
-        if (mc_broke && sat_broke)
-        {
-            filtered_scatterings_neither.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-        }
-        else if (mc_broke)
-        {
-            filtered_scatterings_nomc.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            filtered_scatterings_neither.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-        }
-        else if (sat_broke)
-        {
-            filtered_scatterings_nosat.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            filtered_scatterings_neither.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-        }
-        else
-        {
-            filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            filtered_scatterings_nomc.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            filtered_scatterings_nosat.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-            filtered_scatterings_neither.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
-        }
+        
+        filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
     }
 
     binary_collisions.clear();
@@ -685,9 +659,6 @@ auto mcaa::run() -> void
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
-    std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings_nomc(cmpLambda);
-    std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings_nosat(cmpLambda);
-    std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings_neither(cmpLambda);
 
     // auto cmpLambda = [](const std::tuple<double, double> &lhs, const std::tuple<double, double> &rhs) { return std::get<0>(lhs) < std::get<0>(rhs); }; /////
     // std::map<io::Coll, std::tuple<double, double>, decltype(cmpLambda)> colls_sumet_midet(cmpLambda); /////
@@ -764,9 +735,6 @@ auto mcaa::run() -> void
                     uint_fast32_t NColl = 0;
                     std::vector<nn_coll> binary_collisions;
                     std::vector<dijet_with_coords> filtered_scatterings;
-                    std::vector<dijet_with_coords> filtered_scatterings_nomc;
-                    std::vector<dijet_with_coords> filtered_scatterings_nosat;
-                    std::vector<dijet_with_coords> filtered_scatterings_neither;
                     double impact_parameter;
                     double b_min2 = this->b_min*this->b_min;
                     double b_max2 = this->b_max*this->b_max;
@@ -867,12 +835,6 @@ auto mcaa::run() -> void
 
                     double sum_ET = 0;
                     double sum_ET_midrap = 0;
-                    double sum_ET_nomc = 0;
-                    double sum_ET_midrap_nomc = 0;
-                    double sum_ET_nosat = 0;
-                    double sum_ET_midrap_nosat = 0;
-                    double sum_ET_neither = 0;
-                    double sum_ET_midrap_neither = 0;
 
                     if (end_state_filtering)
                     {
@@ -881,9 +843,6 @@ auto mcaa::run() -> void
                         (
                             binary_collisions, 
                             filtered_scatterings,
-                            filtered_scatterings_nomc,
-                            filtered_scatterings_nosat,
-                            filtered_scatterings_neither, 
                             eng,
                             pro,
                             tar
@@ -929,51 +888,6 @@ auto mcaa::run() -> void
                             if (e.y2 >= -0.5 && e.y2 <= 0.5)
                             {
                                 sum_ET_midrap += e.kt;
-                            }
-                        }
-                        for (auto e_co : filtered_scatterings_nomc)
-                        {
-                            auto e = e_co.dijet;
-                            
-                            sum_ET_nomc += 2*e.kt;
-
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                            {
-                                sum_ET_midrap_nomc += e.kt;
-                            }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                            {
-                                sum_ET_midrap_nomc += e.kt;
-                            }
-                        }
-                        for (auto e_co : filtered_scatterings_nosat)
-                        {
-                            auto e = e_co.dijet;
-                            
-                            sum_ET_nosat += 2*e.kt;
-
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                            {
-                                sum_ET_midrap_nosat += e.kt;
-                            }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                            {
-                                sum_ET_midrap_nosat += e.kt;
-                            }
-                        }
-                        for (auto e_co : filtered_scatterings_neither)
-                        {
-                            auto e = e_co.dijet;
-                            
-                            sum_ET_neither += 2*e.kt;
-
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                            {
-                                sum_ET_midrap_neither += e.kt;
-                            }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                            {
-                                sum_ET_midrap_neither += e.kt;
                             }
                         }
 
@@ -1062,27 +976,12 @@ auto mcaa::run() -> void
                         const std::lock_guard<std::mutex> lock(colls_mutex);
                         io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
                         io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
-                        io::Coll coll_nomc(NColl, Npart, 2*filtered_scatterings_nomc.size(), impact_parameter, sum_ET_nomc);
-                        io::Coll coll_midrap_nomc(NColl, Npart, 2*filtered_scatterings_nomc.size(), impact_parameter, sum_ET_midrap_nomc);
-                        io::Coll coll_nosat(NColl, Npart, 2*filtered_scatterings_nosat.size(), impact_parameter, sum_ET_nosat);
-                        io::Coll coll_midrap_nosat(NColl, Npart, 2*filtered_scatterings_nosat.size(), impact_parameter, sum_ET_midrap_nosat);
-                        io::Coll coll_neither(NColl, Npart, 2*filtered_scatterings_neither.size(), impact_parameter, sum_ET_neither);
-                        io::Coll coll_midrap_neither(NColl, Npart, 2*filtered_scatterings_neither.size(), impact_parameter, sum_ET_midrap_neither);
                         collisions_for_reporting.push_back(coll);
                         collisions_for_reporting_midrap.push_back(coll_midrap);
-                        collisions_for_reporting_nomc.push_back(coll_nomc);
-                        collisions_for_reporting_midrap_nomc.push_back(coll_midrap_nomc);
-                        collisions_for_reporting_nosat.push_back(coll_nosat);
-                        collisions_for_reporting_midrap_nosat.push_back(coll_midrap_nosat);
-                        collisions_for_reporting_neither.push_back(coll_neither);
-                        collisions_for_reporting_midrap_neither.push_back(coll_midrap_neither);
                         
                         if (save_endstate_jets)
                         {
                             colls_scatterings.insert({coll, filtered_scatterings});
-                            colls_scatterings_nomc.insert({coll_nomc, filtered_scatterings_nomc});
-                            colls_scatterings_nosat.insert({coll_nosat, filtered_scatterings_nosat});
-                            colls_scatterings_neither.insert({coll_neither, filtered_scatterings_neither});
                         }
                     }
                 } while (g_bug_bool);
@@ -1120,36 +1019,12 @@ auto mcaa::run() -> void
     std::ofstream glauber_report_file;
     std::string g_name{"g_report_"+this->name+".dat"};
     std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
-    std::string g_name_nomc{"g_report_"+this->name+"_nomc.dat"};
-    std::string g_name_midrap_nomc{"g_report_midrap_"+this->name+"_nomc.dat"};
-    std::string g_name_nosat{"g_report_"+this->name+"_nosat.dat"};
-    std::string g_name_midrap_nosat{"g_report_midrap_"+this->name+"_nosat.dat"};
-    std::string g_name_neither{"g_report_"+this->name+"_neither.dat"};
-    std::string g_name_midrap_neither{"g_report_midrap_"+this->name+"_neither.dat"};
                                               
     glauber_report_file.open(g_name, std::ios::out);
     io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
     glauber_report_file.open(g_name_midrap, std::ios::out);
     io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_nomc, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_nomc, this->sigma_inel, collisions_for_reporting_nomc.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_midrap_nomc, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap_nomc, this->sigma_inel, collisions_for_reporting_midrap_nomc.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_nosat, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_nosat, this->sigma_inel, collisions_for_reporting_nosat.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_midrap_nosat, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap_nosat, this->sigma_inel, collisions_for_reporting_midrap_nosat.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_neither, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_neither, this->sigma_inel, collisions_for_reporting_neither.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_midrap_neither, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap_neither, this->sigma_inel, collisions_for_reporting_midrap_neither.size(), nBins, binsLow, binsHigh, glauber_report_file);
     glauber_report_file.close();
 
     if (save_endstate_jets)
@@ -1202,282 +1077,6 @@ auto mcaa::run() -> void
             jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
 
             auto it = colls_scatterings.crbegin();
-            std::advance(it, lower_ind);
-
-            for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
-            {
-                for (auto e_co : it->second)
-                {
-                    auto e = e_co.dijet;
-
-                    new_ET_y.emplace_back(e.y1, e.kt);
-                    new_ET_y.emplace_back(e.y2, e.kt);
-
-                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                }
-                io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
-            }
-            jet_file.close();
-            std::cout<<n_in_bin<<std::endl;
-
-            dETdy_by_cent.add(new_ET_y);
-            dEdy_by_cent.add(new_E_y);
-
-            std::stringstream outname{""};
-
-            outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dEdy_by_cent, 
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-            outname.seekp(0);
-            outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dETdy_by_cent,
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-        }
-    }
-
-    if (save_endstate_jets)
-    {
-        std::vector<std::tuple<double,double> > centBins;
-        std::ifstream cents_input(this->centrality_filename);
-        if (!cents_input.is_open())
-        {
-            std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
-            centBins.push_back(std::tuple<double,double>{0.0, 1.0});
-            return;
-        }
-        std::string line;
-        for (; std::getline(cents_input, line);)
-        {
-            std::stringstream ss(line);
-            std::string token;
-            std::getline(ss, token, ',');
-            double centLow = std::stod(token);
-            std::getline(ss, token, ',');
-            double centHigh = std::stod(token);
-            centBins.push_back(std::tuple<double,double>{centLow, centHigh});
-        }
-        cents_input.close();
-
-        std::string name_pfs{this->name+"_nomc.dat"};
-
-        std::ofstream jet_file;
-
-        for (auto [centLow, centHigh] : centBins)
-        {
-            std::stringstream jetsname{""};
-            jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
-
-            histo_1d dETdy_by_cent{y_bins};
-            histo_1d dEdy_by_cent{y_bins};
-            std::vector<std::tuple<double, double> > new_ET_y;
-            std::vector<std::tuple<double, double> > new_E_y;
-
-            uint_fast64_t N_evts_tot = colls_scatterings_nomc.size();
-            double eps = 0.1/static_cast<double>(N_evts_tot);
-
-            uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t n_in_bin = upper_ind - lower_ind;
-
-            jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
-
-            auto it = colls_scatterings_nomc.crbegin();
-            std::advance(it, lower_ind);
-
-            for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
-            {
-                for (auto e_co : it->second)
-                {
-                    auto e = e_co.dijet;
-
-                    new_ET_y.emplace_back(e.y1, e.kt);
-                    new_ET_y.emplace_back(e.y2, e.kt);
-
-                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                }
-                io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
-            }
-            jet_file.close();
-            std::cout<<n_in_bin<<std::endl;
-
-            dETdy_by_cent.add(new_ET_y);
-            dEdy_by_cent.add(new_E_y);
-
-            std::stringstream outname{""};
-
-            outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dEdy_by_cent, 
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-            outname.seekp(0);
-            outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dETdy_by_cent,
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-        }
-    }
-
-    if (save_endstate_jets)
-    {
-        std::vector<std::tuple<double,double> > centBins;
-        std::ifstream cents_input(this->centrality_filename);
-        if (!cents_input.is_open())
-        {
-            std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
-            centBins.push_back(std::tuple<double,double>{0.0, 1.0});
-            return;
-        }
-        std::string line;
-        for (; std::getline(cents_input, line);)
-        {
-            std::stringstream ss(line);
-            std::string token;
-            std::getline(ss, token, ',');
-            double centLow = std::stod(token);
-            std::getline(ss, token, ',');
-            double centHigh = std::stod(token);
-            centBins.push_back(std::tuple<double,double>{centLow, centHigh});
-        }
-        cents_input.close();
-
-        std::string name_pfs{this->name+"_nosat.dat"};
-
-        std::ofstream jet_file;
-
-        for (auto [centLow, centHigh] : centBins)
-        {
-            std::stringstream jetsname{""};
-            jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
-
-            histo_1d dETdy_by_cent{y_bins};
-            histo_1d dEdy_by_cent{y_bins};
-            std::vector<std::tuple<double, double> > new_ET_y;
-            std::vector<std::tuple<double, double> > new_E_y;
-
-            uint_fast64_t N_evts_tot = colls_scatterings_nosat.size();
-            double eps = 0.1/static_cast<double>(N_evts_tot);
-
-            uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t n_in_bin = upper_ind - lower_ind;
-
-            jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
-
-            auto it = colls_scatterings_nosat.crbegin();
-            std::advance(it, lower_ind);
-
-            for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
-            {
-                for (auto e_co : it->second)
-                {
-                    auto e = e_co.dijet;
-
-                    new_ET_y.emplace_back(e.y1, e.kt);
-                    new_ET_y.emplace_back(e.y2, e.kt);
-
-                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                }
-                io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
-            }
-            jet_file.close();
-            std::cout<<n_in_bin<<std::endl;
-
-            dETdy_by_cent.add(new_ET_y);
-            dEdy_by_cent.add(new_E_y);
-
-            std::stringstream outname{""};
-
-            outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dEdy_by_cent, 
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-            outname.seekp(0);
-            outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dETdy_by_cent,
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-        }
-    }
-
-    if (save_endstate_jets)
-    {
-        std::vector<std::tuple<double,double> > centBins;
-        std::ifstream cents_input(this->centrality_filename);
-        if (!cents_input.is_open())
-        {
-            std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
-            centBins.push_back(std::tuple<double,double>{0.0, 1.0});
-            return;
-        }
-        std::string line;
-        for (; std::getline(cents_input, line);)
-        {
-            std::stringstream ss(line);
-            std::string token;
-            std::getline(ss, token, ',');
-            double centLow = std::stod(token);
-            std::getline(ss, token, ',');
-            double centHigh = std::stod(token);
-            centBins.push_back(std::tuple<double,double>{centLow, centHigh});
-        }
-        cents_input.close();
-
-        std::string name_pfs{this->name+"_neither.dat"};
-
-        std::ofstream jet_file;
-
-        for (auto [centLow, centHigh] : centBins)
-        {
-            std::stringstream jetsname{""};
-            jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
-
-            histo_1d dETdy_by_cent{y_bins};
-            histo_1d dEdy_by_cent{y_bins};
-            std::vector<std::tuple<double, double> > new_ET_y;
-            std::vector<std::tuple<double, double> > new_E_y;
-
-            uint_fast64_t N_evts_tot = colls_scatterings_neither.size();
-            double eps = 0.1/static_cast<double>(N_evts_tot);
-
-            uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t n_in_bin = upper_ind - lower_ind;
-
-            jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
-
-            auto it = colls_scatterings_neither.crbegin();
             std::advance(it, lower_ind);
 
             for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)

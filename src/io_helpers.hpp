@@ -645,6 +645,8 @@ public:
     {        
         //double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, phi;
         double pt, y1, y2, t01, t02, x, y, tata, phi;
+        particle_id f1, f2;
+        
         uint_fast64_t n_dijets;
         n_dijets = filtered_scatterings.size();
         jet_file.write(reinterpret_cast<char*>(&n_dijets), sizeof n_dijets); //total number of dijets
@@ -660,6 +662,8 @@ public:
             y = e_co.co.y;
             //z = e_co.co.z;
             tata = e_co.tata;
+            f1 = e_co.dijet.final1;
+            f2 = e_co.dijet.final2;
             
             // jet 1
             //energy = pt*std::cosh(y1);
@@ -676,6 +680,8 @@ public:
             jet_file.write(reinterpret_cast<char*>(&y2)     , sizeof y2);     //y2
             jet_file.write(reinterpret_cast<char*>(&phi)    , sizeof phi);    //phi
             jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+            jet_file.write(reinterpret_cast<char*>(&f1)   , sizeof f1);   //T_A * T_A
+            jet_file.write(reinterpret_cast<char*>(&f2)   , sizeof f2);   //T_A * T_A
 
             // jet 2
             //energy = pt*std::cosh(y2);

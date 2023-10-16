@@ -256,9 +256,6 @@ private:
     uint_fast64_t &nsat,*/
         std::vector<nn_coll> &binary_collisions, 
         std::vector<dijet_with_coords> &filtered_scatterings,
-        std::vector<dijet_with_coords> &filtered_scatterings_nomc,
-        std::vector<dijet_with_coords> &filtered_scatterings_nosat,
-        std::vector<dijet_with_coords> &filtered_scatterings_neither, 
         std::shared_ptr<std::mt19937> random_generator,
         const std::vector<nucleon> &pro = {}, 
         const std::vector<nucleon> &tar = {}
