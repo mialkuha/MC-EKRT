@@ -9,7 +9,7 @@ b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
 # QCD PARAMETERS
-K_factor 1.0                     # pQCD K-factor to account for the higher order corrections
+K_factor 1.7                     # pQCD K-factor to account for the higher order corrections
 kt0 1.0                          # (GeV) jet k_T lower cutoff
 proton_width 0.573               # (fm) proton width (Only used if proton_width_static==true)
 sigma_inel 70.0                  # (mb) inelastic nucleon-nucleon cross section of the NN event
@@ -49,5 +49,5 @@ end_state_filtering true         # false=no any filtering in the end state
 is_mom_cons true                 # If the momentum conservation should be forced
 is_saturation true               # If the EKRT saturation should be used
 is_sat_y_dep false               # If the saturation criterion should be y-dependent
-pt_ordering false                # If the jets should be ordered by p_T
+pt_ordering true                 # If the jets should be ordered by p_T
 t03_ordering false               # If the jets should be ordered by t03
