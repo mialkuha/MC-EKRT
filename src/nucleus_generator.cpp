@@ -1,8 +1,9 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #include "nucleus_generator.hpp"
 
 std::uniform_real_distribution<double> nucleus_generator::unif_dist = std::uniform_real_distribution<double>(0.0,1.0);
+std::normal_distribution<double> nucleus_generator::normal_dist = std::normal_distribution<double>(0,0);
 
 std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const bool &target, const double & mom, 
         const double & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler)
@@ -72,6 +73,10 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
     }
 
     nucleus_generator::throw_neutrons(&generated_nucleus, (target) ? params.ZB : params.ZA, random_generator);
+    if (params.hotspots)
+    {
+        nucleus_generator::throw_hotspots(&generated_nucleus, params.n_hotspots, params.hotspot_distr_width, random_generator);
+    }
 
     return generated_nucleus;
 }
@@ -128,7 +133,22 @@ void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, cons
             nucleus->at(i).is_neutron = true;
         }
     }
+}
 
+void nucleus_generator::throw_hotspots(std::vector<nucleon> *const nucleus, const uint_fast16_t & n_hotspots, const double & hotspot_distr_width, std::shared_ptr<std::mt19937> random_generator) noexcept
+{
+    for (uint_fast16_t i=0; i<nucleus->size(); ++i)
+    {
+        nucleus->at(i).hotspots = std::vector<hotspot_info>();
+        for (uint_fast16_t j=0; j<n_hotspots; ++j)
+        {
+            auto param = std::normal_distribution<double>::param_type{0., hotspot_distr_width};
+            coords ds = {normal_dist(*random_generator,param),normal_dist(*random_generator,param), 0.0};
+            auto hs_coords = nucleus->at(i).co + ds;
+
+            nucleus->at(i).hotspots.push_back(hotspot_info{hs_coords});
+        }
+    }
 }
 
 bool nucleus_generator::coords_fit(const coords& co, const std::vector<coords>& other_coords, const double& min_distance) noexcept

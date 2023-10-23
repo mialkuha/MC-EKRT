@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef TYPEDEFS_HPP
 #define TYPEDEFS_HPP
@@ -14,6 +14,11 @@
 #include <tuple>
 
 typedef int_fast8_t particle_id;
+
+struct hotspot_info
+{
+    coords co{0,0,0};
+};
 
 struct dijet_specs
 {
@@ -88,7 +93,7 @@ struct AA_collision_params
   bool calculate_end_state;
   bool use_nn_b2_max;
   double sigma_inel;
-  const std::function<double(const double&)> Tpp;
+  Tpp_builder *const Tpp;
   B2_normalization_mode normalize_to;
   double sqrt_s;
   double energy_threshold;

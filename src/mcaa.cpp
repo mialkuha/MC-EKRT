@@ -8,7 +8,7 @@ mcaa::mcaa
 ) 
 : diff_params(false,false,false,false,false,false,1,0,1,1u,1u,1u,1u),
   jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
-  nuc_params(1u,1u,1u,1u,1.0,false,false)
+  nuc_params(1u,1u,1u,1u,1.0,false,false,false,1u,1.0)
 {
     auto 
     [
@@ -29,11 +29,16 @@ mcaa::mcaa
         p_A,
         p_ZA,
         p_M_factor,
+        p_correct_overlap_bias,
         p_nn_min_dist,
         p_nuclear_RA,
         p_nuclear_d,
         p_rad_max,
         p_rad_min,
+        p_shift_cms,
+        p_hotspots,
+        p_n_hotspots,
+        p_hotspot_width,
         p_is_AA,
         p_is_pA,
         p_is_pp,
@@ -132,10 +137,12 @@ mcaa::mcaa
 
     this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
 
-    this->Tpp =  std::function<double(const double&)>({[proton_width_2=this->proton_width_2](const double &bsquared)
+    if (almostEqual(p_hotspot_width,0.0))
     {
-        return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-    }});
+        p_hotspot_width = 0.2*p_proton_width;
+    }
+
+    this->Tpp = Tpp_builder(this->proton_width_2, p_hotspot_width, p_hotspots);
 
     if (p_use_snpdfs && p_snpdfs_linear && p_calculate_spatial_cutoff)
     {
@@ -197,14 +204,18 @@ mcaa::mcaa
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
 
+    double hotspot_distr_width = std::sqrt(this->proton_width_2-std::pow(p_hotspot_width,2));
     this->nuc_params = nucleus_generator::nucleus_params(
     /*A=                        */(p_is_AA)? p_A : 1u,  //Pb 
     /*ZA=                       */(p_is_AA)? p_ZA : 1u, //Pb
     /*B=                        */(p_is_pp)? 1u : p_A,  //Pb
     /*ZB=                       */(p_is_pp)? 1u : p_ZA, //Pb
     /*min_distance=             */p_nn_min_dist, 
-    /*shift_cms=                */true, 
-    /*correct_overlap_bias=     */true);
+    /*shift_cms=                */p_shift_cms, 
+    /*correct_overlap_bias=     */p_correct_overlap_bias, 
+    /*hotspots=                 */p_hotspots, 
+    /*n_hotspots=               */p_n_hotspots, 
+    /*hotspot_distr_width=      */hotspot_distr_width);
 }
 
 auto mcaa::fit_sigma_jet_pt0_cutoff
@@ -451,7 +462,7 @@ auto mcaa::filter_end_state
         if (this->calculate_tata)
         {
             nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
-            tata = calcs::calculate_sum_tpp(dummy, pro, this->Tpp) * calcs::calculate_sum_tpp(dummy, tar, this->Tpp);
+            tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
         }
 
         if (this->mom_cons)
@@ -527,11 +538,10 @@ auto mcaa::run() -> void
     {
         std::cout<<"Calculating T_AA(0)"<<std::endl;
 
-        this->T_AA_0 = calcs::calculate_T_AA_0
+        this->T_AA_0 = this->Tpp.calculate_T_AA_0
         (
             this->nuc_params,
             1e-5,
-            this->Tpp,
             radial_sampler, 
             verbose
         );
@@ -542,11 +552,10 @@ auto mcaa::run() -> void
     {
         std::cout<<"Calculating R_A - c_A table"<<std::endl;
 
-        auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
+        auto [R_A_table, c_A_table] = this->Tpp.calculate_R_c_table
         (
             this->nuc_params,
             1e-5,
-            this->Tpp,
             radial_sampler, 
             verbose
         );
@@ -627,14 +636,14 @@ auto mcaa::run() -> void
     if (use_nn_b2_max)
     {
         double dummy = 0; //not needed here
-        auto difference_to_target = [tpp_min, tpp=(this->Tpp)](const double &b2)
+        auto difference_to_target = [tpp_min, tpp=&(this->Tpp)](const double &b2)
         {
-            return tpp_min - tpp(b2);
+            return tpp_min - tpp->at(b2);
         };
         helpers::secant_method(&nn_b2_max, difference_to_target, tpp_min, &dummy);
         if (this->verbose)
         {
-            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp(nn_b2_max)<<std::endl;
+            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp.at(nn_b2_max)<<std::endl;
         }
     }
 
@@ -649,7 +658,7 @@ auto mcaa::run() -> void
     /*calculate_end_state=      */this->calculate_end_state,
     /*use_nn_b2_max=            */use_nn_b2_max,
     /*sigma_inel=               */this->sigma_inel,
-    /*Tpp=                      */this->Tpp,
+    /*Tpp=                      */&(this->Tpp),
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
     /*energy_threshold=         */this->kt0,
@@ -1121,4 +1130,3 @@ auto mcaa::run() -> void
         }
     }
 }
-

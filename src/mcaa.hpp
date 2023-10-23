@@ -33,6 +33,7 @@
 #include "io_helpers.hpp"
 #include "nucleus_generator.hpp"
 #include "pqcd.hpp"
+#include "Tpp_builder.hpp"
 #include "typedefs.hpp"
 
 class mcaa
@@ -146,7 +147,7 @@ public:
 private:
     // PRIVATE ATTRIBUTES /////////////////////////////////////////////////////////////////////////////////////////////
     std::shared_ptr<LHAPDF::GridPDF> p_pdf{};     // pointer to the LHAPDF PDF-object of the proton PDF
-    std::function<double(const double&)> Tpp{nullptr}; // nucleon overlap function
+    Tpp_builder Tpp{};                            // nucleon overlap function
     std::function<double(const double&)> rad_pdf{nullptr}; // radial nucleon density function of the nucleus
     double power_law{2.0};                        // parameter for the envelope function: sigma_jet < A*pT^(-power_law)
     pqcd::diff_sigma::params diff_params;         // the struct of pQCD event parameters

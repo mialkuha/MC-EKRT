@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef IO_HELPERS_HPP
 #define IO_HELPERS_HPP
@@ -737,13 +737,117 @@ public:
         file.close();
     }
 
+    enum Param
+    {
+         name,
+         sigmajet_filename,
+         centrality_filename,
+         n_events,
+         b_max,
+         b_min,
+         sqrt_s,
+         K_factor,
+         kt0,
+         proton_width,
+         sigma_inel,
+         sigma_inel_AA,
+         T_AA_0_for_snpdfs,
+         spatial_cutoff,
+         A,
+         ZA,
+         M_factor,
+         correct_overlap_bias,
+         nn_min_dist,
+         nuclear_RA,
+         nuclear_d,
+         rad_max,
+         rad_min,
+         shift_cms,
+         hotspots,
+         n_hotspots,
+         hotspot_width,
+         is_aa,
+         is_pa,
+         is_pp,
+         is_mc_glauber,
+         read_sigmajets_from_file,
+         proton_width_static,
+         sigma_inel_from_sigma_jet,
+         AA_inel_same_as_NN,
+         only_protons,
+         use_npdfs,
+         use_snpdfs,
+         snpdfs_linear,
+         calculate_spatial_cutoff,
+         calculate_end_state,
+         calculate_tata,
+         save_endstate_jets,
+         end_state_filtering,
+         is_mom_cons,
+         is_saturation,
+         is_sat_y_dep,
+         pt_ordering,
+         t03_ordering
+    };
+
     static auto read_conf
     (
         const std::string filename
     ) noexcept
     {
         std::ifstream input(filename);
-        
+        const std::map<std::string, io::Param> stringToParam
+        {
+            {"name", name},
+            {"sigmajet_filename", sigmajet_filename},
+            {"centrality_filename", centrality_filename},
+            {"n_events", n_events},
+            {"b_max", b_max},
+            {"b_min", b_min},
+            {"sqrt_s", sqrt_s},
+            {"K_factor", K_factor},
+            {"kt0", kt0},
+            {"proton_width", proton_width},
+            {"sigma_inel", sigma_inel},
+            {"sigma_inel_AA", sigma_inel_AA},
+            {"T_AA_0_for_snpdfs", T_AA_0_for_snpdfs},
+            {"spatial_cutoff", spatial_cutoff},
+            {"A", A},
+            {"ZA", ZA},
+            {"M_factor", M_factor},
+            {"correct_overlap_bias", correct_overlap_bias},
+            {"nn_min_dist", nn_min_dist},
+            {"nuclear_RA", nuclear_RA},
+            {"nuclear_d", nuclear_d},
+            {"rad_max", rad_max},
+            {"rad_min", rad_min},
+            {"shift_cms", shift_cms},
+            {"hotspots", hotspots},
+            {"n_hotspots", n_hotspots},
+            {"hotspot_width", hotspot_width},
+            {"is_aa", is_aa},
+            {"is_pa", is_pa},
+            {"is_pp", is_pp},
+            {"is_mc_glauber", is_mc_glauber},
+            {"read_sigmajets_from_file", read_sigmajets_from_file},
+            {"proton_width_static", proton_width_static},
+            {"sigma_inel_from_sigma_jet", sigma_inel_from_sigma_jet},
+            {"AA_inel_same_as_NN", AA_inel_same_as_NN},
+            {"only_protons", only_protons},
+            {"use_npdfs", use_npdfs},
+            {"use_snpdfs", use_snpdfs},
+            {"snpdfs_linear", snpdfs_linear},
+            {"calculate_spatial_cutoff", calculate_spatial_cutoff},
+            {"calculate_end_state", calculate_end_state},
+            {"calculate_tata", calculate_tata},
+            {"save_endstate_jets", save_endstate_jets},
+            {"end_state_filtering", end_state_filtering},
+            {"is_mom_cons", is_mom_cons},
+            {"is_saturation", is_saturation},
+            {"is_sat_y_dep", is_sat_y_dep},
+            {"pt_ordering", pt_ordering},
+            {"t03_ordering", t03_ordering}
+        };
         std::string name{"example_name"};
         std::string sigmajet_filename{"example_sigma_jet.dat"}; 
         std::string centrality_filename{"centrality_bins.csv"}; 
@@ -751,7 +855,7 @@ public:
         double b_max{20.0};
         double b_min{0.0};
         double sqrt_s{5020.0};
-        double K_factor{1.0};
+        double K_factor{1.7};
         double kt0{1.0};
         double proton_width{0.573};
         double sigma_inel{70.0};
@@ -761,13 +865,18 @@ public:
         uint_fast16_t A{208};
         uint_fast16_t ZA{82};
         double M_factor{2.5};
+        bool correct_overlap_bias{true};
         double nn_min_dist{0.4};
         double nuclear_RA{6.62435};
         double nuclear_d{0.5498};
         double rad_max{30.0};
         double rad_min{0.0};
-        bool is_AA{true};
-        bool is_pA{false};
+        bool shift_cms{true};
+        bool hotspots{false};
+        uint_fast16_t n_hotspots{0};
+        double hotspot_width{0.0};
+        bool is_aa{true};
+        bool is_pa{false};
         bool is_pp{false};
         bool is_mc_glauber{false};
         bool read_sigmajets_from_file{false};
@@ -786,7 +895,7 @@ public:
         bool is_mom_cons{true};
         bool is_saturation{true};
         uint_fast16_t is_sat_y_dep{0};
-        bool pt_ordering{false};
+        bool pt_ordering{true};
         bool t03_ordering{false};
 
         uint_fast16_t count = 0;
@@ -800,186 +909,159 @@ public:
                 std::istringstream line_stream(line);
                 std::string param_name;
                 line_stream >> param_name;
+                io::Param p = stringToParam.at(param_name);
 
-                if (param_name == "name")
+                switch (p)
                 {
-                    line_stream >> name;
-                }
-                else if (param_name == "sigmajet_filename")
-                {
-                    line_stream >> sigmajet_filename;
-                }
-                else if (param_name == "centrality_filename")
-                {
-                    line_stream >> centrality_filename;
-                }
-                else if (param_name == "n_events")
-                {
-                    line_stream >> n_events;
-                }
-                else if (param_name == "b_max")
-                {
-                    line_stream >> b_max;
-                }
-                else if (param_name == "b_min")
-                {
-                    line_stream >> b_min;
-                }
-                else if (param_name == "sqrt_s")
-                {
-                    line_stream >> sqrt_s;
-                }
-                else if (param_name == "K_factor")
-                {
-                    line_stream >> K_factor;
-                }
-                else if (param_name == "kt0")
-                {
-                    line_stream >> kt0;
-                }
-                else if (param_name == "proton_width")
-                {
-                    line_stream >> proton_width;
-                }
-                else if (param_name == "sigma_inel")
-                {
-                    line_stream >> sigma_inel;
-                }
-                else if (param_name == "sigma_inel_AA")
-                {
-                    line_stream >> sigma_inel_AA;
-                }
-                else if (param_name == "T_AA_0_for_snpdfs")
-                {
-                    line_stream >> T_AA_0_for_snpdfs;
-                }
-                else if (param_name == "spatial_cutoff")
-                {
-                    line_stream >> spatial_cutoff;
-                }
-                else if (param_name == "A")
-                {
-                    line_stream >> A;
-                }
-                else if (param_name == "ZA")
-                {
-                    line_stream >> ZA;
-                }
-                else if (param_name == "M_factor")
-                {
-                    line_stream >> M_factor;
-                }
-                else if (param_name == "nn_min_dist")
-                {
-                    line_stream >> nn_min_dist;
-                }
-                else if (param_name == "nuclear_RA")
-                {
-                    line_stream >> nuclear_RA;
-                }
-                else if (param_name == "nuclear_d")
-                {
-                    line_stream >> nuclear_d;
-                }
-                else if (param_name == "rad_max")
-                {
-                    line_stream >> rad_max;
-                }
-                else if (param_name == "rad_min")
-                {
-                    line_stream >> rad_min;
-                }
-                else if (param_name == "is_aa")
-                {
-                    line_stream >> std::boolalpha >> is_AA;
-                }
-                else if (param_name == "is_pa")
-                {
-                    line_stream >> std::boolalpha >> is_pA;
-                }
-                else if (param_name == "is_pp")
-                {
-                    line_stream >> std::boolalpha >> is_pp;
-                }
-                else if (param_name == "is_mc_glauber")
-                {
-                    line_stream >> std::boolalpha >> is_mc_glauber;
-                }
-                else if (param_name == "read_sigmajets_from_file")
-                {
-                    line_stream >> std::boolalpha >> read_sigmajets_from_file;
-                }
-                else if (param_name == "proton_width_static")
-                {
-                    line_stream >> std::boolalpha >> proton_width_static;
-                }
-                else if (param_name == "sigma_inel_from_sigma_jet")
-                {
-                    line_stream >> std::boolalpha >> sigma_inel_from_sigma_jet;
-                }
-                else if (param_name == "AA_inel_same_as_NN")
-                {
-                    line_stream >> std::boolalpha >> AA_inel_same_as_NN;
-                }
-                else if (param_name == "only_protons")
-                {
-                    line_stream >> std::boolalpha >> only_protons;
-                }
-                else if (param_name == "use_npdfs")
-                {
-                    line_stream >> std::boolalpha >> use_npdfs;
-                }
-                else if (param_name == "use_snpdfs")
-                {
-                    line_stream >> std::boolalpha >> use_snpdfs;
-                }
-                else if (param_name == "snpdfs_linear")
-                {
-                    line_stream >> std::boolalpha >> snpdfs_linear;
-                }
-                else if (param_name == "calculate_spatial_cutoff")
-                {
-                    line_stream >> std::boolalpha >> calculate_spatial_cutoff;
-                }
-                else if (param_name == "calculate_end_state")
-                {
-                    line_stream >> std::boolalpha >> calculate_end_state;
-                }
-                else if (param_name == "calculate_tata")
-                {
-                    line_stream >> std::boolalpha >> calculate_tata;
-                }
-                else if (param_name == "save_endstate_jets")
-                {
-                    line_stream >> std::boolalpha >> save_endstate_jets;
-                }
-                else if (param_name == "end_state_filtering")
-                {
-                    line_stream >> std::boolalpha >> end_state_filtering;
-                }
-                else if (param_name == "is_mom_cons")
-                {
-                    line_stream >> std::boolalpha >> is_mom_cons;
-                }
-                else if (param_name == "is_saturation")
-                {
-                    line_stream >> std::boolalpha >> is_saturation;
-                }
-                else if (param_name == "is_sat_y_dep")
-                {
-                    line_stream >> is_sat_y_dep;
-                }
-                else if (param_name == "pt_ordering")
-                {
-                    line_stream >> std::boolalpha >> pt_ordering;
-                }
-                else if (param_name == "t03_ordering")
-                {
-                    line_stream >> std::boolalpha >> t03_ordering;
-                }
-                else
-                {
-                    continue;
+                    case io::Param::name:
+                        line_stream >> name;
+                        break;
+                    case io::Param::sigmajet_filename:
+                        line_stream >> sigmajet_filename;
+                        break;
+                    case io::Param::centrality_filename:
+                        line_stream >> centrality_filename;
+                        break;
+                    case io::Param::n_events:
+                        line_stream >> n_events;
+                        break;
+                    case io::Param::b_max:
+                        line_stream >> b_max;
+                        break;
+                    case io::Param::b_min:
+                        line_stream >> b_min;
+                        break;
+                    case io::Param::sqrt_s:
+                        line_stream >> sqrt_s;
+                        break;
+                    case io::Param::K_factor:
+                        line_stream >> K_factor;
+                        break;
+                    case io::Param::kt0:
+                        line_stream >> kt0;
+                        break;
+                    case io::Param::proton_width:
+                        line_stream >> proton_width;
+                        break;
+                    case io::Param::sigma_inel:
+                        line_stream >> sigma_inel;
+                        break;
+                    case io::Param::sigma_inel_AA:
+                        line_stream >> sigma_inel_AA;
+                        break;
+                    case io::Param::T_AA_0_for_snpdfs:
+                        line_stream >> T_AA_0_for_snpdfs;
+                        break;
+                    case io::Param::spatial_cutoff:
+                        line_stream >> spatial_cutoff;
+                        break;
+                    case io::Param::A:
+                        line_stream >> A;
+                        break;
+                    case io::Param::ZA:
+                        line_stream >> ZA;
+                        break;
+                    case io::Param::M_factor:
+                        line_stream >> M_factor;
+                        break;
+                    case io::Param::correct_overlap_bias:
+                        line_stream >> std::boolalpha >> correct_overlap_bias;
+                        break;
+                    case io::Param::nn_min_dist:
+                        line_stream >> nn_min_dist;
+                        break;
+                    case io::Param::nuclear_RA:
+                        line_stream >> nuclear_RA;
+                        break;
+                    case io::Param::nuclear_d:
+                        line_stream >> nuclear_d;
+                        break;
+                    case io::Param::rad_max:
+                        line_stream >> rad_max;
+                        break;
+                    case io::Param::rad_min:
+                        line_stream >> rad_min;
+                        break;
+                    case io::Param::shift_cms:
+                        line_stream >> std::boolalpha >> shift_cms;
+                        break;
+                    case io::Param::hotspots:
+                        line_stream >> std::boolalpha >> hotspots;
+                        break;
+                    case io::Param::n_hotspots:
+                        line_stream >> n_hotspots;
+                        break;
+                    case io::Param::hotspot_width:
+                        line_stream >> hotspot_width;
+                        break;
+                    case io::Param::is_aa:
+                        line_stream >> std::boolalpha >> is_aa;
+                        break;
+                    case io::Param::is_pa:
+                        line_stream >> std::boolalpha >> is_pa;
+                        break;
+                    case io::Param::is_pp:
+                        line_stream >> std::boolalpha >> is_pp;
+                        break;
+                    case io::Param::is_mc_glauber:
+                        line_stream >> std::boolalpha >> is_mc_glauber;
+                        break;
+                    case io::Param::read_sigmajets_from_file:
+                        line_stream >> std::boolalpha >> read_sigmajets_from_file;
+                        break;
+                    case io::Param::proton_width_static:
+                        line_stream >> std::boolalpha >> proton_width_static;
+                        break;
+                    case io::Param::sigma_inel_from_sigma_jet:
+                        line_stream >> std::boolalpha >> sigma_inel_from_sigma_jet;
+                        break;
+                    case io::Param::AA_inel_same_as_NN:
+                        line_stream >> std::boolalpha >> AA_inel_same_as_NN;
+                        break;
+                    case io::Param::only_protons:
+                        line_stream >> std::boolalpha >> only_protons;
+                        break;
+                    case io::Param::use_npdfs:
+                        line_stream >> std::boolalpha >> use_npdfs;
+                        break;
+                    case io::Param::use_snpdfs:
+                        line_stream >> std::boolalpha >> use_snpdfs;
+                        break;
+                    case io::Param::snpdfs_linear:
+                        line_stream >> std::boolalpha >> snpdfs_linear;
+                        break;
+                    case io::Param::calculate_spatial_cutoff:
+                        line_stream >> std::boolalpha >> calculate_spatial_cutoff;
+                        break;
+                    case io::Param::calculate_end_state:
+                        line_stream >> std::boolalpha >> calculate_end_state;
+                        break;
+                    case io::Param::calculate_tata:
+                        line_stream >> std::boolalpha >> calculate_tata;
+                        break;
+                    case io::Param::save_endstate_jets:
+                        line_stream >> std::boolalpha >> save_endstate_jets;
+                        break;
+                    case io::Param::end_state_filtering:
+                        line_stream >> std::boolalpha >> end_state_filtering;
+                        break;
+                    case io::Param::is_mom_cons:
+                        line_stream >> std::boolalpha >> is_mom_cons;
+                        break;
+                    case io::Param::is_saturation:
+                        line_stream >> std::boolalpha >> is_saturation;
+                        break;
+                    case io::Param::is_sat_y_dep:
+                        line_stream >> is_sat_y_dep;
+                        break;
+                    case io::Param::pt_ordering:
+                        line_stream >> std::boolalpha >> pt_ordering;
+                        break;
+                    case io::Param::t03_ordering:
+                        line_stream >> std::boolalpha >> t03_ordering;
+                        break;
+                    default:
+                        continue;
                 }
                 count++;
             }
@@ -1011,13 +1093,18 @@ public:
                     A,
                     ZA,
                     M_factor,
+                    correct_overlap_bias,
                     nn_min_dist,
                     nuclear_RA,
                     nuclear_d,
                     rad_max,
                     rad_min,
-                    is_AA,
-                    is_pA,
+                    shift_cms,
+                    hotspots,
+                    n_hotspots,
+                    hotspot_width,
+                    is_aa,
+                    is_pa,
                     is_pp,
                     is_mc_glauber,
                     read_sigmajets_from_file,
