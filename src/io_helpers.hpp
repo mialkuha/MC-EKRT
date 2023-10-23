@@ -909,7 +909,21 @@ public:
                 std::istringstream line_stream(line);
                 std::string param_name;
                 line_stream >> param_name;
-                io::Param p = stringToParam.at(param_name);
+                if (param_name[0] == '#')
+                {
+                    continue;
+                }
+
+                io::Param p{io::Param::name};
+                try
+                {
+                    p = stringToParam.at(param_name);
+                }
+                catch(const std::exception& e)
+                {
+                    std::cout << "READ UNKNOWN PARAMETER: " << param_name << std::endl;
+                    exit(1);
+                }
 
                 switch (p)
                 {
