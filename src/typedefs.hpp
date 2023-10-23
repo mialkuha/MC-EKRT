@@ -15,11 +15,6 @@
 
 typedef int_fast8_t particle_id;
 
-struct hotspot_info
-{
-    coords co{0,0,0};
-};
-
 struct dijet_specs
 {
     double kt{0};
@@ -83,24 +78,6 @@ inline std::ostream& operator<<(std::ostream& os, const B2_normalization_mode& m
     }
     return os;
 }
-
-struct AA_collision_params
-{
-  bool mc_glauber_mode;
-  bool pp_scattering;
-  bool pA_scattering;
-  bool spatial_pdfs;
-  bool calculate_end_state;
-  bool use_nn_b2_max;
-  double sigma_inel;
-  Tpp_builder *const Tpp;
-  B2_normalization_mode normalize_to;
-  double sqrt_s;
-  double energy_threshold;
-  double nn_b2_max;
-  double T_AA_0;
-};
-
 
 inline bool almostEqual(double x, double y)    
 {    
@@ -201,6 +178,11 @@ struct dijet_with_coords
     double t01;
     double t02;
     double tata;
+};
+
+struct hotspot_info
+{
+    coords co{0,0,0};
 };
 
 #endif // TYPEDEFS_HPP

@@ -51,7 +51,7 @@ public:
           ZB(ZB_), 
           min_distance(min_distance_), 
           shift_cms(shift_cms_),
-          correct_overlap_bias(correct_overlap_bias_)
+          correct_overlap_bias(correct_overlap_bias_),
           hotspots(hotspots_),
           n_hotspots(n_hotspots_),
           hotspot_distr_width(hotspot_distr_width_)

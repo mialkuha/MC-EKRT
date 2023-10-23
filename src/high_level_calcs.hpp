@@ -31,7 +31,26 @@
 #include "linterp.h"
 #include "nucleus_generator.hpp"
 #include "pqcd.hpp"
+#include "Tpp_builder.hpp"
 #include "typedefs.hpp"
+
+
+struct AA_collision_params
+{
+  bool mc_glauber_mode;
+  bool pp_scattering;
+  bool pA_scattering;
+  bool spatial_pdfs;
+  bool calculate_end_state;
+  bool use_nn_b2_max;
+  double sigma_inel;
+  Tpp_builder *const Tpp;
+  B2_normalization_mode normalize_to;
+  double sqrt_s;
+  double energy_threshold;
+  double nn_b2_max;
+  double T_AA_0;
+};
 
 using variant_sigma_jet = std::variant<InterpMultilinear<3, double>, InterpMultilinear<2, double>, linear_interpolator, double>;
 using variant_envelope_pars = std::variant<linear_interpolator, envelope_func>;

@@ -18,13 +18,7 @@ public:
 
     nucleon(coords co_, const double & mom_, const bool & wounded_, const bool & is_neutron_) noexcept 
         : co(std::move(co_)), mom(mom_), wounded(wounded_), is_neutron(is_neutron_) {};
-
-    nucleon(coords co_, const double & mom_, std::vector<hotspot_info> hotspots_, std::function<double(const double&)> Tp_) noexcept 
-        : co(std::move(co_)), mom(mom_), hotspots(std::move(hotspots_)), Tp(std::move(Tp_)), wounded(false), is_neutron(false) {};
-
-    nucleon(coords co_, const double & mom_, std::vector<hotspot_info> hotspots_, std::function<double(const double&)> Tp_, const bool & wounded_, const bool & is_neutron_) noexcept 
-        : co(std::move(co_)), mom(mom_), hotspots(std::move(hotspots_)), Tp(std::move(Tp_)), wounded(wounded_), is_neutron(is_neutron_) {};
-
+        
     //nucleon& operator=(const nucleon &) = default;
     //nucleon(const nucleon &) = default;
 
@@ -34,9 +28,8 @@ public:
     }
 
     coords co{0,0,0};
-    std::vector<hotspot_info> hotspots;
-    std::function<double(const double&)> Tp;
     double mom{0};
+    std::vector<hotspot_info> hotspots;
     bool wounded{false};
     bool is_neutron{false};
 
