@@ -700,6 +700,8 @@ public:
         particle_id init1, init2, final1, final2;
         uint_fast16_t ia, ib;
         uint_fast64_t n_dijets;
+        double xa, ya, za, xb, yb, zb;
+        bool a_is_neutron, b_is_neutron;
         n_dijets = filtered_scatterings.size();
         jet_file.write(reinterpret_cast<char*>(&n_dijets), sizeof n_dijets); //total number of dijets
 
@@ -714,12 +716,22 @@ public:
             y = e_co.co.y;
             //z = e_co.co.z;
             tata = e_co.tata;
+
             init1 = e_co.dijet.dijet.init1;
             init2 = e_co.dijet.dijet.init2;
             final1 = e_co.dijet.dijet.final1;
             final2 = e_co.dijet.dijet.final2;
             ia = e_co.dijet.pro_nucleon->index;
             ib = e_co.dijet.tar_nucleon->index;
+            
+            xa = e_co.dijet.pro_nucleon->co.x;
+            ya = e_co.dijet.pro_nucleon->co.y;
+            za = e_co.dijet.pro_nucleon->co.z;
+            xb = e_co.dijet.tar_nucleon->co.x;
+            yb = e_co.dijet.tar_nucleon->co.y;
+            zb = e_co.dijet.tar_nucleon->co.z;
+            a_is_neutron = e_co.dijet.pro_nucleon->is_neutron;
+            b_is_neutron = e_co.dijet.tar_nucleon->is_neutron;
             
             // jet 1
             //energy = pt*std::cosh(y1);
@@ -736,12 +748,22 @@ public:
             jet_file.write(reinterpret_cast<char*>(&y2)     , sizeof y2);     //y2
             jet_file.write(reinterpret_cast<char*>(&phi)    , sizeof phi);    //phi
             jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+            
             jet_file.write(reinterpret_cast<char*>(&init1)  , sizeof init1);  //flavour of incoming 1
             jet_file.write(reinterpret_cast<char*>(&init2)  , sizeof init2);  //flavour of incoming 2
             jet_file.write(reinterpret_cast<char*>(&final1) , sizeof final1); //flavour of outgoing 1
             jet_file.write(reinterpret_cast<char*>(&final2) , sizeof final2); //flavour of outgoing 2
-            jet_file.write(reinterpret_cast<char*>(&ia)     , sizeof ia);     //index of mother a
-            jet_file.write(reinterpret_cast<char*>(&ib)     , sizeof ib);     //index of mother b
+
+            jet_file.write(reinterpret_cast<char*>(&ia)           , sizeof ia);     //index of mother a
+            jet_file.write(reinterpret_cast<char*>(&ib)           , sizeof ib);     //index of mother b
+            jet_file.write(reinterpret_cast<char*>(&xa)           , sizeof xa); 
+            jet_file.write(reinterpret_cast<char*>(&ya)           , sizeof ya); 
+            jet_file.write(reinterpret_cast<char*>(&za)           , sizeof za);
+            jet_file.write(reinterpret_cast<char*>(&xb)           , sizeof xb);
+            jet_file.write(reinterpret_cast<char*>(&yb)           , sizeof yb);    
+            jet_file.write(reinterpret_cast<char*>(&zb)           , sizeof zb);    
+            jet_file.write(reinterpret_cast<char*>(&a_is_neutron) , sizeof a_is_neutron);    
+            jet_file.write(reinterpret_cast<char*>(&b_is_neutron) , sizeof b_is_neutron);    
 
             // jet 2
             //energy = pt*std::cosh(y2);
