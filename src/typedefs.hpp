@@ -13,7 +13,7 @@
 #include <sstream>
 #include <tuple>
 
-typedef int_fast8_t particle_id;
+typedef int_fast16_t particle_id;
 
 struct dijet_specs
 {
@@ -183,15 +183,6 @@ struct coords {
            almostEqual(lhs.y, rhs.y)&&
            almostEqual(lhs.z, rhs.z);
   }
-};
-
-struct dijet_with_coords
-{
-    dijet_specs dijet;
-    coords co;
-    double t01;
-    double t02;
-    double tata;
 };
 
 #endif // TYPEDEFS_HPP

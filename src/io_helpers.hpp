@@ -15,6 +15,58 @@
 #include "nucleon.hpp"
 #include "typedefs.hpp"
 
+/**
+ * @brief struct for the end state filtering functions. In the constructor 
+ * calculates the formation time t0 = y/max(u,t) = (1/Q)*(E/Q) (in the collider frame) 
+ * for the jets.
+ * 
+ */
+struct dijet_with_ns
+{
+    dijet_specs dijet;
+    nucleon * pro_nucleon;
+    nucleon * tar_nucleon;
+    double t01;
+    double t02;
+    double t0; //Larger of the formation times := the formation time of the process
+    dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_, bool pt_ordering, bool t03_ordering)
+        : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
+    {
+        if (pt_ordering)
+        {
+            t0 = 1.0/dijet.kt;
+        }
+        else
+        {
+            if (t03_ordering)
+            {
+                auto y1 = dijet.y1;
+                auto y2 = dijet.y2;
+                t0 = std::cosh((y1+y2)/2)/(dijet.kt*std::sqrt(1+std::exp(-std::abs(y1-y2))));
+            }
+            else
+            {
+                auto y1 = dijet.y1;
+                auto y2 = dijet.y2;
+
+                auto max_t_u = dijet.kt*(1+std::exp(-std::abs(y1-y2)));
+                t01 = std::cosh(std::abs(y1))/max_t_u;
+                t02 = std::cosh(std::abs(y2))/max_t_u;
+                t0 = std::max(t01, t02);
+            }
+        }
+
+        // t0 = (std::cosh(y1)+std::cosh(y2))/(2*dijet.kt*(1+std::cosh(y1-y2)));
+    }
+};
+
+struct dijet_with_coords
+{
+    dijet_with_ns dijet;
+    coords co;
+    double tata;
+};
+
 class io
 {
 public:
@@ -428,7 +480,7 @@ public:
         event_file << "    {"<<std::endl;
         for (const auto & scc : filtered_scatterings)
         {
-            const auto sc = scc.dijet;
+            const auto sc = scc.dijet.dijet;
 
             event_file << "        {"<<std::endl;
             event_file << "            "<<sc.kt<<','<<std::endl;
@@ -645,21 +697,29 @@ public:
     {        
         //double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, phi;
         double pt, y1, y2, t01, t02, x, y, tata, phi;
+        particle_id init1, init2, final1, final2;
+        uint_fast16_t ia, ib;
         uint_fast64_t n_dijets;
         n_dijets = filtered_scatterings.size();
         jet_file.write(reinterpret_cast<char*>(&n_dijets), sizeof n_dijets); //total number of dijets
 
         for (auto e_co : filtered_scatterings)
         {
-            pt = e_co.dijet.kt;
-            y1 = e_co.dijet.y1;
-            y2 = e_co.dijet.y2;
-            t01 = e_co.t01;
-            t02 = e_co.t02;
+            pt = e_co.dijet.dijet.kt;
+            y1 = e_co.dijet.dijet.y1;
+            y2 = e_co.dijet.dijet.y2;
+            t01 = e_co.dijet.t01;
+            t02 = e_co.dijet.t02;
             x = e_co.co.x;
             y = e_co.co.y;
             //z = e_co.co.z;
             tata = e_co.tata;
+            init1 = e_co.dijet.dijet.init1;
+            init2 = e_co.dijet.dijet.init2;
+            final1 = e_co.dijet.dijet.final1;
+            final2 = e_co.dijet.dijet.final2;
+            ia = e_co.dijet.pro_nucleon->index;
+            ib = e_co.dijet.tar_nucleon->index;
             
             // jet 1
             //energy = pt*std::cosh(y1);
@@ -676,6 +736,12 @@ public:
             jet_file.write(reinterpret_cast<char*>(&y2)     , sizeof y2);     //y2
             jet_file.write(reinterpret_cast<char*>(&phi)    , sizeof phi);    //phi
             jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
+            jet_file.write(reinterpret_cast<char*>(&init1)  , sizeof init1);  //flavour of incoming 1
+            jet_file.write(reinterpret_cast<char*>(&init2)  , sizeof init2);  //flavour of incoming 2
+            jet_file.write(reinterpret_cast<char*>(&final1) , sizeof final1); //flavour of outgoing 1
+            jet_file.write(reinterpret_cast<char*>(&final2) , sizeof final2); //flavour of outgoing 2
+            jet_file.write(reinterpret_cast<char*>(&ia)     , sizeof ia);     //index of mother a
+            jet_file.write(reinterpret_cast<char*>(&ib)     , sizeof ib);     //index of mother b
 
             // jet 2
             //energy = pt*std::cosh(y2);

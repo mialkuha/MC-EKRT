@@ -1388,13 +1388,15 @@ public:
         {
             if (verbose) std::cout<<"Reading nuclei..."<<std::flush;
             auto [pro_coords, tar_coords] = calcs::read_nucleon_configs_from_file();
+            uint_fast16_t index = 0;
             for (auto &co : *pro_coords)
             {
-                pro.emplace_back(co, sqrt_s / 2.0);
+                pro.emplace_back(co, sqrt_s / 2.0, index++);
             }
+            index = 0;
             for (auto &co : *tar_coords)
             {
-                tar.emplace_back(co, sqrt_s / 2.0);
+                tar.emplace_back(co, sqrt_s / 2.0, index++);
             }
             if (verbose) std::cout<<"Done!"<<std::endl;
         }

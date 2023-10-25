@@ -411,7 +411,7 @@ auto mcaa::filter_end_state
 
         if (this->calculate_tata)
         {
-            nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+            nucleon dummy{coords{cand_x, cand_y, cand_z}, 0, 0};
             tata = calcs::calculate_sum_tpp(dummy, pro, this->Tpp) * calcs::calculate_sum_tpp(dummy, tar, this->Tpp);
         }
 
@@ -421,7 +421,7 @@ auto mcaa::filter_end_state
             x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
         }
 
-        filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, cand.t01, cand.t02, tata});
+        filtered_scatterings.push_back({cand, coords{cand_x, cand_y, cand_z}, tata});
     }
 
     binary_collisions.clear();
@@ -810,7 +810,7 @@ auto mcaa::run() -> void
                         
                         for (auto e_co : filtered_scatterings)
                         {
-                            auto e = e_co.dijet;
+                            auto e = e_co.dijet.dijet;
 
                             // new_jets.emplace_back(e.kt, e.y1);
                             // new_jets.emplace_back(e.kt, e.y2);
@@ -1035,7 +1035,7 @@ auto mcaa::run() -> void
             {
                 for (auto e_co : it->second)
                 {
-                    auto e = e_co.dijet;
+                    auto e = e_co.dijet.dijet;
 
                     new_ET_y.emplace_back(e.y1, e.kt);
                     new_ET_y.emplace_back(e.y2, e.kt);

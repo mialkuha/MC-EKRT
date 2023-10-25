@@ -15,7 +15,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
 
     if (N==1)
     {
-        generated_nucleus.emplace_back(coords({xshift,0.0,0.0}), mom);
+        generated_nucleus.emplace_back(coords({xshift,0.0,0.0}), mom, 0);
         return generated_nucleus;
     }
 
@@ -61,6 +61,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         com /= static_cast<double>(generated_coords.size());
     }
 
+    int_fast16_t index = 0;
     for (auto& co : generated_coords)
     {
         if (params.shift_cms)
@@ -68,7 +69,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
             co -= com; //Shift all nucleons so that CoM is (0,0,0)
         }
         co.x += xshift;
-        generated_nucleus.emplace_back(co, mom);
+        generated_nucleus.emplace_back(co, mom, index++);
     }
 
     nucleus_generator::throw_neutrons(&generated_nucleus, (target) ? params.ZB : params.ZA, random_generator);

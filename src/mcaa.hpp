@@ -155,50 +155,6 @@ private:
 
 
     // PRIVATE STRUCTS ////////////////////////////////////////////////////////////////////////////////////////////////
-    /**
-     * @brief struct for the end state filtering functions. In the constructor 
-     * calculates the formation time t0 = y/max(u,t) = (1/Q)*(E/Q) (in the collider frame) 
-     * for the jets.
-     * 
-     */
-    struct dijet_with_ns
-    {
-        dijet_specs dijet;
-        nucleon * pro_nucleon;
-        nucleon * tar_nucleon;
-        double t01;
-        double t02;
-        double t0; //Larger of the formation times := the formation time of the process
-        dijet_with_ns(dijet_specs dijet_, nucleon * pro_nucleon_, nucleon * tar_nucleon_, bool pt_ordering, bool t03_ordering)
-            : dijet(std::move(dijet_)), pro_nucleon(pro_nucleon_), tar_nucleon(tar_nucleon_)
-        {
-            if (pt_ordering)
-            {
-                t0 = 1.0/dijet.kt;
-            }
-            else
-            {
-                if (t03_ordering)
-                {
-                    auto y1 = dijet.y1;
-                    auto y2 = dijet.y2;
-                    t0 = std::cosh((y1+y2)/2)/(dijet.kt*std::sqrt(1+std::exp(-std::abs(y1-y2))));
-                }
-                else
-                {
-                    auto y1 = dijet.y1;
-                    auto y2 = dijet.y2;
-
-                    auto max_t_u = dijet.kt*(1+std::exp(-std::abs(y1-y2)));
-                    t01 = std::cosh(std::abs(y1))/max_t_u;
-                    t02 = std::cosh(std::abs(y2))/max_t_u;
-                    t0 = std::max(t01, t02);
-                }
-            }
-
-            // t0 = (std::cosh(y1)+std::cosh(y2))/(2*dijet.kt*(1+std::cosh(y1-y2)));
-        }
-    };
 
     
     // PRIVATE METHODS ////////////////////////////////////////////////////////////////////////////////////////////////
