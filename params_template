@@ -4,7 +4,7 @@
 name example_name                # Name of the run, affects output filenames and such 
 sigmajet_filename example_sigma_jet.dat  # Filename for the spatially dependent sigma_jet grid
 centrality_filename centrality_bins.csv  # Filename for the centrality bins for the reporting
-n_events 1000                   # How many events should be simulated
+n_events 10000                   # How many events should be simulated
 b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
@@ -30,7 +30,7 @@ is_aa true                       # If the run is nucleus-nucleus
 is_pa false                      # If the run is proton-nucleus
 is_pp false                      # If the run is proton-proton 
 is_mc_glauber false              # If true, nucleon-nucleon collisions are decided like with hard spheres
-read_sigmajets_from_file true   # If the sigma_jets are precalculated
+read_sigmajets_from_file false   # If the sigma_jets are precalculated
 # QCD FLAGS
 proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model
