@@ -63,7 +63,9 @@ mcaa::mcaa
         p_is_t03_ordering
     ] = io::read_conf(initfile);
 
-    this->calculate_end_state        = p_calculate_end_state; 
+    this->hotspots                   = p_hotspots;
+    this->n_hotspots                 = p_n_hotspots;
+    this->calculate_end_state        = p_calculate_end_state;
     this->calculate_tata             = p_calculate_tata; 
     this->end_state_filtering        = p_end_state_filtering; 
     this->is_AA                      = p_is_AA; 
@@ -136,6 +138,11 @@ mcaa::mcaa
     std::cout<<"Proton width: "<<this->proton_width<<" fm"<<std::endl;
 
     this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
+
+    if (this->hotspots)
+    {
+        this->hs_dist = std::uniform_int_distribution<>(0, this->n_hotspots-1);
+    }
 
     if (almostEqual(p_hotspot_width,0.0))
     {
@@ -341,9 +348,22 @@ auto mcaa::throw_location_for_dijet
     auto dx = normal_dist(*random_generator,param);
     auto dy = normal_dist(*random_generator,param);
     auto dz = 0.0;
+    auto retx = 0.0;
+    auto rety = 0.0;
 
-    auto retx = 0.5*(dijet.pro_nucleon->co.x + dijet.tar_nucleon->co.x + M_SQRT2*dx);
-    auto rety = 0.5*(dijet.pro_nucleon->co.y + dijet.tar_nucleon->co.y + M_SQRT2*dy);
+    if (!this->hotspots)
+    {
+        retx = 0.5*(dijet.pro_nucleon->co.x + dijet.tar_nucleon->co.x + M_SQRT2*dx);
+        rety = 0.5*(dijet.pro_nucleon->co.y + dijet.tar_nucleon->co.y + M_SQRT2*dy);
+    }
+    else
+    {
+        uint_fast16_t fst = this->hs_dist(*random_generator);
+        uint_fast16_t snd = this->hs_dist(*random_generator);
+        retx = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.x + dijet.tar_nucleon->hotspots.at(snd).co.x + M_SQRT2*dx);
+        rety = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.y + dijet.tar_nucleon->hotspots.at(snd).co.y + M_SQRT2*dy);
+    }
+
 
     return std::make_tuple(retx, rety, dz);
 }
@@ -461,8 +481,9 @@ auto mcaa::filter_end_state
 
         if (this->calculate_tata)
         {
-            nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
-            tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
+            //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+            //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
+            tata = this->Tpp.calculate_TA(cand_x, cand_y, pro) * this->Tpp.calculate_TA(cand_x, cand_y, tar);
         }
 
         if (this->mom_cons)
@@ -512,12 +533,6 @@ auto mcaa::run() -> void
 
     std::vector<io::Coll> collisions_for_reporting;/////
     std::vector<io::Coll> collisions_for_reporting_midrap;/////
-    std::vector<io::Coll> collisions_for_reporting_nomc;/////
-    std::vector<io::Coll> collisions_for_reporting_midrap_nomc;/////
-    std::vector<io::Coll> collisions_for_reporting_nosat;/////
-    std::vector<io::Coll> collisions_for_reporting_midrap_nosat;/////
-    std::vector<io::Coll> collisions_for_reporting_neither;/////
-    std::vector<io::Coll> collisions_for_reporting_midrap_neither;/////
     std::mutex colls_mutex; 
     std::vector<double> kt_bins{helpers::loglinspace(kt0, 100, 16u)};
     auto kt_v_dummy = helpers::loglinspace(200, sqrt_s/2.0, 5u);

@@ -41,6 +41,8 @@ class mcaa
 public:
     // PUBLIC ATTRIBUTES //////////////////////////////////////////////////////////////////////////////////////////////
     // technical flags
+    bool hotspots{false};                  // false=protons don't have hotspots
+    uint_fast16_t n_hotspots{0};           // the number of proton hotspots
     bool calculate_end_state{true};        // false=no jets will be calculated, only collisions
     bool calculate_tata{true};             // if TA(x)TA(x) should be calculated for each dijet (takes time)
     bool end_state_filtering{true};        // false=no any filtering in the end state
@@ -60,7 +62,7 @@ public:
     bool snPDFs{false};                    // if the used nPDF should be spatially dependent or average
     bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
     bool verbose{false};                   // lots of printing all around
-    uint_fast16_t is_sat_y_dep{0};              // if the saturation criterion should be y-dependent
+    uint_fast16_t is_sat_y_dep{0};         // if the saturation criterion should be y-dependent
     bool pt_ordering{false};               // if the jets should be ordered by p_T
     bool t03_ordering{false};              // if the jets should be ordered by t03
     // simulation parameters 
@@ -89,6 +91,7 @@ public:
     double sqrt_s{5020.0};                          // (GeV) sqrt(s) for the hard process 
     double T_AA_0{0.0};                             // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
     double spatial_cutoff{0.0};                     // if calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below.
+    std::uniform_int_distribution<> hs_dist{0,0};   // distribution for choosing a random hotspot
 
 
     // PUBLIC METHODS /////////////////////////////////////////////////////////////////////////////////////////////////

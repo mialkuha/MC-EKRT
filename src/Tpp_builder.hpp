@@ -108,7 +108,6 @@ public:
             
             std::vector<double> tpps(A, 0.0);
             
-            #pragma omp parallel for
             for (uint_fast16_t i=0; i<A; i++)
             {
                 if (nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
@@ -118,7 +117,6 @@ public:
                 auto [x2, y2, z2] = nucleus.at(i).co;
                 tpps.at(i) = this->func(pow(x1-x2,2) + pow(y1-y2,2), nullptr);
             }
-            #pragma omp parallel for reduction (+:sum_tpp)
             for (uint_fast16_t i=0; i<A; i++)
             {
                 sum_tpp += tpps.at(i);
@@ -133,7 +131,6 @@ public:
             
             std::vector<double> tpps(A, 0.0);
             
-            #pragma omp parallel for
             for (uint_fast16_t i=0; i<A; i++)
             {
                 if (nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
@@ -154,13 +151,64 @@ public:
 
                 tpps.at(i) = this->func(0.0, &b_squareds);
             }
-            #pragma omp parallel for reduction (+:sum_tpp)
             for (uint_fast16_t i=0; i<A; i++)
             {
                 sum_tpp += tpps.at(i);
             }
         }
         return sum_tpp;
+    }
+
+    auto calculate_TA
+    (
+        const double &x,
+        const double &y, 
+        const std::vector<nucleon> &nucleus
+    ) noexcept -> double
+    {
+        double sum_tp=0.0;
+        if (!this->hotspots)
+        {
+            uint_fast16_t A = static_cast<uint_fast16_t>(nucleus.size());
+            
+            std::vector<double> tps(A, 0.0);
+            
+            for (uint_fast16_t i=0; i<A; i++)
+            {
+                auto [x2, y2, z2] = nucleus.at(i).co;
+                // T^i_p(x) = 2*T_pp(2*(x-x_i)^2)
+                tps.at(i) = 2.0 * this->func(2.0*(pow(x-x2,2) + pow(y-y2,2)), nullptr);
+            }
+            for (uint_fast16_t i=0; i<A; i++)
+            {
+                sum_tp += tps.at(i);
+            }
+        }
+        else
+        {
+            uint_fast16_t A = static_cast<uint_fast16_t>(nucleus.size());
+            uint_fast16_t N_hs = static_cast<uint_fast16_t>(nucleus.at(0).hotspots.size());
+            
+            std::vector<double> tps(A, 0.0);
+            
+            for (uint_fast16_t i=0; i<A; i++)
+            {
+                std::vector<double> b_squareds(N_hs, 0.0);
+                uint_fast16_t ind = 0;
+                for (auto hs : nucleus.at(i).hotspots)
+                {
+                    auto [x2, y2, z2] = hs.co;
+                    b_squareds.at(ind++) = 2.0*(pow(x-x2,2) + pow(y-y2,2));
+                }
+
+                tps.at(i) = 2.0 * this->func(0.0, &b_squareds);
+            }
+            for (uint_fast16_t i=0; i<A; i++)
+            {
+                sum_tp += tps.at(i);
+            }
+        }
+        return sum_tp;
     }
 
     auto calculate_T_AA_0

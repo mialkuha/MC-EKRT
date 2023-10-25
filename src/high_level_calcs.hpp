@@ -1034,12 +1034,11 @@ public:
                         auto env_func_ = std::get<envelope_func>(env_func);
 
                         std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp->at(new_pair));
-                        uint_fast8_t nof_dijets = dist(*eng);
+                        uint_fast16_t nof_dijets = dist(*eng);
                         new_pair.dijets.reserve(nof_dijets);
 
                         const double sqrt_s = new_pair.getcr_sqrt_s();
-
-                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
                             new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
