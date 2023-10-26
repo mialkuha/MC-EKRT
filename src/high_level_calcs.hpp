@@ -1262,7 +1262,7 @@ public:
 
                                 auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
                                 auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
-                                nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0};
+                                nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0, 0};
                                 auto dijet_tppa = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, pro);
                                 auto dijet_tppb = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, tar);
 
