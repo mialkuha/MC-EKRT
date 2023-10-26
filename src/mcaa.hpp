@@ -26,7 +26,6 @@
 #include "LHAPDF/GridPDF.h"
 #pragma GCC diagnostic pop
 
-#include "ars.hpp"
 #include "generic_helpers.hpp"
 #include "high_level_calcs.hpp"
 #include "histo.hpp"
@@ -82,8 +81,6 @@ public:
     double mand_s{5020*5020};                       // (GeV^2) mandelstam s for the hard process 
     double proton_width{0.573};                     // (fm) proton width
     double proton_width_2{0.573*0.573};             // (fm^2) proton width squared
-    double nuclear_RA{0.573};                       // (fm) nucleus RA for the 2pF-distribution
-    double nuclear_d{0.573};                        // (fm) nucleus d for the 2pF-distribution
     double rad_max{30.0};                           // (fm) nucleons' maximum distance from the center of the nucleus
     double rad_min{0.0};                            // (fm) nucleons' minimum distance from the center of the nucleus
     double sigma_inel{70.0};                        // (mb) inelastic cross section of the NN event
@@ -151,7 +148,6 @@ private:
     // PRIVATE ATTRIBUTES /////////////////////////////////////////////////////////////////////////////////////////////
     std::shared_ptr<LHAPDF::GridPDF> p_pdf{};     // pointer to the LHAPDF PDF-object of the proton PDF
     Tpp_builder Tpp{};                            // nucleon overlap function
-    std::function<double(const double&)> rad_pdf{nullptr}; // radial nucleon density function of the nucleus
     double power_law{2.0};                        // parameter for the envelope function: sigma_jet < A*pT^(-power_law)
     pqcd::diff_sigma::params diff_params;         // the struct of pQCD event parameters
     pqcd::sigma_jet_params jet_params;            // the struct of sigma_jet parameters

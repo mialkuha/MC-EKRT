@@ -215,7 +215,6 @@ public:
     (
         const nucleus_generator::nucleus_params &nuc_params,
         const double &rel_tolerance,
-        std::shared_ptr<ars> radial_sampler,
         const bool verbose
     ) -> double
     {
@@ -246,8 +245,7 @@ public:
                             false,
                             0.0, 
                             0.0, 
-                            eng, 
-                            radial_sampler
+                            eng
                         );
 
                     for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
@@ -273,7 +271,6 @@ public:
     (
         const nucleus_generator::nucleus_params &nuc_params,
         const double &rel_tolerance,
-        std::shared_ptr<ars> radial_sampler,
         const bool verbose
     ) -> std::tuple<std::array<double, 25>, std::array<double, 25> >
     {
@@ -311,8 +308,7 @@ public:
                             false,
                             0.0, 
                             0.0, 
-                            eng, 
-                            radial_sampler
+                            eng
                         );
 
                     for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)

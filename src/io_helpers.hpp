@@ -760,7 +760,15 @@ public:
          correct_overlap_bias,
          nn_min_dist,
          nuclear_RA,
-         nuclear_d,
+         nuclear_RB,
+         nuclear_dA,
+         nuclear_dB,
+         nuclear_beta2A,
+         nuclear_beta2B,
+         nuclear_beta3A,
+         nuclear_beta3B,
+         nuclear_beta4A,
+         nuclear_beta4B,
          rad_max,
          rad_min,
          shift_cms,
@@ -819,7 +827,15 @@ public:
             {"correct_overlap_bias", correct_overlap_bias},
             {"nn_min_dist", nn_min_dist},
             {"nuclear_RA", nuclear_RA},
-            {"nuclear_d", nuclear_d},
+            {"nuclear_RB", nuclear_RB},
+            {"nuclear_dA", nuclear_dA},
+            {"nuclear_dB", nuclear_dB},
+            {"nuclear_beta2A", nuclear_beta2A},
+            {"nuclear_beta2B", nuclear_beta2B},
+            {"nuclear_beta3A", nuclear_beta3A},
+            {"nuclear_beta3B", nuclear_beta3B},
+            {"nuclear_beta4A", nuclear_beta4A},
+            {"nuclear_beta4B", nuclear_beta4B},
             {"rad_max", rad_max},
             {"rad_min", rad_min},
             {"shift_cms", shift_cms},
@@ -868,8 +884,16 @@ public:
         double M_factor{2.5};
         bool correct_overlap_bias{true};
         double nn_min_dist{0.4};
-        double nuclear_RA{6.62435};
-        double nuclear_d{0.5498};
+        double nuclear_RA(6.62435);
+        double nuclear_RB(6.62435); 
+        double nuclear_dA(0.5498);  
+        double nuclear_dB(0.5498);  
+        double nuclear_beta2A(0.0); 
+        double nuclear_beta2B(0.0); 
+        double nuclear_beta3A(0.0); 
+        double nuclear_beta3B(0.0); 
+        double nuclear_beta4A(0.0); 
+        double nuclear_beta4B(0.0); 
         double rad_max{30.0};
         double rad_min{0.0};
         bool shift_cms{true};
@@ -988,8 +1012,32 @@ public:
                     case io::Param::nuclear_RA:
                         line_stream >> nuclear_RA;
                         break;
-                    case io::Param::nuclear_d:
-                        line_stream >> nuclear_d;
+                    case io::Param::nuclear_RB:
+                        line_stream >> nuclear_RB;
+                        break;
+                    case io::Param::nuclear_dA:
+                        line_stream >> nuclear_dA;
+                        break;
+                    case io::Param::nuclear_dB:
+                        line_stream >> nuclear_dB;
+                        break;
+                    case io::Param::nuclear_beta2A:
+                        line_stream >> nuclear_beta2A;
+                        break;
+                    case io::Param::nuclear_beta2B:
+                        line_stream >> nuclear_beta2B;
+                        break;
+                    case io::Param::nuclear_beta3A:
+                        line_stream >> nuclear_beta3A;
+                        break;
+                    case io::Param::nuclear_beta3B:
+                        line_stream >> nuclear_beta3B;
+                        break;
+                    case io::Param::nuclear_beta4A:
+                        line_stream >> nuclear_beta4A;
+                        break;
+                    case io::Param::nuclear_beta4B:
+                        line_stream >> nuclear_beta4B;
                         break;
                     case io::Param::rad_max:
                         line_stream >> rad_max;
@@ -1111,7 +1159,15 @@ public:
                     correct_overlap_bias,
                     nn_min_dist,
                     nuclear_RA,
-                    nuclear_d,
+                    nuclear_RB,
+                    nuclear_dA,
+                    nuclear_dB,
+                    nuclear_beta2A,
+                    nuclear_beta2B,
+                    nuclear_beta3A,
+                    nuclear_beta3B,
+                    nuclear_beta4A,
+                    nuclear_beta4B,
                     rad_max,
                     rad_min,
                     shift_cms,
