@@ -62,9 +62,23 @@ struct dijet_with_ns
 
 struct dijet_with_coords
 {
-    dijet_with_ns dijet;
+    dijet_specs dijet;
     coords co;
     double tata;
+    uint_fast16_t ia;
+    uint_fast16_t ib;
+    double xa;
+    double ya;
+    double za;
+    double xb;
+    double yb;
+    double zb;
+    bool a_is_neutron;
+    bool b_is_neutron;
+    dijet_with_coords(const dijet_specs &dijet_, const coords &co_, const double &tata_, const nucleon *const pro_nucleon_, const nucleon *const tar_nucleon_)
+        : dijet(dijet_), co(co_), tata(tata_), ia(pro_nucleon_->index), ib(tar_nucleon_->index), 
+        xa(pro_nucleon_->co.x), ya(pro_nucleon_->co.y), za(pro_nucleon_->co.z), xb(tar_nucleon_->co.x), yb(tar_nucleon_->co.y), zb(tar_nucleon_->co.z),
+        a_is_neutron(pro_nucleon_->is_neutron), b_is_neutron(tar_nucleon_->is_neutron) { }
 };
 
 class io
@@ -480,7 +494,7 @@ public:
         event_file << "    {"<<std::endl;
         for (const auto & scc : filtered_scatterings)
         {
-            const auto sc = scc.dijet.dijet;
+            const auto sc = scc.dijet;
 
             event_file << "        {"<<std::endl;
             event_file << "            "<<sc.kt<<','<<std::endl;
@@ -707,31 +721,32 @@ public:
 
         for (auto e_co : filtered_scatterings)
         {
-            pt = e_co.dijet.dijet.kt;
-            y1 = e_co.dijet.dijet.y1;
-            y2 = e_co.dijet.dijet.y2;
-            t01 = e_co.dijet.t01;
-            t02 = e_co.dijet.t02;
+            pt = e_co.dijet.kt;
+            y1 = e_co.dijet.y1;
+            y2 = e_co.dijet.y2;
+            t01 = 1/pt;
+            t02 = 1/pt;
             x = e_co.co.x;
             y = e_co.co.y;
             //z = e_co.co.z;
             tata = e_co.tata;
 
-            init1 = e_co.dijet.dijet.init1;
-            init2 = e_co.dijet.dijet.init2;
-            final1 = e_co.dijet.dijet.final1;
-            final2 = e_co.dijet.dijet.final2;
-            ia = e_co.dijet.pro_nucleon->index;
-            ib = e_co.dijet.tar_nucleon->index;
-            
-            xa = e_co.dijet.pro_nucleon->co.x;
-            ya = e_co.dijet.pro_nucleon->co.y;
-            za = e_co.dijet.pro_nucleon->co.z;
-            xb = e_co.dijet.tar_nucleon->co.x;
-            yb = e_co.dijet.tar_nucleon->co.y;
-            zb = e_co.dijet.tar_nucleon->co.z;
-            a_is_neutron = e_co.dijet.pro_nucleon->is_neutron;
-            b_is_neutron = e_co.dijet.tar_nucleon->is_neutron;
+            init1 = e_co.dijet.init1;
+            init2 = e_co.dijet.init2;
+            final1 = e_co.dijet.final1;
+            final2 = e_co.dijet.final2;
+            ia = e_co.ia;
+            ib = e_co.ib;
+
+            xa = e_co.xa;
+            ya = e_co.ya;
+            za = e_co.za;
+            xb = e_co.xb;
+            yb = e_co.yb;
+            zb = e_co.zb;
+            a_is_neutron = e_co.a_is_neutron;
+            b_is_neutron = e_co.b_is_neutron;
+            std::cout<<ia<<' '<<ib<<' '<<xa<<' '<<ya<<' '<<za<<' '<<xb<<' '<<yb<<' '<<zb<<' '<<a_is_neutron<<' '<<b_is_neutron<<std::endl;
             
             // jet 1
             //energy = pt*std::cosh(y1);

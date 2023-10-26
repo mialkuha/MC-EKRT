@@ -421,7 +421,7 @@ auto mcaa::filter_end_state
             x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
         }
 
-        filtered_scatterings.push_back({cand, coords{cand_x, cand_y, cand_z}, tata});
+        filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, tata, cand.pro_nucleon, cand.tar_nucleon});
     }
 
     binary_collisions.clear();
@@ -810,7 +810,7 @@ auto mcaa::run() -> void
                         
                         for (auto e_co : filtered_scatterings)
                         {
-                            auto e = e_co.dijet.dijet;
+                            auto e = e_co.dijet;
 
                             // new_jets.emplace_back(e.kt, e.y1);
                             // new_jets.emplace_back(e.kt, e.y2);
@@ -1035,7 +1035,7 @@ auto mcaa::run() -> void
             {
                 for (auto e_co : it->second)
                 {
-                    auto e = e_co.dijet.dijet;
+                    auto e = e_co.dijet;
 
                     new_ET_y.emplace_back(e.y1, e.kt);
                     new_ET_y.emplace_back(e.y2, e.kt);
