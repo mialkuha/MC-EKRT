@@ -15,10 +15,10 @@ struct dijet
     double y2;
     double phi;
     double tata;
-    uint_fast16_t init1;
-    uint_fast16_t init2;
-    uint_fast16_t final1;
-    uint_fast16_t final2;
+    int_fast16_t init1;
+    int_fast16_t init2;
+    int_fast16_t final1;
+    int_fast16_t final2;
     uint_fast16_t ia;
     uint_fast16_t ib;
     double xa;
@@ -31,8 +31,8 @@ struct dijet
     bool b_is_neutron;
     dijet(const double &t01_, const double &t02_, const double &x_, const double &y_,
           const double &pt_, const double &y1_, const double &y2_, const double &phi_,
-          const double &tata_, const uint_fast16_t &init1_, const uint_fast16_t &init2_,
-          const uint_fast16_t &final1_, const uint_fast16_t &final2_, const uint_fast16_t &ia_,
+          const double &tata_, const int_fast16_t &init1_, const int_fast16_t &init2_,
+          const int_fast16_t &final1_, const int_fast16_t &final2_, const uint_fast16_t &ia_,
           const uint_fast16_t &ib_, const double &xa_, const double &ya_, const double &za_,
           const double &xb_, const double &yb_, const double &zb_, const bool &a_is_neutron_,
           const double &b_is_neutron_)
@@ -55,10 +55,11 @@ int main()
 
     uint_fast64_t n_events, n_jets;
     double t01, t02, x, y, pt, y1, y2, phi, tata;
-    uint_fast16_t init1, init2, final1, final2, ia, ib;
+    int_fast16_t init1, init2, final1, final2;
+    uint_fast16_t ia, ib;
     double xa, ya, za, xb, yb, zb;
     bool a_is_neutron, b_is_neutron;
-    std::vector<std::vector<dijet>> events_jets;
+    std::vector<std::vector<dijet> > events_jets;
 
     if (sizeof n_jets != 8 || sizeof t01 != 8)
     {
@@ -72,8 +73,7 @@ int main()
               << filename << " ..." << std::endl;
     events_jets.reserve(n_events);
 
-    uint_fast16_t n_bins = 20;
-    double largest_tata = 0;
+    uint_fast16_t n_bins = 50;
 
     uint_fast64_t n_dijet_total = 0;
     for (uint_fast64_t i = 0; i < n_events; i++)
@@ -113,63 +113,57 @@ int main()
 
             jets.emplace_back(t01, t02, x, y, pt, y1, y2, phi, tata, init1, init2,
                               final1, final2, ia, ib, xa, ya, za, xb, yb, zb, a_is_neutron, b_is_neutron);
-            // std::cout<<t01<<' '<<t02<<' '<<x<<' '<<y<<' '<<pt<<' '<<y1<<' '<<y2<<' '<<phi<<' '<<tata<<std::endl;
-            if (largest_tata < tata)
-            {
-                largest_tata = tata;
-            }
+
         }
         events_jets.emplace_back(std::move(jets));
     }
     jet_file.close();
 
     std::cout << "Done! Read " << events_jets.size() << " events totaling "
-              << n_dijet_total << " dijets, the largest tata was "
-              << largest_tata << std::endl;
+              << n_dijet_total << " dijets" << std::endl;
 
-    double delta = largest_tata * 1.01 / n_bins;
-    std::ofstream smallest_pts;
-    smallest_pts.open("smallest_pts_0_5.csv");
-    for (uint i = 0; i < n_bins; i++)
+    double delta = (0 + 11.0)/n_bins;
+    for (int i = 0; i < n_bins+1; i++)
     {
-        smallest_pts << (i + 1) * delta << ',';
+        std::cout << i*delta << ',';
     }
-    smallest_pts << std::endl;
+    std::cout << std::endl;
 
-    std::vector<std::vector<double>> pts_in_event(
-        n_bins,
-        std::vector<double>());
+    std::vector<double> tata_in_bin(n_bins, 0.0);
+    std::vector<int> jets_in_bin(n_bins, 0);
+
+    double tata_av = 0.0;
 
     for (auto event : events_jets)
     {
         for (auto dijet : event)
         {
-            // std::cout << dijet.tata << ' ';
-            for (uint i = 0; i < n_bins; i++)
+            bool found =false;
+            double x = dijet.x;
+            double y = dijet.y;
+            double r = std::sqrt(x*x + y*y);
+            for (int i = 0; i < n_bins-1; i++)
             {
-                if ((i + 1) * delta > dijet.tata)
+                if ( (i+1)*delta > r)
                 {
-                    // std::cout << (i+1)*delta << ' ' << ;
-                    pts_in_event[i].push_back(dijet.pt);
+                    found = true;
+                    tata_in_bin[i] += dijet.tata;
+                    jets_in_bin[i]++;
                     break;
                 }
             }
-        }
-
-        for (uint i = 0; i < n_bins; i++)
-        {
-            if (pts_in_event[i].size() != 0)
+            
+            if (!found)
             {
-                std::sort(pts_in_event[i].begin(), pts_in_event[i].end());
-                smallest_pts << pts_in_event[i][0] << ',';
-                pts_in_event[i].clear();
-            }
-            else
-            {
-                smallest_pts << "-1" << ',';
+                tata_in_bin[n_bins-1] += dijet.tata;
+                jets_in_bin[n_bins-1]++;
             }
         }
-        smallest_pts << std::endl;
     }
-    smallest_pts.close();
+        
+    for (int i = 0; i < n_bins; i++)
+    {
+        std::cout << tata_in_bin[i] / static_cast<double>(jets_in_bin[i]* /*events_jets.size()**/delta/**((i+0.5)*delta)*/) << ',';
+    }
+    std::cout << std::endl;
 }

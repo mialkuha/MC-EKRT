@@ -19,6 +19,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}")
 
+set( CMAKE_VERBOSE_MAKEFILE on )
+
 add_subdirectory(src)
 
 add_executable(mcaa main.cpp)
@@ -29,6 +31,9 @@ target_compile_options(mcaa PUBLIC
 	-Wall
 	-fconcepts #COMMENT THIS IF YOU USE CLANG
 	-fopenmp
+	#-fsanitize=undefined
+	#-fsanitize=address
+	-O2
 )
 
 target_include_directories(mcaa PUBLIC 
@@ -48,6 +53,8 @@ target_link_libraries(mcaa PUBLIC
 	GSL::gslcblas
 	-fopenmp
 	-lpthread
+	#-fsanitize=undefined
+	#-fsanitize=address
 	-lm
 	-lLHAPDF
 	Parts

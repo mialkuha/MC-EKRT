@@ -1,4 +1,4 @@
-//Copyright (c) 2021 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #include "nn_coll.hpp"
 
@@ -75,4 +75,19 @@ void nn_coll::reduce_energy_and_push_end_states_to_collider_frame() noexcept
         s.y1 += rap; // y1_LAB = y1_CMS + rap
         s.y2 += rap;
     }
+}
+
+auto nn_coll::calculate_hs_bsquareds()
+const noexcept -> std::vector<double>
+{
+    std::vector<double> bsquareds{};
+    for (auto pro : this->projectile->hotspots)
+    {
+        for (auto tar : this->target->hotspots)
+        {
+            bsquareds.push_back(std::pow(pro.co.x - tar.co.x, 2) + std::pow(pro.co.y - tar.co.y, 2));
+        }
+    }
+
+    return bsquareds;
 }

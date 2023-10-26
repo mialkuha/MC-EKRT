@@ -1,15 +1,22 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #include "nucleus_generator.hpp"
 
 std::uniform_real_distribution<double> nucleus_generator::unif_dist = std::uniform_real_distribution<double>(0.0,1.0);
+std::normal_distribution<double> nucleus_generator::normal_dist = std::normal_distribution<double>(0,0);
 
 std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & params, const bool &target, const double & mom, 
-        const double & xshift, std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler)
+        const double & xshift, std::shared_ptr<std::mt19937> random_generator)
 {
     std::vector<nucleon> generated_nucleus;
     std::vector<coords> generated_coords;
     auto N = (target) ? params.B : params.A;
+    auto Z = (target) ? params.ZB : params.ZA;
+    auto R0 = (target) ? params.RB : params.RA;
+    auto d = (target) ? params.dB : params.dA;
+    auto beta2 = (target) ? params.beta2B : params.beta2A;
+    auto beta3 = (target) ? params.beta3B : params.beta3A;
+    auto beta4 = (target) ? params.beta4B : params.beta4A;
     generated_nucleus.reserve(N);
     generated_coords.reserve(N);
 
@@ -27,7 +34,7 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         {
             try
             {
-                new_coords = nucleus_generator::throw_nucleon_coords(random_generator, radial_sampler);
+                new_coords = nucleus_generator::throw_nucleon_coords(random_generator, R0, d, beta2, beta3, beta4);
                 coords_do_fit = nucleus_generator::coords_fit(new_coords, generated_coords, params.min_distance);
                 //std::cout<<"coords "<<new_coords.x<<' '<<new_coords.y<<' '<<new_coords.z<<" fit? "<<coords_do_fit<<std::endl;
                 if (params.correct_overlap_bias && !coords_do_fit)
@@ -72,45 +79,56 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
         generated_nucleus.emplace_back(co, mom, index++);
     }
 
-    nucleus_generator::throw_neutrons(&generated_nucleus, (target) ? params.ZB : params.ZA, random_generator);
+    nucleus_generator::throw_neutrons(&generated_nucleus, Z, random_generator);
+    if (params.hotspots)
+    {
+        nucleus_generator::throw_hotspots(&generated_nucleus, params.n_hotspots, params.hotspot_distr_width, random_generator);
+    }
 
     return generated_nucleus;
 }
 
-coords nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, std::shared_ptr<ars> radial_sampler) noexcept
+coords nucleus_generator::throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, const double & R0, const double & d, const double & beta2, const double & beta3, const double & beta4) noexcept
 {
-    double new_r=-1, new_phi, new_cos_theta, new_sin_theta, rand1,rand2;
-
+    double ws = 0.0, rand4 = 0.0, x = 0.0, y = 0.0, z = 0.0;
     do
     {
-        try
+        double rand1 = nucleus_generator::unif_dist(*random_generator);
+        double rand2 = nucleus_generator::unif_dist(*random_generator);
+        double rand3 = nucleus_generator::unif_dist(*random_generator);
+        rand4 = nucleus_generator::unif_dist(*random_generator);
+
+        x = (3.0 * R0)*rand1 - (3.0 * R0 / 2.0);
+        y = (3.0 * R0)*rand2 - (3.0 * R0 / 2.0);
+        z = (3.0 * R0)*rand3 - (3.0 * R0 / 2.0);
+
+        double r, cstheta, cstheta2, R, Rmax;
+
+        r = std::sqrt(x*x + y*y + z*z);
+
+        if(r > 0)
         {
-            new_r = radial_sampler->throw_one(*random_generator);
+            cstheta2 = z*z / (r*r);
+            cstheta = z / r;
         }
-        catch(const std::exception& e)
-        {
-            std::cout<<std::endl<<"Threw: "<<e.what()<<std::endl;
-            new_r=-1;
+        else
+        {		
+            cstheta2 = 0.0;
+            cstheta = 0.0;
         }
-    } while (new_r < 0);
-    
-    rand1 = nucleus_generator::unif_dist(*random_generator);
-    rand2 = nucleus_generator::unif_dist(*random_generator);
-    new_phi = 2*M_PI*rand1;
-    new_cos_theta = 2*rand2-1.;
-    new_sin_theta = sqrt(1 - pow(new_cos_theta,2));
+        R = R0*(1 + beta2*1.0/4.0*std::sqrt(5.0/M_PI)*(3.0*cstheta2 - 1.0)
+                + beta3*0.25*std::sqrt(7.0/M_PI)*(5.0*cstheta2*cstheta - 3.0*cstheta)
+                + beta4*3.0/16.0*std::sqrt(1.0/M_PI)*(35.0*cstheta2*cstheta2 - 30.0*cstheta2 + 3.0));
 
-    //coords ret = coords({new_r * new_sin_theta * cos(new_phi),
-    //                     new_r * new_sin_theta * sin(new_phi),
-    //                     new_r * new_cos_theta});
+        Rmax = R0*(1 + std::abs(beta2)*1.0/2.0*std::sqrt(5.0/M_PI) 
+                    + std::abs(beta3)*0.5*std::sqrt(7.0/M_PI) 
+                    + std::abs(beta4)*3.0/2.0*std::sqrt(1.0/M_PI));
 
-    //std::cout<<"threw: "<<ret.x<<' '<<ret.y<<' '<<ret.z<<' '<<std::endl;
-    //std::cout<<"threw: "<<new_r<<' '<<rand1<<' '<<rand2<<' '<<std::endl;
+        ws = 1.0/(1.0+std::exp((r-R)/d))*(1.0+std::exp((-Rmax)/d));
 
-    //return std::move(ret);
-    return coords({new_r * new_sin_theta * cos(new_phi),
-                   new_r * new_sin_theta * sin(new_phi),
-                   new_r * new_cos_theta});
+    } while (rand4 > ws);
+
+    return coords({x, y, z});
 }
 
 void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, const uint_fast16_t & Z, std::shared_ptr<std::mt19937> random_generator) noexcept
@@ -129,7 +147,22 @@ void nucleus_generator::throw_neutrons(std::vector<nucleon> *const nucleus, cons
             nucleus->at(i).is_neutron = true;
         }
     }
+}
 
+void nucleus_generator::throw_hotspots(std::vector<nucleon> *const nucleus, const uint_fast16_t & n_hotspots, const double & hotspot_distr_width, std::shared_ptr<std::mt19937> random_generator) noexcept
+{
+    for (uint_fast16_t i=0; i<nucleus->size(); ++i)
+    {
+        nucleus->at(i).hotspots = std::vector<hotspot_info>();
+        for (uint_fast16_t j=0; j<n_hotspots; ++j)
+        {
+            auto param = std::normal_distribution<double>::param_type{0., hotspot_distr_width};
+            coords ds = {normal_dist(*random_generator,param),normal_dist(*random_generator,param), 0.0};
+            auto hs_coords = nucleus->at(i).co + ds;
+
+            nucleus->at(i).hotspots.push_back(hotspot_info{hs_coords});
+        }
+    }
 }
 
 bool nucleus_generator::coords_fit(const coords& co, const std::vector<coords>& other_coords, const double& min_distance) noexcept

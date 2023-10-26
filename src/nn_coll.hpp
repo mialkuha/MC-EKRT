@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef NN_COLL_HPP
 #define NN_COLL_HPP
@@ -6,6 +6,7 @@
 #include <cmath>
 #include <functional>
 #include <random>
+#include <vector>
 
 #include "nucleon.hpp"
 #include "typedefs.hpp"
@@ -34,6 +35,8 @@ public:
     void reduce_energy_and_push_end_states_to_collider_frame() noexcept;
     double randomize_bsquared_for_this(const double & min, const double & max, std::mt19937 random_generator_) noexcept;
         //bgen = TMath::Sqrt((fBmax*fBmax-fBmin*fBmin)*gRandom->Rndm()+fBmin*fBmin);
+        
+    auto calculate_hs_bsquareds() const noexcept -> std::vector<double>;
 
     static double randomize_bsquared(const double & min, const double & max, std::mt19937 random_generator_) noexcept;
 

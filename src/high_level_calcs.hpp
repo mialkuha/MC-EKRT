@@ -31,7 +31,26 @@
 #include "linterp.h"
 #include "nucleus_generator.hpp"
 #include "pqcd.hpp"
+#include "Tpp_builder.hpp"
 #include "typedefs.hpp"
+
+
+struct AA_collision_params
+{
+  bool mc_glauber_mode;
+  bool pp_scattering;
+  bool pA_scattering;
+  bool spatial_pdfs;
+  bool calculate_end_state;
+  bool use_nn_b2_max;
+  double sigma_inel;
+  Tpp_builder *const Tpp;
+  B2_normalization_mode normalize_to;
+  double sqrt_s;
+  double energy_threshold;
+  double nn_b2_max;
+  double T_AA_0;
+};
 
 using variant_sigma_jet = std::variant<InterpMultilinear<3, double>, InterpMultilinear<2, double>, linear_interpolator, double>;
 using variant_envelope_pars = std::variant<linear_interpolator, envelope_func>;
@@ -614,13 +633,13 @@ public:
                         sigma_jet = std::get<double>(sigma_jets);
                         auto env_func_ = std::get<envelope_func>(env_func);
 
-                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
-                        uint_fast8_t nof_dijets = dist(*eng);
-                        newpair.dijets.reserve(nof_dijets);
+                        std::poisson_distribution<uint_fast16_t> dist(sigma_jet*AA_params.Tpp->at(newpair));
+                        uint_fast16_t nof_dijets = dist(*eng);
+                        newpair.dijets.reserve(nof_dijets);                        
 
                         const double sqrt_s = newpair.getcr_sqrt_s();
 
-                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
                             newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
@@ -733,7 +752,7 @@ public:
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
-                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp->at(newpair));
                         uint_fast8_t nof_dijets = dist(*eng);
                         newpair.dijets.reserve(nof_dijets);
 
@@ -810,14 +829,28 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
-        const bool &verbose
+        const bool &verbose,
+        const double &M_factor,
+        const double &proton_width,
+        const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
 
         uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
 
-        double tAA_0 = (AA_params.pA_scattering||AA_params.pp_scattering)? AA_params.Tpp(0.) : AA_params.T_AA_0;//29.0851;//34.0125;//29.9965;//29.5494;//30.5;//calculate_tAB({0,0,0}, pro, pro, AA_params.Tpp);
-        double tBB_0 = (AA_params.pp_scattering)? AA_params.Tpp(0.) : AA_params.T_AA_0;//29.0851;//34.0125;//29.9965;//29.5494;//30.5;//calculate_tAB({0,0,0}, tar, tar, AA_params.Tpp);
+        if (AA_params.pp_scattering)
+        {
+            std::cout<<"SPATIAL NPDFS REQUESTED IN PROTON-PROTON COLLISION!!!"<<std::endl;
+            exit(1);
+        }
+        else if (AA_params.pA_scattering)
+        {
+            std::cout<<"SPATIAL NPDFS REQUESTED IN PROTON-NUCLEUS COLLISION!!! (NOT IMPLEMENTED)"<<std::endl;
+            exit(1);
+        }
+
+        double tAA_0 = AA_params.T_AA_0;
+        double tBB_0 = AA_params.T_AA_0;
         
         if (verbose)
         {
@@ -837,12 +870,12 @@ public:
 
         for (auto &A : pro)
         {
-            pro_spatial.push_back(std::make_pair(&A, calculate_sum_tpp(A, pro, AA_params.Tpp)));
+            pro_spatial.push_back(std::make_pair(&A, AA_params.Tpp->calculate_sum_tpp(A, pro)));
         }
 
         for (auto &B : tar)
         {
-            tar_spatial.push_back(std::make_pair(&B, calculate_sum_tpp(B, tar, AA_params.Tpp)));
+            tar_spatial.push_back(std::make_pair(&B, AA_params.Tpp->calculate_sum_tpp(B, tar)));
         }
 
         for (auto & [A, sum_A] : pro_spatial)
@@ -878,13 +911,13 @@ public:
                 continue;
             }
 
-            nn_coll newpair(A, B, 2 * sqrt(A->mom * B->mom));
+            nn_coll new_pair(A, B, 2 * sqrt(A->mom * B->mom));
             
             if (AA_params.mc_glauber_mode)
             {
                 // "ball" diameter = distance at which two nucleons interact
                 const double d2 = AA_params.sigma_inel/(M_PI*10); // in fm^2
-                const double dij2 = newpair.getcr_bsquared();
+                const double dij2 = new_pair.getcr_bsquared();
                 
                 if (dij2 > d2) //no collision
                 {
@@ -1000,15 +1033,14 @@ public:
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
-                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
-                        uint_fast8_t nof_dijets = dist(*eng);
-                        newpair.dijets.reserve(nof_dijets);
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp->at(new_pair));
+                        uint_fast16_t nof_dijets = dist(*eng);
+                        new_pair.dijets.reserve(nof_dijets);
 
-                        const double sqrt_s = newpair.getcr_sqrt_s();
-
-                        for (uint_fast8_t i=0; i < nof_dijets; i++)
+                        const double sqrt_s = new_pair.getcr_sqrt_s();
+                        for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
-                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
                                 kt0,
@@ -1047,11 +1079,11 @@ public:
                     // }
                     // else
                     {
-                        newpair.push_end_states_to_collider_frame();
+                        new_pair.push_end_states_to_collider_frame();
                     }
                 }
-                newpair.wound();
-                binary_collisions.push_back(std::move(newpair));
+                new_pair.wound();
+                binary_collisions.push_back(std::move(new_pair));
             }
             else
             {
@@ -1194,15 +1226,15 @@ public:
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
-                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp(newpair.getcr_bsquared()));
+                        std::poisson_distribution<uint_fast8_t> dist(sigma_jet*AA_params.Tpp->at(new_pair));
                         uint_fast8_t nof_dijets = dist(*eng);
-                        newpair.dijets.reserve(nof_dijets);
+                        new_pair.dijets.reserve(nof_dijets);
 
-                        const double sqrt_s = newpair.getcr_sqrt_s();
+                        const double sqrt_s = new_pair.getcr_sqrt_s();
 
                         for (uint_fast8_t i=0; i < nof_dijets; i++)
                         {
-                            newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            auto new_dijet = pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
                                 kt0,
@@ -1215,7 +1247,42 @@ public:
                                 env_func_,
                                 B->is_neutron,
                                 A->is_neutron
-                            ));
+                            );
+
+
+                            if (is_sat_y_dep == 6)
+                            {
+                                auto kt2 = std::pow(new_dijet.kt,2);
+                                auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
+
+                                auto param = std::normal_distribution<double>::param_type{0., proton_width};
+                                std::normal_distribution<double> normal_dist(0,0);
+                                auto dx = normal_dist(*eng,param);
+                                auto dy = normal_dist(*eng,param);
+
+                                auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
+                                auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
+                                nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0};
+                                auto dijet_tppa = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, pro);
+                                auto dijet_tppb = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, tar);
+
+                                if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
+                                {
+                                    continue;
+                                }
+                                else if (dijet_tppb * new_dijet.pro_pdf * dijet_area > M_factor)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    new_pair.dijets.push_back(new_dijet);
+                                }
+                            }
+                            else
+                            {
+                                new_pair.dijets.push_back(new_dijet);
+                            }
                         }
 
                         // pqcd::generate_bin_NN_coll
@@ -1241,11 +1308,11 @@ public:
                     // }
                     // else
                     {
-                        newpair.push_end_states_to_collider_frame();
+                        new_pair.push_end_states_to_collider_frame();
                     }
                 }
-                newpair.wound();
-                binary_collisions.push_back(std::move(newpair));
+                new_pair.wound();
+                binary_collisions.push_back(std::move(new_pair));
             }
         }
 
@@ -1269,7 +1336,10 @@ public:
         std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
-        const bool &verbose
+        const bool &verbose,
+        const double &M_factor,
+        const double &proton_width,
+        const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
         if (AA_params.spatial_pdfs)
@@ -1288,7 +1358,10 @@ public:
                 p_p_pdf,
                 power_law,
                 env_func,
-                verbose
+                verbose,
+                M_factor,
+                proton_width,
+                is_sat_y_dep
             );
         }
         else
@@ -1378,7 +1451,6 @@ public:
         const double &sqrt_s,
         const double &impact_parameter,
         std::shared_ptr<std::mt19937> eng,
-        std::shared_ptr<ars> radial_sampler,
         const bool verbose,
         const bool read_nuclei_from_file=false
     )
@@ -1415,8 +1487,7 @@ public:
                             false,
                             sqrt_s/2.0, 
                             -impact_parameter/2., 
-                            eng, 
-                            radial_sampler
+                            eng
                         );
                     tar = nucleus_generator::generate_nucleus
                         (
@@ -1424,8 +1495,7 @@ public:
                             true,
                             sqrt_s/2.0, 
                             impact_parameter/2., 
-                            eng, 
-                            radial_sampler
+                            eng
                         );
                 }
                 catch(const std::exception& e)
@@ -1467,186 +1537,7 @@ public:
     //         return 0.0;
     //     }
     // }
-    
-    static auto calculate_sum_tpp
-    (
-        const nucleon &nuc, 
-        const std::vector<nucleon> &nucleus, 
-        const std::function<double(const double&)> &Tpp
-    ) noexcept -> double
-    {
-        // double TA=0.0; //sum(T_pp(b_ii'))
-        
-        // coords com{0.0,0.0,0.0}; //center of mass
-        // for (const auto& n : nucleus)
-        // {
-        //     com += n.co;
-        // }
-        // com /= static_cast<double>(nucleus.size());
-        
-        // auto r_3vec = nuc.co - com;
-        
-        // TA = ta_ws_folded(std::pow(r_3vec.x*r_3vec.x + r_3vec.y*r_3vec.y,0.5))*0.1;
-        // return TA;
 
-        double sum_tpp=0.0; //sum(T_pp(b_ii'))
-        uint_fast16_t A=static_cast<uint_fast16_t>(nucleus.size());
-        
-        auto [x1, y1, z1] = nuc.co;
-        
-        for (uint_fast16_t i=0; i<A; i++)
-        {
-            auto [x2, y2, z2] = nucleus.at(i).co;
-            if ( nuc == nucleus.at(i)) // Do we calculate the effect of the same nucleon to itself?
-            {
-               continue;
-            }
-            sum_tpp += Tpp(pow(x1-x2,2) + pow(y1-y2,2));
-        }
-        return sum_tpp;
-        
-        // TA = std::min(sum_tpp, TA);
-        // return TA;
-    }
-
-    static auto calculate_T_AA_0
-    (
-        const nucleus_generator::nucleus_params &nuc_params,
-        const double &rel_tolerance,
-        const std::function<double(const double&)> Tpp,
-        std::shared_ptr<ars> radial_sampler,
-        const bool verbose
-    ) -> double
-    {
-        std::vector<uint_fast8_t> block_indexes(200);
-        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        
-        uint_fast8_t block_amount = 50;
-        std::vector<double> block_averages(block_amount);
-
-        #pragma omp parallel
-        {
-            auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
-
-            #pragma omp for
-            for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
-            {
-                std::vector<double> T_AA_0s(200);
-                for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
-                {
-                    std::vector<nucleon> nucl, other;
-                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
-                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                    std::vector<double> sum_tpps(nuc_params.A);
-
-                    nucl = nucleus_generator::generate_nucleus
-                        (
-                            nuc_params,
-                            false,
-                            0.0, 
-                            0.0, 
-                            eng, 
-                            radial_sampler
-                        );
-
-                    for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
-                    {
-                        sum_tpps[*itt] = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
-                    }
-
-                    T_AA_0s[*it] = std::reduce(sum_tpps.begin(), sum_tpps.end(), 0.0);
-                }
-
-                block_averages[block_index] = std::reduce(T_AA_0s.begin(), T_AA_0s.end(), 0.0) / 200.0;
-            }
-        }
-
-        double ave_T_AA_0 = std::reduce(block_averages.begin(), block_averages.end(), 0.0) / block_amount;
-
-        std::cout<<"A-configs calculated: "<<block_amount*200<<std::endl;
-
-        return ave_T_AA_0;
-    }
-
-    static auto calculate_R_c_table
-    (
-        const nucleus_generator::nucleus_params &nuc_params,
-        const double &rel_tolerance,
-        const std::function<double(const double&)> Tpp,
-        std::shared_ptr<ars> radial_sampler,
-        const bool verbose
-    ) -> std::tuple<std::array<double, 25>, std::array<double, 25> >
-    {
-        std::vector<uint_fast8_t> block_indexes(200);
-        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
-        
-        std::array<double, 25> c_vector{-15.0,-14.0,-13.0,-12.0,-11.0,-10.0,-9.0,-8.0,-7.0,-6.0,-5.0,-4.0,-3.0,-2.0,-1.0,0.0,1.0,2.0,3.0,4.0,5.0,10.0,15.0,20.0,25.0};
-        std::array<double, 25> ave_R_vector{0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
-
-        uint_fast8_t block_amount = 50;
-        std::array<std::array<double, 50>, 25> block_averages;
-
-        #pragma omp parallel
-        {
-            auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
-
-            #pragma omp for
-            for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
-            {
-                std::array<std::array<double, 200>, 25> R_vectors;
-                for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
-                {
-                    std::vector<nucleon> nucl, other;
-                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
-                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
-                    std::array<std::vector<double>, 25> sum_tpps;
-                    for (uint_fast8_t i=0; i<25; i++)
-                    {
-                        sum_tpps[i] = std::vector<double>(nuc_params.A);
-                    }
-
-                    nucl = nucleus_generator::generate_nucleus
-                        (
-                            nuc_params,
-                            false,
-                            0.0, 
-                            0.0, 
-                            eng, 
-                            radial_sampler
-                        );
-
-                    for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
-                    {
-                        auto dummy = calculate_sum_tpp(nucl[*itt], nucl, Tpp);
-                        for (uint_fast8_t i=0; i<25; i++)
-                        {
-                            sum_tpps[i][*itt] = std::exp(c_vector[i]*dummy);
-                        }
-                    }
-
-                    for (uint_fast8_t i=0; i<25; i++)
-                    {
-                        R_vectors[i][*it] = std::reduce(sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
-                    }
-                }
-
-                for (uint_fast8_t i=0; i<25; i++)
-                {
-                    block_averages[i][block_index] = std::reduce(R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
-                }
-            }
-        }
-
-        for (uint_fast8_t i=0; i<25; i++)
-        {
-            ave_R_vector[i] = std::reduce(block_averages[i].begin(), block_averages[i].end(), 0.0) / block_amount;
-        }
-        std::cout<<"A-configs calculated: "<<block_amount*200<<std::endl;
-
-        return std::make_tuple(ave_R_vector,c_vector);
-    }
-
-    
 private:
 
     static auto read_sigma_jets_spatial

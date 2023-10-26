@@ -1,4 +1,4 @@
-//Copyright (c) 2022 Mikko Kuha
+//Copyright (c) 2023 Mikko Kuha
 
 #ifndef TYPEDEFS_HPP
 #define TYPEDEFS_HPP
@@ -24,6 +24,8 @@ struct dijet_specs
     particle_id init2{0};
     particle_id final1{0};
     particle_id final2{0};
+    double pro_pdf{0};
+    double tar_pdf{0};
 };
 
 struct envelope_func
@@ -42,11 +44,13 @@ struct envelope_func
 
 struct xsection_id
 {
-  double sigma;
-  particle_id init1;
-  particle_id init2;
-  particle_id final1;
-  particle_id final2;
+    double sigma;
+    particle_id init1;
+    particle_id init2;
+    particle_id final1;
+    particle_id final2;
+    double pro_pdf{0};
+    double tar_pdf{0};
 };
 
 enum class B2_normalization_mode
@@ -74,24 +78,6 @@ inline std::ostream& operator<<(std::ostream& os, const B2_normalization_mode& m
     }
     return os;
 }
-
-struct AA_collision_params
-{
-  bool mc_glauber_mode;
-  bool pp_scattering;
-  bool pA_scattering;
-  bool spatial_pdfs;
-  bool calculate_end_state;
-  bool use_nn_b2_max;
-  double sigma_inel;
-  const std::function<double(const double&)> Tpp;
-  B2_normalization_mode normalize_to;
-  double sqrt_s;
-  double energy_threshold;
-  double nn_b2_max;
-  double T_AA_0;
-};
-
 
 inline bool almostEqual(double x, double y)    
 {    
@@ -183,6 +169,11 @@ struct coords {
            almostEqual(lhs.y, rhs.y)&&
            almostEqual(lhs.z, rhs.z);
   }
+};
+
+struct hotspot_info
+{
+    coords co{0,0,0};
 };
 
 #endif // TYPEDEFS_HPP

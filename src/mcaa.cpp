@@ -8,7 +8,7 @@ mcaa::mcaa
 ) 
 : diff_params(false,false,false,false,false,false,1,0,1,1u,1u,1u,1u),
   jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
-  nuc_params(1u,1u,1u,1u,1.0,false,false)
+  nuc_params(1u,1u,1u,1u,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,false,false,false,1u,1.0)
 {
     auto 
     [
@@ -29,11 +29,24 @@ mcaa::mcaa
         p_A,
         p_ZA,
         p_M_factor,
+        p_correct_overlap_bias,
         p_nn_min_dist,
         p_nuclear_RA,
-        p_nuclear_d,
+        p_nuclear_RB,
+        p_nuclear_dA,
+        p_nuclear_dB,
+        p_nuclear_beta2A,
+        p_nuclear_beta2B,
+        p_nuclear_beta3A,
+        p_nuclear_beta3B,
+        p_nuclear_beta4A,
+        p_nuclear_beta4B,
         p_rad_max,
         p_rad_min,
+        p_shift_cms,
+        p_hotspots,
+        p_n_hotspots,
+        p_hotspot_width,
         p_is_AA,
         p_is_pA,
         p_is_pp,
@@ -58,7 +71,9 @@ mcaa::mcaa
         p_is_t03_ordering
     ] = io::read_conf(initfile);
 
-    this->calculate_end_state        = p_calculate_end_state; 
+    this->hotspots                   = p_hotspots;
+    this->n_hotspots                 = p_n_hotspots;
+    this->calculate_end_state        = p_calculate_end_state;
     this->calculate_tata             = p_calculate_tata; 
     this->end_state_filtering        = p_end_state_filtering; 
     this->is_AA                      = p_is_AA; 
@@ -91,8 +106,6 @@ mcaa::mcaa
     this->kt0                        = p_kt0;
     this->M_factor                   = p_M_factor;
     this->nn_min_dist                = p_nn_min_dist;
-    this->nuclear_RA                 = p_nuclear_RA;
-    this->nuclear_d                  = p_nuclear_d;
     this->rad_max                    = p_rad_max;
     this->rad_min                    = p_rad_min;
     this->sigma_inel                 = p_sigma_inel;
@@ -132,27 +145,29 @@ mcaa::mcaa
 
     this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
 
-    this->Tpp =  std::function<double(const double&)>({[proton_width_2=this->proton_width_2](const double &bsquared)
+    if (this->hotspots)
     {
-        return exp(-bsquared / (4 * proton_width_2)) / (40 * M_PI * proton_width_2); // 1/fm² = mb/fm² * 1/mb = 0.1 * 1/mb
-    }});
+        this->hs_dist = std::uniform_int_distribution<>(0, this->n_hotspots-1);
+    }
+
+    if (almostEqual(p_hotspot_width,0.0))
+    {
+        p_hotspot_width = 0.2*p_proton_width;
+    }
+
+    this->Tpp = Tpp_builder(this->proton_width_2, p_hotspot_width, p_hotspots);
 
     if (p_use_snpdfs && p_snpdfs_linear && p_calculate_spatial_cutoff)
     {
         auto A = this->A;
-        auto RA = this->nuclear_RA;
-        auto d = this->nuclear_d;
+        auto RA = p_nuclear_RA;
+        auto d = p_nuclear_dA;
         auto tp0 = 1.0 / (2.0 * M_PI * this->proton_width_2);
         auto n0 = 0.75 * (A/(M_PI*std::pow(RA,3.0))) / (1.0 + M_PI*M_PI*std::pow(d/RA,2.0));
         auto ta0 = 2.0 * n0 * d * std::log(1.0 + std::exp(RA/d));
         this->spatial_cutoff = tp0 / (3.0 * ta0); 
         std::cout<<"Calculated spatial cutoff: (1+cT) >= "<<this->spatial_cutoff<<std::endl;
     }
-
-    this->rad_pdf = std::function<double(const double&)>({[RA=this->nuclear_RA, d=this->nuclear_d](const double & x)
-    {
-        return x*x/(1+exp((x-RA)/d));
-    }});
 
     // Parameter for the envelope function:
     // sigma_jet < A*pT^(-power_law)
@@ -197,14 +212,28 @@ mcaa::mcaa
     /*scalar=                   */1.0,
     /*use_ses=                  */false);
 
+    double hotspot_distr_width = std::sqrt(this->proton_width_2-std::pow(p_hotspot_width,2));
     this->nuc_params = nucleus_generator::nucleus_params(
     /*A=                        */(p_is_AA)? p_A : 1u,  //Pb 
     /*ZA=                       */(p_is_AA)? p_ZA : 1u, //Pb
     /*B=                        */(p_is_pp)? 1u : p_A,  //Pb
     /*ZB=                       */(p_is_pp)? 1u : p_ZA, //Pb
+    /*RA=                       */p_nuclear_RA,
+    /*RB=                       */p_nuclear_RB,
+    /*dA=                       */p_nuclear_dA,
+    /*dB=                       */p_nuclear_dB,
+    /*beta2A=                   */p_nuclear_beta2A,
+    /*beta2B=                   */p_nuclear_beta2B,
+    /*beta3A=                   */p_nuclear_beta3A,
+    /*beta3B=                   */p_nuclear_beta3B,
+    /*beta4A=                   */p_nuclear_beta4A,
+    /*beta4B=                   */p_nuclear_beta4B,
     /*min_distance=             */p_nn_min_dist, 
-    /*shift_cms=                */true, 
-    /*correct_overlap_bias=     */true);
+    /*shift_cms=                */p_shift_cms, 
+    /*correct_overlap_bias=     */p_correct_overlap_bias, 
+    /*hotspots=                 */p_hotspots, 
+    /*n_hotspots=               */p_n_hotspots, 
+    /*hotspot_distr_width=      */hotspot_distr_width);
 }
 
 auto mcaa::fit_sigma_jet_pt0_cutoff
@@ -262,7 +291,7 @@ auto mcaa::check_and_place_circle_among_others
 (
     std::tuple<double, double, double, uint_fast16_t, double, double> cand_circle, 
     std::vector<std::tuple<double, double, double, uint_fast16_t, double, double> > &final_circles,
-    bool is_sat_y_dep
+    uint_fast16_t is_sat_y_dep
 ) noexcept -> bool
 {
     auto & [cand_x, cand_y, cand_r, cand_overlap, cand_y1, cand_y2] = cand_circle;
@@ -272,7 +301,7 @@ auto mcaa::check_and_place_circle_among_others
         //If the any of the circles radii overlap with the candidate, just return false
         if ( pow((circ_x-cand_x),2) + pow((circ_y-cand_y),2) < pow((circ_r+cand_r),2) )
         {
-            if (is_sat_y_dep)
+            if (is_sat_y_dep == 1) // Henry's old idea
             {
                 auto miy = std::min(y1,y2);
                 auto may = std::max(y1,y2);
@@ -280,6 +309,28 @@ auto mcaa::check_and_place_circle_among_others
                 auto mcay = std::max(cand_y1,cand_y2);
                 
                 if (!(miy>mcay || may<mciy))
+                {
+                    return false;
+                }
+            }
+            else if (is_sat_y_dep == 2) // all jets have cones
+            {
+                double delta = 0.5;
+                if ((std::abs(y1-cand_y1) <= delta)
+                 || (std::abs(y1-cand_y2) <= delta)
+                 || (std::abs(y2-cand_y1) <= delta)
+                 || (std::abs(y2-cand_y2) <= delta))
+                {
+                    return false;
+                }
+            }
+            else if (is_sat_y_dep == 3) // both dijets have cones
+            {
+                double delta = 0.5;
+                auto dy = 0.5*(y1+y2);
+                auto cand_dy = 0.5*(cand_y1+cand_y2);
+
+                if ((std::abs(dy-cand_dy) <= delta))
                 {
                     return false;
                 }
@@ -308,11 +359,30 @@ auto mcaa::throw_location_for_dijet
     auto dx = normal_dist(*random_generator,param);
     auto dy = normal_dist(*random_generator,param);
     auto dz = 0.0;
+    auto retx = 0.0;
+    auto rety = 0.0;
 
-    auto retx = 0.5*(dijet.pro_nucleon->co.x + dijet.tar_nucleon->co.x + M_SQRT2*dx);
-    auto rety = 0.5*(dijet.pro_nucleon->co.y + dijet.tar_nucleon->co.y + M_SQRT2*dy);
+    if (!this->hotspots)
+    {
+        retx = 0.5*(dijet.pro_nucleon->co.x + dijet.tar_nucleon->co.x + M_SQRT2*dx);
+        rety = 0.5*(dijet.pro_nucleon->co.y + dijet.tar_nucleon->co.y + M_SQRT2*dy);
+    }
+    else
+    {
+        uint_fast16_t fst = this->hs_dist(*random_generator);
+        uint_fast16_t snd = this->hs_dist(*random_generator);
+        retx = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.x + dijet.tar_nucleon->hotspots.at(snd).co.x + M_SQRT2*dx);
+        rety = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.y + dijet.tar_nucleon->hotspots.at(snd).co.y + M_SQRT2*dy);
+    }
+
 
     return std::make_tuple(retx, rety, dz);
+}
+
+auto mcaa::sqrtalphas(double Q) noexcept -> double
+{
+    auto alphas = this->p_pdf->alphasQ(Q);
+    return std::sqrt(alphas);
 }
 
 auto mcaa::filter_end_state
@@ -353,6 +423,7 @@ auto mcaa::filter_end_state
     double y1, y2;
     double i_x1_sum_to_be, i_x2_sum_to_be;
     double tata = 0.0;
+
 
     for (auto & cand : candidates)
     {
@@ -399,20 +470,31 @@ auto mcaa::filter_end_state
         {
             //SATURATION
 
-            auto cand_circle = std::make_tuple(cand_x, cand_y, 1/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
+            double upstairs = 1.0;
+            if (this->is_sat_y_dep == 4)
+            {
+                upstairs = this->sqrtalphas(cand.dijet.kt);
+            }
+            else if  (this->is_sat_y_dep == 5)
+            {
+                double dy = y1-y2;
+                double dsigma = std::pow((1 + 2.0*std::cosh(dy))/(2 + 2.0*std::cosh(dy)), 1.5);
+                upstairs = this->sqrtalphas(cand.dijet.kt)*dsigma;
+            }
+
+            auto cand_circle = std::make_tuple(cand_x, cand_y, upstairs/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
 
             if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
             {
-
-
                 continue; //Did not fit into saturated PS --> discard
             }
         }
 
         if (this->calculate_tata)
         {
-            nucleon dummy{coords{cand_x, cand_y, cand_z}, 0, 0};
-            tata = calcs::calculate_sum_tpp(dummy, pro, this->Tpp) * calcs::calculate_sum_tpp(dummy, tar, this->Tpp);
+            //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+            //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
+            tata = this->Tpp.calculate_TA(cand_x, cand_y, pro) * this->Tpp.calculate_TA(cand_x, cand_y, tar);
         }
 
         if (this->mom_cons)
@@ -452,14 +534,6 @@ auto mcaa::run() -> void
     auto eng_shared = std::make_shared<std::mt19937>(static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
     std::uniform_real_distribution<double> unirand{0.0, 1.0};
 
-    auto radial_sampler{std::make_shared<ars>(rad_pdf, rad_min, rad_max)};
-    //The adaptive algorithm in the sampler is not thread-safe,
-    //so to run the program multithreaded let's first saturate the sampler
-    do //while (radial_sampler->is_adaptive()) 
-    {
-        radial_sampler->throw_one(*eng_shared);
-    } while (radial_sampler->is_adaptive());
-
     std::vector<io::Coll> collisions_for_reporting;/////
     std::vector<io::Coll> collisions_for_reporting_midrap;/////
     std::mutex colls_mutex; 
@@ -482,12 +556,10 @@ auto mcaa::run() -> void
     {
         std::cout<<"Calculating T_AA(0)"<<std::endl;
 
-        this->T_AA_0 = calcs::calculate_T_AA_0
+        this->T_AA_0 = this->Tpp.calculate_T_AA_0
         (
             this->nuc_params,
             1e-5,
-            this->Tpp,
-            radial_sampler, 
             verbose
         );
 
@@ -497,12 +569,10 @@ auto mcaa::run() -> void
     {
         std::cout<<"Calculating R_A - c_A table"<<std::endl;
 
-        auto [R_A_table, c_A_table] = calcs::calculate_R_c_table
+        auto [R_A_table, c_A_table] = this->Tpp.calculate_R_c_table
         (
             this->nuc_params,
             1e-5,
-            this->Tpp,
-            radial_sampler, 
             verbose
         );
         std::cout<<"Done! {c,R} pairs:"<<std::endl;
@@ -582,14 +652,14 @@ auto mcaa::run() -> void
     if (use_nn_b2_max)
     {
         double dummy = 0; //not needed here
-        auto difference_to_target = [tpp_min, tpp=(this->Tpp)](const double &b2)
+        auto difference_to_target = [tpp_min, tpp=&(this->Tpp)](const double &b2)
         {
-            return tpp_min - tpp(b2);
+            return tpp_min - tpp->at(b2);
         };
         helpers::secant_method(&nn_b2_max, difference_to_target, tpp_min, &dummy);
         if (this->verbose)
         {
-            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp(nn_b2_max)<<std::endl;
+            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp.at(nn_b2_max)<<std::endl;
         }
     }
 
@@ -604,7 +674,7 @@ auto mcaa::run() -> void
     /*calculate_end_state=      */this->calculate_end_state,
     /*use_nn_b2_max=            */use_nn_b2_max,
     /*sigma_inel=               */this->sigma_inel,
-    /*Tpp=                      */this->Tpp,
+    /*Tpp=                      */&(this->Tpp),
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
     /*energy_threshold=         */this->kt0,
@@ -679,7 +749,7 @@ auto mcaa::run() -> void
             auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
             #pragma omp for
-            for (auto it = event_indexes.begin(); it < event_indexes.end(); it++)
+            for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
             {
                 if (user_aborted)
                 {
@@ -725,7 +795,6 @@ auto mcaa::run() -> void
                                 this->sqrt_s, 
                                 impact_parameter, 
                                 eng, 
-                                radial_sampler, 
                                 verbose
                             );
                             pro = std::move(pro_dummy);
@@ -778,7 +847,10 @@ auto mcaa::run() -> void
                             this->p_pdf,
                             this->power_law,
                             env_func,
-                            verbose
+                            verbose,
+                            this->M_factor,
+                            this->proton_width,
+                            this->is_sat_y_dep
                         );
                         
                         NColl = static_cast<uint_fast32_t>(binary_collisions.size());
@@ -794,7 +866,7 @@ auto mcaa::run() -> void
                         this->filter_end_state
                         (
                             binary_collisions, 
-                            filtered_scatterings, 
+                            filtered_scatterings,
                             eng,
                             pro,
                             tar
@@ -964,113 +1036,118 @@ auto mcaa::run() -> void
     //    dijet_norm,
     //    AA_events_done
     //);
-    
-    uint_fast8_t nBins = 18;
-    double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
-    double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
-    std::ofstream glauber_report_file;
-    std::string g_name{"g_report_"+this->name+".dat"};
-    std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
-                                              
-    glauber_report_file.open(g_name, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-    glauber_report_file.open(g_name_midrap, std::ios::out);
-    io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
-    glauber_report_file.close();
-
-    if (save_endstate_jets)
+    if (collisions_for_reporting.size() >= 50)
     {
-        std::vector<std::tuple<double,double> > centBins;
-        std::ifstream cents_input(this->centrality_filename);
-        if (!cents_input.is_open())
+        uint_fast8_t nBins = 18;
+        double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
+        double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
+        std::ofstream glauber_report_file;
+        std::string g_name{"g_report_"+this->name+".dat"};
+        std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
+                                                
+        glauber_report_file.open(g_name, std::ios::out);
+        io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
+        glauber_report_file.close();
+        glauber_report_file.open(g_name_midrap, std::ios::out);
+        io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
+        glauber_report_file.close();
+
+        if (save_endstate_jets)
         {
-            std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
-            centBins.push_back(std::tuple<double,double>{0.0, 1.0});
-            return;
-        }
-        std::string line;
-        for (; std::getline(cents_input, line);)
-        {
-            std::stringstream ss(line);
-            std::string token;
-            std::getline(ss, token, ',');
-            double centLow = std::stod(token);
-            std::getline(ss, token, ',');
-            double centHigh = std::stod(token);
-            centBins.push_back(std::tuple<double,double>{centLow, centHigh});
-        }
-        cents_input.close();
-
-        std::string name_pfs{this->name+".dat"};
-
-        std::ofstream jet_file;
-
-        for (auto [centLow, centHigh] : centBins)
-        {
-            std::stringstream jetsname{""};
-            jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
-
-            histo_1d dETdy_by_cent{y_bins};
-            histo_1d dEdy_by_cent{y_bins};
-            std::vector<std::tuple<double, double> > new_ET_y;
-            std::vector<std::tuple<double, double> > new_E_y;
-
-            uint_fast64_t N_evts_tot = colls_scatterings.size();
-            // Make sure that no rounding downwards.
-            double eps = 0.1/static_cast<double>(N_evts_tot);
-
-            uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-            uint_fast64_t n_in_bin = upper_ind - lower_ind;
-
-            //total number of events in this bin
-            jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
-
-            auto it = colls_scatterings.crbegin();
-            std::advance(it, lower_ind);
-
-            for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+            std::vector<std::tuple<double,double> > centBins;
+            std::ifstream cents_input(this->centrality_filename);
+            if (!cents_input.is_open())
             {
-                for (auto e_co : it->second)
-                {
-                    auto e = e_co.dijet;
-
-                    new_ET_y.emplace_back(e.y1, e.kt);
-                    new_ET_y.emplace_back(e.y2, e.kt);
-
-                    new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                    new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                }
-                io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
+                std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
+                centBins.push_back(std::tuple<double,double>{0.0, 1.0});
+                return;
             }
-            jet_file.close();
-            std::cout<<n_in_bin<<std::endl;
+            std::string line;
+            for (; std::getline(cents_input, line);)
+            {
+                std::stringstream ss(line);
+                std::string token;
+                std::getline(ss, token, ',');
+                double centLow = std::stod(token);
+                std::getline(ss, token, ',');
+                double centHigh = std::stod(token);
+                centBins.push_back(std::tuple<double,double>{centLow, centHigh});
+            }
+            cents_input.close();
 
-            dETdy_by_cent.add(new_ET_y);
-            dEdy_by_cent.add(new_E_y);
+            std::string name_pfs{this->name+".dat"};
 
-            std::stringstream outname{""};
+            std::ofstream jet_file;
 
-            outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dEdy_by_cent, 
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
-            outname.seekp(0);
-            outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-            io::print_1d_histo
-            (
-                dETdy_by_cent,
-                outname.str(), 
-                1.0/ static_cast<double>(n_in_bin),
-                false
-            );
+            for (auto [centLow, centHigh] : centBins)
+            {
+                std::stringstream jetsname{""};
+                jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+                jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
+
+                histo_1d dETdy_by_cent{y_bins};
+                histo_1d dEdy_by_cent{y_bins};
+                std::vector<std::tuple<double, double> > new_ET_y;
+                std::vector<std::tuple<double, double> > new_E_y;
+
+                uint_fast64_t N_evts_tot = colls_scatterings.size();
+                // Make sure that no rounding downwards.
+                double eps = 0.1/static_cast<double>(N_evts_tot);
+
+                uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
+                uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
+                uint_fast64_t n_in_bin = upper_ind - lower_ind;
+
+                //total number of events in this bin
+                jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
+
+                auto it = colls_scatterings.crbegin();
+                std::advance(it, lower_ind);
+
+                for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+                {
+                    for (auto e_co : it->second)
+                    {
+                        auto e = e_co.dijet;
+
+                        new_ET_y.emplace_back(e.y1, e.kt);
+                        new_ET_y.emplace_back(e.y2, e.kt);
+
+                        new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                        new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                    }
+                    io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
+                }
+                jet_file.close();
+                std::cout<<n_in_bin<<std::endl;
+
+                dETdy_by_cent.add(new_ET_y);
+                dEdy_by_cent.add(new_E_y);
+
+                std::stringstream outname{""};
+
+                outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+                io::print_1d_histo
+                (
+                    dEdy_by_cent, 
+                    outname.str(), 
+                    1.0/ static_cast<double>(n_in_bin),
+                    false
+                );
+                outname.seekp(0);
+                outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+                io::print_1d_histo
+                (
+                    dETdy_by_cent,
+                    outname.str(), 
+                    1.0/ static_cast<double>(n_in_bin),
+                    false
+                );
+            }
         }
     }
+    else
+    {
+        std::cout<<"Simulation finished succesfully with "<<collisions_for_reporting.size()<<" collisions. Run >50 to produce output files"<<std::endl;
+    }
 }
-

@@ -4,7 +4,9 @@
 #define NUCLEON_HPP
 
 #include <cmath>
+#include <functional>
 #include <iostream>
+#include <vector>
 
 #include "typedefs.hpp"
 
@@ -27,6 +29,7 @@ public:
 
     coords co{0,0,0};
     double mom{0};
+    std::vector<hotspot_info> hotspots;
     bool wounded{false};
     bool is_neutron{false};
     int_fast16_t index{0};
