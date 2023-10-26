@@ -746,7 +746,6 @@ public:
             zb = e_co.zb;
             a_is_neutron = e_co.a_is_neutron;
             b_is_neutron = e_co.b_is_neutron;
-            std::cout<<ia<<' '<<ib<<' '<<xa<<' '<<ya<<' '<<za<<' '<<xb<<' '<<yb<<' '<<zb<<' '<<a_is_neutron<<' '<<b_is_neutron<<std::endl;
             
             // jet 1
             //energy = pt*std::cosh(y1);
