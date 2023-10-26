@@ -15,10 +15,10 @@ struct dijet
     double y2;
     double phi;
     double tata;
-    uint_fast16_t init1;
-    uint_fast16_t init2;
-    uint_fast16_t final1;
-    uint_fast16_t final2;
+    int_fast16_t init1;
+    int_fast16_t init2;
+    int_fast16_t final1;
+    int_fast16_t final2;
     uint_fast16_t ia;
     uint_fast16_t ib;
     double xa;
@@ -55,7 +55,8 @@ int main()
 
     uint_fast64_t n_events, n_jets;
     double t01, t02, x, y, pt, y1, y2, phi, tata;
-    uint_fast16_t init1, init2, final1, final2, ia, ib;
+    int_fast16_t init1, init2, final1, final2;
+    uint_fast16_t ia, ib;
     double xa, ya, za, xb, yb, zb;
     bool a_is_neutron, b_is_neutron;
     std::vector<std::vector<dijet>> events_jets;
