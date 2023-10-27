@@ -112,7 +112,6 @@ mcaa::mcaa
     this->sigma_inel_AA              = p_sigma_inel_AA;
     this->sqrt_s                     = p_sqrt_s;
     this->T_AA_0                     = p_T_AA_0_for_snpdfs;
-    this->spatial_cutoff             = p_spatial_cutoff;
 
     this->verbose                    = false;
     this->kt02                       = p_kt0*p_kt0;
@@ -143,7 +142,6 @@ mcaa::mcaa
     }
     std::cout<<"Proton width: "<<this->proton_width<<" fm"<<std::endl;
 
-    this->p_pdf = std::make_shared<LHAPDF::GridPDF>("CT14lo", 0);
 
     if (this->hotspots)
     {
@@ -155,8 +153,9 @@ mcaa::mcaa
         p_hotspot_width = 0.2*p_proton_width;
     }
 
-    this->Tpp = Tpp_builder(this->proton_width_2, p_hotspot_width, p_hotspots);
+    this->Tpp = std::make_shared<Tpp_builder>(this->proton_width_2, p_hotspot_width, p_hotspots);
 
+    double spatial_cutoff = p_spatial_cutoff;
     if (p_use_snpdfs && p_snpdfs_linear && p_calculate_spatial_cutoff)
     {
         auto A = this->A;
@@ -165,8 +164,8 @@ mcaa::mcaa
         auto tp0 = 1.0 / (2.0 * M_PI * this->proton_width_2);
         auto n0 = 0.75 * (A/(M_PI*std::pow(RA,3.0))) / (1.0 + M_PI*M_PI*std::pow(d/RA,2.0));
         auto ta0 = 2.0 * n0 * d * std::log(1.0 + std::exp(RA/d));
-        this->spatial_cutoff = tp0 / (3.0 * ta0); 
-        std::cout<<"Calculated spatial cutoff: (1+cT) >= "<<this->spatial_cutoff<<std::endl;
+        spatial_cutoff = tp0 / (3.0 * ta0); 
+        std::cout<<"Calculated spatial cutoff: (1+cT) >= "<<spatial_cutoff<<std::endl;
     }
 
     // Parameter for the envelope function:
@@ -196,7 +195,7 @@ mcaa::mcaa
     /*npdfs_spatial=            */p_use_snpdfs,
     /*only_protons=             */p_only_protons,
     /*npdf_setnumber=           */1,
-    /*spatial_cutoff=           */this->spatial_cutoff,
+    /*spatial_cutoff=           */spatial_cutoff,
     /*K_factor=                 */K_factor,
     /*A=                        */(p_is_AA)? p_A : 1u,  //Pb 
     /*B=                        */(p_is_pp)? 1u : p_A,  //Pb
@@ -234,6 +233,28 @@ mcaa::mcaa
     /*hotspots=                 */p_hotspots, 
     /*n_hotspots=               */p_n_hotspots, 
     /*hotspot_distr_width=      */hotspot_distr_width);
+
+    this->pdf = std::make_shared<pdf_builder>(
+    /*p_pdf_name,p_pdf_setnumber= */"CT14lo", 0,
+    /*n_pdf_name,n_pdf_setnumber= */"", 0,
+    /*snpdf_spatial_cutoff=       */spatial_cutoff,
+    /*snpdf_tAA_0=                */p_T_AA_0_for_snpdfs,
+    /*Tpp=                        */this->Tpp,
+    /*nuc_params=                 */this->nuc_params,
+    /*projectile_with_npdfs=      */(p_is_AA && p_use_npdfs),
+    /*target_with_npdfs=          */(!p_is_pp && p_use_npdfs),
+    /*isoscalar_projectile=       */false,
+    /*isoscalar_target=           */false,
+    /*npdfs_spatial=              */p_use_snpdfs,
+    /*snPDFs_linear=              */p_snpdfs_linear,
+    /*only_protons=               */p_only_protons,
+    /*npdf_setnumber=             */1,
+    /*A=                          */(p_is_AA)? p_A : 1u,  //Pb 
+    /*B=                          */(p_is_pp)? 1u : p_A,  //Pb
+    /*ZA=                         */(p_is_AA)? p_ZA : 1u, //Pb
+    /*ZB=                         */(p_is_pp)? 1u : p_ZA,  //Pb
+    /*verbose=                    */this->verbose
+    );
 }
 
 auto mcaa::fit_sigma_jet_pt0_cutoff
@@ -248,7 +269,7 @@ auto mcaa::fit_sigma_jet_pt0_cutoff
 
     auto difference_to_target = [&](const double &_kt02)
     {
-        return pqcd::calculate_sigma_jet(this->p_pdf, &(this->mand_s), &_kt02, this->jet_params) - target;
+        return pqcd::calculate_sigma_jet(this->pdf, &(this->mand_s), &_kt02, this->jet_params) - target;
     };
 
     helpers::secant_method(&pt02, difference_to_target, 1e-3, &sigma_jet);
@@ -494,7 +515,7 @@ auto mcaa::filter_end_state
         {
             //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
             //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
-            tata = this->Tpp.calculate_TA(cand_x, cand_y, pro) * this->Tpp.calculate_TA(cand_x, cand_y, tar);
+            tata = this->Tpp->calculate_TA(cand_x, cand_y, pro) * this->Tpp->calculate_TA(cand_x, cand_y, tar);
         }
 
         if (this->mom_cons)
@@ -556,7 +577,7 @@ auto mcaa::run() -> void
     {
         std::cout<<"Calculating T_AA(0)"<<std::endl;
 
-        this->T_AA_0 = this->Tpp.calculate_T_AA_0
+        this->T_AA_0 = this->Tpp->calculate_T_AA_0
         (
             this->nuc_params,
             1e-5,
@@ -569,7 +590,7 @@ auto mcaa::run() -> void
     {
         std::cout<<"Calculating R_A - c_A table"<<std::endl;
 
-        auto [R_A_table, c_A_table] = this->Tpp.calculate_R_c_table
+        auto [R_A_table, c_A_table] = this->Tpp->calculate_R_c_table
         (
             this->nuc_params,
             1e-5,
@@ -652,14 +673,14 @@ auto mcaa::run() -> void
     if (use_nn_b2_max)
     {
         double dummy = 0; //not needed here
-        auto difference_to_target = [tpp_min, tpp=&(this->Tpp)](const double &b2)
+        auto difference_to_target = [tpp_min, tpp=this->Tpp](const double &b2)
         {
             return tpp_min - tpp->at(b2);
         };
         helpers::secant_method(&nn_b2_max, difference_to_target, tpp_min, &dummy);
         if (this->verbose)
         {
-            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp.at(nn_b2_max)<<std::endl;
+            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp->at(nn_b2_max)<<std::endl;
         }
     }
 
@@ -674,7 +695,7 @@ auto mcaa::run() -> void
     /*calculate_end_state=      */this->calculate_end_state,
     /*use_nn_b2_max=            */use_nn_b2_max,
     /*sigma_inel=               */this->sigma_inel,
-    /*Tpp=                      */&(this->Tpp),
+    /*Tpp=                      */this->Tpp,
     /*normalize_to=             */B2_normalization_mode::inelastic,
     /*sqrt_s=                   */this->sqrt_s,
     /*energy_threshold=         */this->kt0,

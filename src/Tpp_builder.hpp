@@ -45,7 +45,7 @@ public:
     auto at
     (
         nn_coll &nn_pair
-    ) noexcept -> double
+    ) const noexcept -> double
     {
         if (hotspots)
         {
@@ -62,7 +62,7 @@ public:
     auto at
     (
         const double &b2
-    ) noexcept -> double
+    ) const noexcept -> double
     {
         if (hotspots)
         {
@@ -79,7 +79,7 @@ public:
     auto at
     (
         const std::vector<double> *const vb2
-    ) noexcept -> double
+    ) const noexcept -> double
     {
         if (!hotspots)
         {
@@ -97,7 +97,7 @@ public:
     (
         const nucleon &nuc, 
         const std::vector<nucleon> &nucleus
-    ) noexcept -> double
+    ) const noexcept -> double
     {
         double sum_tpp=0.0;
         if (!this->hotspots)
@@ -164,7 +164,7 @@ public:
         const double &x,
         const double &y, 
         const std::vector<nucleon> &nucleus
-    ) noexcept -> double
+    ) const noexcept -> double
     {
         double sum_tp=0.0;
         if (!this->hotspots)

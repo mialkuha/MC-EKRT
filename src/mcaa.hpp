@@ -17,20 +17,12 @@
 #include <unordered_set>
 #include <vector>
 
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wall"
-#pragma GCC diagnostic ignored "-Wextra"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wshorten-64-to-32"
-#pragma GCC diagnostic ignored "-Wold-style-cast"
-#include "LHAPDF/GridPDF.h"
-#pragma GCC diagnostic pop
-
 #include "generic_helpers.hpp"
 #include "high_level_calcs.hpp"
 #include "histo.hpp"
 #include "io_helpers.hpp"
 #include "nucleus_generator.hpp"
+#include "pdf_builder.hpp"
 #include "pqcd.hpp"
 #include "Tpp_builder.hpp"
 #include "typedefs.hpp"
@@ -87,7 +79,6 @@ public:
     double sigma_inel_AA{70.0};                     // (mb) inelastic cross section for the triggering
     double sqrt_s{5020.0};                          // (GeV) sqrt(s) for the hard process 
     double T_AA_0{0.0};                             // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
-    double spatial_cutoff{0.0};                     // if calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below.
     std::uniform_int_distribution<> hs_dist{0,0};   // distribution for choosing a random hotspot
 
 
@@ -146,8 +137,8 @@ public:
 // PRIVATE ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 private:
     // PRIVATE ATTRIBUTES /////////////////////////////////////////////////////////////////////////////////////////////
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf{};     // pointer to the LHAPDF PDF-object of the proton PDF
-    Tpp_builder Tpp{};                            // nucleon overlap function
+    std::shared_ptr<pdf_builder> pdf{};     // pointer to the LHAPDF PDF-object of the proton PDF
+    std::shared_ptr<Tpp_builder> Tpp{};                            // nucleon overlap function
     double power_law{2.0};                        // parameter for the envelope function: sigma_jet < A*pT^(-power_law)
     pqcd::diff_sigma::params diff_params;         // the struct of pQCD event parameters
     pqcd::sigma_jet_params jet_params;            // the struct of sigma_jet parameters

@@ -44,7 +44,7 @@ struct AA_collision_params
   bool calculate_end_state;
   bool use_nn_b2_max;
   double sigma_inel;
-  Tpp_builder *const Tpp;
+  std::shared_ptr<Tpp_builder> Tpp;
   B2_normalization_mode normalize_to;
   double sqrt_s;
   double energy_threshold;

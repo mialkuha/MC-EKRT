@@ -49,8 +49,6 @@ struct xsection_id
     particle_id init2;
     particle_id final1;
     particle_id final2;
-    double pro_pdf{0};
-    double tar_pdf{0};
 };
 
 enum class B2_normalization_mode

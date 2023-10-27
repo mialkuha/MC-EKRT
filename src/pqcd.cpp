@@ -6,178 +6,6 @@
 #define M_PI 3.14159265358979323846 /* pi */
 #endif
 
-
-#pragma GCC diagnostic push 
-#pragma GCC diagnostic ignored "-Wall"
-#pragma GCC diagnostic ignored "-Wextra"
-#pragma GCC diagnostic ignored "-Wsign-conversion"
-#pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#include "eps09.cxx"
-#pragma GCC diagnostic pop
-
-auto pqcd::diff_sigma::make_pdfs
-(
-    const double &x1, 
-    const double &x2, 
-    const double &q2, 
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-    /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf, */
-    const bool &projectile_with_npdfs,
-    const bool &target_with_npdfs,
-    const bool &isoscalar_projectile,
-    const bool &isoscalar_target,
-    const bool &npdfs_spatial,
-    const bool &only_protons,
-    const bool &projectile_neutron,
-    const bool &target_neutron,
-    const int &npdf_setnumber,
-    const uint_fast16_t &A,
-    const uint_fast16_t &B,
-    const uint_fast16_t &ZA,
-    const uint_fast16_t &ZB,
-    const std::function<double (const double &)> &rA_spatial,
-    const std::function<double (const double &)> &rB_spatial
-) noexcept -> std::tuple
-    <
-        std::array<double, 7>,
-        std::array<double, 7>,
-        std::array<double, 7>,
-        std::array<double, 7>
-    >
-{
-    double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
-    double ru = 1.0, rd = 1.0;
-
-    if (projectile_with_npdfs)
-    {
-        eps09(1, npdf_setnumber, static_cast<int>(A), x1, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
-        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x1, q2) / p_p_pdf->xfxQ2(1, x1, q2);
-        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x1, q2) / p_p_pdf->xfxQ2(2, x1, q2);
-
-        if (npdfs_spatial)
-        {
-            ru = rA_spatial(ru); rd = rA_spatial(rd); rus = rA_spatial(rus);
-            rds = rA_spatial(rds); rs = rA_spatial(rs); rc = rA_spatial(rc); 
-            rb = rA_spatial(rb); rt = rA_spatial(rt); rg = rA_spatial(rg);
-        }
-    }
-    std::array<double, 7> f_i_x1 = 
-    {
-        rg * p_p_pdf->xfxQ2(0, x1, q2),
-        ru * p_p_pdf->xfxQ2(1, x1, q2),
-        rd * p_p_pdf->xfxQ2(2, x1, q2),
-        rs * p_p_pdf->xfxQ2(3, x1, q2),
-        rc * p_p_pdf->xfxQ2(4, x1, q2),
-        rb * p_p_pdf->xfxQ2(5, x1, q2),
-        rt * p_p_pdf->xfxQ2(6, x1, q2)
-    };
-    std::array<double, 7> f_ai_x1 = 
-    {
-        rg * p_p_pdf->xfxQ2(0, x1, q2),
-        rus * p_p_pdf->xfxQ2(-1, x1, q2),
-        rds * p_p_pdf->xfxQ2(-2, x1, q2),
-        rs * p_p_pdf->xfxQ2(-3, x1, q2),
-        rc * p_p_pdf->xfxQ2(-4, x1, q2),
-        rb * p_p_pdf->xfxQ2(-5, x1, q2),
-        rt * p_p_pdf->xfxQ2(-6, x1, q2)
-    };
-
-    if (target_with_npdfs)
-    {
-        eps09(1, npdf_setnumber, static_cast<int>(B), x2, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
-        ru = ruv + (rus - ruv) * p_p_pdf->xfxQ2(-1, x2, q2) / p_p_pdf->xfxQ2(1, x2, q2);
-        rd = rdv + (rds - rdv) * p_p_pdf->xfxQ2(-2, x2, q2) / p_p_pdf->xfxQ2(2, x2, q2);
-
-        if (npdfs_spatial)
-        {
-            ru = rB_spatial(ru); rd = rB_spatial(rd); rus = rB_spatial(rus);
-            rds = rB_spatial(rds); rs = rB_spatial(rs); rc = rB_spatial(rc); 
-            rb = rB_spatial(rb); rt = rB_spatial(rt); rg = rB_spatial(rg);
-        }
-    }
-    else
-    {
-        ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; 
-        rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
-    }
-    std::array<double, 7> f_i_x2 = 
-    {
-        rg * p_p_pdf->xfxQ2(0, x2, q2),
-        ru * p_p_pdf->xfxQ2(1, x2, q2),
-        rd * p_p_pdf->xfxQ2(2, x2, q2),
-        rs * p_p_pdf->xfxQ2(3, x2, q2),
-        rc * p_p_pdf->xfxQ2(4, x2, q2),
-        rb * p_p_pdf->xfxQ2(5, x2, q2),
-        rb * p_p_pdf->xfxQ2(6, x2, q2)
-    };
-    std::array<double, 7> f_ai_x2 = 
-    {
-        rg * p_p_pdf->xfxQ2(0, x2, q2),
-        rus * p_p_pdf->xfxQ2(-1, x2, q2),
-        rds * p_p_pdf->xfxQ2(-2, x2, q2),
-        rs * p_p_pdf->xfxQ2(-3, x2, q2),
-        rc * p_p_pdf->xfxQ2(-4, x2, q2),
-        rb * p_p_pdf->xfxQ2(-5, x2, q2),
-        rb * p_p_pdf->xfxQ2(-6, x2, q2)
-    };
-
-    if (!projectile_with_npdfs && isoscalar_projectile)
-    {
-        double ZoA = /*82/208.0*/ static_cast<double>(ZA) / static_cast<double>(A);
-        double NoA = /*126/208.0*/ static_cast<double>(A - ZA) / static_cast<double>(A);
-        double u, ub, d, db;
-        u = f_i_x1[1];
-        ub = f_ai_x1[1];
-        d = f_i_x1[2];
-        db = f_ai_x1[2];
-        f_i_x1[1] = ZoA * u + NoA * d;
-        f_i_x1[2] = ZoA * d + NoA * u;
-        f_ai_x1[1] = ZoA * ub + NoA * db;
-        f_ai_x1[2] = ZoA * db + NoA * ub;
-    }    
-    if (!target_with_npdfs && isoscalar_target)
-    {
-        double ZoA = /*82/208.0*/ static_cast<double>(ZB) / static_cast<double>(B);
-        double NoA = /*126/208.0*/ static_cast<double>(B - ZB) / static_cast<double>(B);
-        double u, ub, d, db;
-        u = f_i_x2[1];
-        ub = f_ai_x2[1];
-        d = f_i_x2[2];
-        db = f_ai_x2[2];
-        f_i_x2[1] = ZoA * u + NoA * d;
-        f_i_x2[2] = ZoA * d + NoA * u;
-        f_ai_x2[1] = ZoA * ub + NoA * db;
-        f_ai_x2[2] = ZoA * db + NoA * ub;
-    }
-
-    if (!only_protons && projectile_neutron)
-    {
-        double u, ub, d, db;
-        u  = f_i_x1[1];
-        d  = f_i_x1[2];
-        ub = f_ai_x1[1];
-        db = f_ai_x1[2];
-        f_i_x1[1] = d;
-        f_i_x1[2] = u;
-        f_ai_x1[1] = db;
-        f_ai_x1[2] = ub;
-    }    
-    if (!only_protons && target_neutron)
-    {
-        double u, ub, d, db;
-        u  = f_i_x2[1];
-        d  = f_i_x2[2];
-        ub = f_ai_x2[1];
-        db = f_ai_x2[2];
-        f_i_x2[1] = d;
-        f_i_x2[2] = u;
-        f_ai_x2[1] = db;
-        f_ai_x2[2] = ub;
-    }
-
-    return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);
-}
-
 auto pqcd::diff_sigma::full_partonic_bookkeeping
 (
     const std::array<double, 7> &f_i_x1, 
@@ -188,7 +16,6 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping
     const double &s_hat,
     const double &t_hat, 
     const double &u_hat
-
 ) noexcept -> double
 {
     double sum =0;
@@ -333,33 +160,6 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
     return sum;
 }
 
-auto pqcd::throw_0_truncated_poissonian
-(
-    const double &lambda, 
-    std::uniform_real_distribution<double> unirand, 
-    std::shared_ptr<std::mt19937> eng
-) noexcept -> uint_fast8_t
-{
-    uint_fast8_t k = 1;
-    long double t;
-    if (lambda < 1E-6)
-    {
-        t = static_cast<long double>(1.0 - lambda/2.0);
-    }
-    else
-    {
-        t = static_cast<long double>(exp(-lambda) / (1-exp(-lambda)) * lambda);
-    }
-    long double s = t;
-    long double u = static_cast<long double>(unirand(*eng));
-    while (s < u) 
-    {
-        t *= static_cast<long double>(lambda/++k);
-        s += t;
-    }
-    return k;
-}
-
 std::mutex g_envelope_maximum_mutex;
 
 auto pqcd::generate_2_to_2_scatt
@@ -369,12 +169,11 @@ auto pqcd::generate_2_to_2_scatt
     const double &kt_max,
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    std::shared_ptr<pdf_builder> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
     double &envelope_maximum,
-    const bool target_neutron,
-    const bool projectile_neutron
+    const pqcd::nn_coll_params &nn_params
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -405,7 +204,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, target_neutron, projectile_neutron);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params);
 
         double total_xsection = 0;
 
@@ -470,12 +269,11 @@ auto pqcd::generate_2_to_2_scatt
     const double &kt_max,
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    std::shared_ptr<pdf_builder> p_p_pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
     envelope_func &env_func,
-    const bool target_neutron,
-    const bool projectile_neutron
+    const pqcd::nn_coll_params &nn_params
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -509,7 +307,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, target_neutron, projectile_neutron);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params);
 
         double total_xsection = 0;
 
@@ -547,8 +345,6 @@ auto pqcd::generate_2_to_2_scatt
                     event.init2 = xsect.init2;
                     event.final1 = xsect.final1;
                     event.final2 = xsect.final2;
-                    event.pro_pdf = xsect.pro_pdf;
-                    event.tar_pdf = xsect.tar_pdf;
                     break;
                 }
             }
@@ -562,94 +358,14 @@ auto pqcd::generate_2_to_2_scatt
     return event;
 }
 
-auto pqcd::generate_bin_NN_coll
-(
-    nn_coll &coll,
-    const double &sigma_jet,
-    const double &Tpp_b,
-    const double &kt0,
-    std::uniform_real_distribution<double> unirand, 
-    std::shared_ptr<std::mt19937> eng,
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    pqcd::sigma_jet_params params,
-    const double &power_law,
-    double &envelope_maximum,
-    const bool target_neutron,
-    const bool projectile_neutron
-) noexcept -> void
-{
-    //First generate the number of produced dijets from zero-truncated Poissonian distribution
-    uint_fast8_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
-    coll.dijets.reserve(nof_dijets);
-
-    const double sqrt_s = coll.getcr_sqrt_s();
-
-    for (uint_fast8_t i=0; i < nof_dijets; i++)
-    {
-        coll.dijets.push_back(pqcd::generate_2_to_2_scatt
-        (
-            sqrt_s,
-            kt0,
-            sqrt_s / 2.0,
-            unirand,
-            eng,
-            p_p_pdf,
-            params,
-            power_law,
-            envelope_maximum,
-            target_neutron,
-            projectile_neutron
-        ));
-    }
-}
-
-auto pqcd::generate_bin_NN_coll
-(
-    nn_coll &coll,
-    const double &sigma_jet,
-    const double &Tpp_b,
-    const double &kt0,
-    std::uniform_real_distribution<double> unirand, 
-    std::shared_ptr<std::mt19937> eng,
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
-    pqcd::sigma_jet_params params,
-    const double &power_law,
-    envelope_func &env_func,
-    const bool target_neutron,
-    const bool projectile_neutron
-) noexcept -> void
-{
-    //First generate the number of produced dijets from zero-truncated Poissonian distribution
-    uint_fast8_t nof_dijets = pqcd::throw_0_truncated_poissonian(sigma_jet*Tpp_b, unirand, eng);
-    coll.dijets.reserve(nof_dijets);
-
-    const double sqrt_s = coll.getcr_sqrt_s();
-
-    for (uint_fast8_t i=0; i < nof_dijets; i++)
-    {
-        coll.dijets.push_back(pqcd::generate_2_to_2_scatt
-        (
-            sqrt_s,
-            kt0,
-            sqrt_s / 2.0,
-            unirand,
-            eng,
-            p_p_pdf,
-            params,
-            power_law,
-            env_func,
-            target_neutron,
-            projectile_neutron
-        ));
-    }
-}
 
 auto pqcd::calculate_sigma_jet
 (
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    std::shared_ptr<pdf_builder> p_pdf, 
     const double *const p_mand_s,
     const double *const p_kt2_lower_cutoff, 
-    pqcd::sigma_jet_params params
+    pqcd::sigma_jet_params params,
+    pqcd::nn_coll_params nn_params
 ) noexcept -> double
 {
     double sigma_jet, error;
@@ -658,12 +374,13 @@ auto pqcd::calculate_sigma_jet
     const unsigned fdim = 1;
     std::tuple
     < 
-        std::shared_ptr<LHAPDF::GridPDF>, 
+        std::shared_ptr<pdf_builder>, 
         const double *const, 
         const double *const, 
-        pqcd::sigma_jet_params
+        pqcd::sigma_jet_params, 
+        pqcd::nn_coll_params 
     > 
-        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, params};
+        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, params, nn_params};
 
     int not_success;
 
@@ -694,10 +411,11 @@ auto pqcd::calculate_sigma_jet
 
 auto pqcd::calculate_sigma_1jet_binned
 (
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    std::shared_ptr<pdf_builder> p_pdf, 
     const double *const p_mand_s,
     const std::tuple<double, double, double, double> *const p_bin, 
-    pqcd::sigma_jet_params params
+    pqcd::sigma_jet_params params, 
+    pqcd::nn_coll_params nn_coll
 ) noexcept -> double
 {
     double sigma_jet, error;
@@ -706,12 +424,13 @@ auto pqcd::calculate_sigma_1jet_binned
     const unsigned fdim = 1;
     std::tuple
     < 
-        std::shared_ptr<LHAPDF::GridPDF>, 
+        std::shared_ptr<pdf_builder>, 
         const double *const, 
         const std::tuple<double, double, double, double> *const, 
-        pqcd::sigma_jet_params
+        pqcd::sigma_jet_params, 
+        pqcd::nn_coll_params
     > 
-        fdata = {p_pdf, p_mand_s, p_bin, params};
+        fdata = {p_pdf, p_mand_s, p_bin, params, nn_coll};
 
     int not_success;
 
@@ -742,10 +461,11 @@ auto pqcd::calculate_sigma_1jet_binned
 
 auto pqcd::calculate_sigma_jet_binned
 (
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    std::shared_ptr<pdf_builder> p_pdf, 
     const double *const p_mand_s,
     const std::tuple<double, double, double, double> *const p_bin, 
-    pqcd::sigma_jet_params params
+    pqcd::sigma_jet_params params,
+    pqcd::nn_coll_params nn_params
 ) noexcept -> double
 {
     double sigma_jet, error;
@@ -754,12 +474,13 @@ auto pqcd::calculate_sigma_jet_binned
     const unsigned fdim = 1;
     std::tuple
     < 
-        std::shared_ptr<LHAPDF::GridPDF>, 
+        std::shared_ptr<pdf_builder>, 
         const double *const, 
         const std::tuple<double, double, double, double> *const, 
-        pqcd::sigma_jet_params
+        pqcd::sigma_jet_params,
+        pqcd::nn_coll_params
     > 
-        fdata = {p_pdf, p_mand_s, p_bin, params};
+        fdata = {p_pdf, p_mand_s, p_bin, params, nn_params};
 
     int not_success;
 
@@ -790,10 +511,11 @@ auto pqcd::calculate_sigma_jet_binned
 
 auto pqcd::calculate_sigma_dijet_binned
 (
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+    std::shared_ptr<pdf_builder> p_pdf, 
     const double *const p_mand_s,
     const std::tuple<double, double, double, double> *const p_bin, 
-    pqcd::sigma_jet_params params
+    pqcd::sigma_jet_params params,
+    pqcd::nn_coll_params nn_params
 ) noexcept -> double
 {
     double sigma_jet, error;
@@ -802,12 +524,13 @@ auto pqcd::calculate_sigma_dijet_binned
     const unsigned fdim = 1;
     std::tuple
     < 
-        std::shared_ptr<LHAPDF::GridPDF>, 
+        std::shared_ptr<pdf_builder>, 
         const double *const, 
         const std::tuple<double, double, double, double> *const, 
-        pqcd::sigma_jet_params
+        pqcd::sigma_jet_params, 
+        pqcd::nn_coll_params
     > 
-        fdata = {p_pdf, p_mand_s, p_bin, params};
+        fdata = {p_pdf, p_mand_s, p_bin, params, nn_params};
 
     int not_success;
 
@@ -826,129 +549,6 @@ auto pqcd::calculate_sigma_dijet_binned
                       &sigma_jet,                         //Pointer to output
                       &error                              //Pointer to error output
                   );
-
-    if (not_success != 0)
-    {
-        std::cout << "Problem with integration" << std::endl;
-        return -1;
-    }
-
-    return sigma_jet;
-}
-
-auto pqcd::calculate_spatial_sigma_jet
-(
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-    /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/
-    const double *const p_mand_s, 
-    const double *const p_kt2_lower_cutoff, 
-    pqcd::sigma_jet_params params,
-    const double &sum_tppa, 
-    const double &sum_tppb, 
-    const double &tAA_0, 
-    const double &tBB_0
-) noexcept -> double
-{
-    double sigma_jet, error;
-    const double upper_limits[3] = {1, 1, 1};
-    const double lower_limits[3] = {0, 0, 0};
-    const unsigned fdim = 1;
-                    
-    if (params.snPDFs_linear)
-    {
-        //r=(1+cT)
-
-        const uint_fast16_t NA = params.d_params.A, 
-                            NB = params.d_params.B;
-                            
-        const auto spatial_cutoff = params.d_params.spatial_cutoff;
-        //c=A*(R-1)/TAA(0)
-        const double scaA = static_cast<double>(NA) * sum_tppa / tAA_0, 
-                    intA = 1.0 - scaA;
-        const std::function<double(double const&)> 
-            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
-                {
-                    auto dummy = r*scaA + intA;
-                    // return dummy; // no cutoff
-                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
-                    
-                }; //r_s=1+c*sum(Tpp)
-
-        const double scaB = static_cast<double>(NB) * sum_tppb / tBB_0, 
-                    intB = 1.0 - scaB;
-        const std::function<double(double const&)> 
-            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
-                {
-                    auto dummy = r*scaB + intB;
-                    // return dummy; // no cutoff
-                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
-                };
-                
-        params.d_params.rA_spatial = rA_spatial_;
-        params.d_params.rB_spatial = rB_spatial_;
-    }
-    else
-    {
-        //r=exp(cT)
-
-        const std::function<double(double const&)> 
-            rA_spatial_ = [TAi=sum_tppa,c_func=params.c_A_func](double const &r)
-                {
-                    if (r>0.0)
-                    {
-                        double c = c_func.value_at(r);
-                        return std::exp(c * TAi);
-                    }
-                    else
-                    {
-                        return 0.0;
-                    }
-                };
-
-        const std::function<double(double const&)> 
-            rB_spatial_ = [TBi=sum_tppb,c_func=params.c_A_func](double const &r)
-                {
-                    if (r>0.0)
-                    {
-                        double c = c_func.value_at(r);
-                        return std::exp(c * TBi);
-                    }
-                    else
-                    {
-                        return 0.0;
-                    }
-                };
-
-        params.d_params.rA_spatial = rA_spatial_;
-        params.d_params.rB_spatial = rB_spatial_;
-    }
-
-    std::tuple
-    <
-        std::shared_ptr<LHAPDF::GridPDF>, 
-        const double *const, 
-        const double *const, 
-        pqcd::sigma_jet_params 
-    > fdata = {p_p_pdf, p_mand_s, p_kt2_lower_cutoff, params};
-
-    int not_success;
-
-    not_success = hcubature(fdim,                               //Integrand dimension
-                            pqcd::sigma_jet_integrand,          //Integrand function
-                            &fdata,                             //Pointer to additional arguments
-                            3,                                  //Variable dimension
-                            lower_limits,                       //Variables minimum
-                            upper_limits,                       //Variables maximum
-                            0,                                  //Max n:o of function evaluations
-                            0,                                  //Required absolute error
-                            pqcd::g_error_tolerance,            //Required relative error
-                            ERROR_INDIVIDUAL,                   //Enumerate of which norm is used on errors
-                            &sigma_jet,                         //Pointer to output
-                            &error);                            //Pointer to error output
 
     if (not_success != 0)
     {
@@ -1045,17 +645,15 @@ auto pqcd::diff_cross_section_2jet
     const double &kt, 
     const double &y1, 
     const double &y2,
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+    std::shared_ptr<pdf_builder> pdf,
     pqcd::sigma_jet_params sigma_params,
-    const bool target_neutron,
-    const bool projectile_neutron,
+    const pqcd::nn_coll_params &nn_params,
     bool debug// = false //true prints the calculated processes
 ) noexcept -> std::vector<xsection_id>
 {
     std::vector<xsection_id> xsection;
-    auto diff_params = sigma_params.d_params;
 
-    const particle_id num_flavors = static_cast<particle_id>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
+    const particle_id num_flavors = pdf->num_flavors();
     double xsect;
     xsection_id process;
     
@@ -1086,8 +684,8 @@ auto pqcd::diff_cross_section_2jet
     }
 
     //Units for dsigma/dktdy1dy2 as [mb/GeV]
-    const double alpha_s = p_p_pdf->alphasQ2(q2);
-    const double units = diff_params.K_factor * 2.0 * kt * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * 10 / pow(FMGEV, 2);
+    const double alpha_s = pdf->alphasQ2(q2);
+    const double units = sigma_params.K_factor * 2.0 * kt * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * 10 / pow(FMGEV, 2);
 
     //Returns zero when outside the physical boundaries
     if ((x1 < 0) || (x1 > 1) || (x2 > 1) || (x2 < 0))
@@ -1103,27 +701,15 @@ auto pqcd::diff_cross_section_2jet
 
     //Nuclear modifications and PDF manipulations 
     auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
-        = pqcd::diff_sigma::make_pdfs
+        = pdf->make_pdfs
           (
               x1, 
               x2, 
               q2, 
-              p_p_pdf, 
-              diff_params.projectile_with_npdfs,
-              diff_params.target_with_npdfs,
-              diff_params.isoscalar_projectile,
-              diff_params.isoscalar_target,
-              diff_params.npdfs_spatial,
-              diff_params.only_protons,
-              projectile_neutron,
-              target_neutron,
-              diff_params.npdf_setnumber,
-              diff_params.A,
-              diff_params.B,
-              diff_params.ZA,
-              diff_params.ZB,
-              diff_params.rA_spatial,
-              diff_params.rB_spatial
+              nn_params.target_neutron,
+              nn_params.projectile_neutron,
+              nn_params.sum_tppa,
+              nn_params.sum_tppb
           );
           
     if (debug)
@@ -1162,8 +748,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = 0;
         process.final2 = 0;
-        process.pro_pdf = f_i_x1[0];
-        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -1180,8 +764,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_i_x1[0];
-        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -1200,8 +782,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_i_x1[0];
-        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1214,8 +794,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = -static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_i_x1[0];
-        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1228,8 +806,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = 0;
-        process.pro_pdf = f_i_x1[flavor];
-        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -1242,8 +818,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = 0;
-        process.pro_pdf = f_ai_x1[flavor];
-        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -1262,8 +836,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_i_x1[flavor];
-        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1276,8 +848,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_ai_x1[flavor];
-        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1298,8 +868,6 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor2);
                 process.final1 = static_cast<int_fast8_t>(flavor1);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
-                process.pro_pdf = f_i_x1[flavor1];
-                process.tar_pdf = f_i_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1312,8 +880,6 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor2);
                 process.final1 = -static_cast<int_fast8_t>(flavor1);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
-                process.pro_pdf = f_ai_x1[flavor1];
-                process.tar_pdf = f_ai_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1326,8 +892,6 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor2);
                 process.final1 = static_cast<int_fast8_t>(flavor1);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
-                process.pro_pdf = f_i_x1[flavor1];
-                process.tar_pdf = f_ai_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1340,8 +904,6 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor2);
                 process.final1 = -static_cast<int_fast8_t>(flavor1);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
-                process.pro_pdf = f_ai_x1[flavor1];
-                process.tar_pdf = f_i_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1360,8 +922,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_i_x1[flavor];
-        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1374,8 +934,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = static_cast<int_fast8_t>(flavor);
-        process.pro_pdf = f_ai_x1[flavor];
-        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1392,8 +950,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = 0;
-        process.pro_pdf = f_i_x1[flavor];
-        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1406,8 +962,6 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = 0;
-        process.pro_pdf = f_ai_x1[flavor];
-        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -1428,8 +982,6 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor1);
                 process.final1 = static_cast<int_fast8_t>(flavor2);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
-                process.pro_pdf = f_i_x1[flavor1];
-                process.tar_pdf = f_ai_x2[flavor1];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1442,8 +994,6 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor1);
                 process.final1 = -static_cast<int_fast8_t>(flavor2);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
-                process.pro_pdf = f_ai_x1[flavor1];
-                process.tar_pdf = f_i_x2[flavor1];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -1457,44 +1007,32 @@ auto pqcd::diff_cross_section_2jet
     return xsection;
 }
 
-auto pqcd::diff_sigma::sigma_jet
+auto pqcd::sigma_jet
 (
     const double &x1, 
     const double &x2, 
     const double &q2, 
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
+    std::shared_ptr<pdf_builder> pdf, 
     const double &s_hat, 
     const double &t_hat, 
     const double &u_hat, 
-    const pqcd::diff_sigma::params params/*,
-    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
+    const double &K_factor,
+    const pqcd::nn_coll_params &nn_params
 ) noexcept -> double
 {
-    const double alpha_s = p_p_pdf->alphasQ2(q2);
-    const uint_fast8_t num_flavors = static_cast<uint_fast8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
+    const double alpha_s = pdf->alphasQ2(q2);
+    const uint_fast8_t num_flavors = pdf->num_flavors();
 
     auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
-        = pqcd::diff_sigma::make_pdfs
+        = pdf->make_pdfs
           (
               x1, 
               x2, 
               q2, 
-              p_p_pdf, 
-              params.projectile_with_npdfs,
-              params.target_with_npdfs,
-              params.isoscalar_projectile,
-              params.isoscalar_target,
-              params.npdfs_spatial,
-              true,
-              false,
-              false,
-              params.npdf_setnumber,
-              params.A,
-              params.B,
-              params.ZA,
-              params.ZB,
-              params.rA_spatial,
-              params.rB_spatial
+              nn_params.target_neutron,
+              nn_params.projectile_neutron,
+              nn_params.sum_tppa,
+              nn_params.sum_tppb
           );
 
     auto d_sigma 
@@ -1510,63 +1048,7 @@ auto pqcd::diff_sigma::sigma_jet
               u_hat
           );
 
-    return params.K_factor * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
-}
-
-auto pqcd::diff_sigma::sigma_1jet
-(
-    const double &x1, 
-    const double &x2, 
-    const double &q2, 
-    std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-    const double &s_hat, 
-    const double &t_hat, 
-    const double &u_hat, 
-    const pqcd::diff_sigma::params params/*,
-    std::shared_ptr<LHAPDF::GridPDF> p_n_pdf*/
-) noexcept -> double
-{
-    auto alpha_s = p_p_pdf->alphasQ2(q2);
-    auto num_flavors = static_cast<uint_fast8_t>(std::stoi(p_p_pdf->info().get_entry("NumFlavors")));
-
-    auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
-        = pqcd::diff_sigma::make_pdfs
-          (
-              x1, 
-              x2, 
-              q2, 
-              p_p_pdf, 
-              params.projectile_with_npdfs,
-              params.target_with_npdfs,
-              params.isoscalar_projectile,
-              params.isoscalar_target,
-              params.npdfs_spatial,
-              true,
-              false,
-              false,
-              params.npdf_setnumber,
-              params.A,
-              params.B,
-              params.ZA,
-              params.ZB,
-              params.rA_spatial,
-              params.rB_spatial
-          );
-
-    auto d_sigma 
-        = pqcd::diff_sigma::full_partonic_bookkeeping_1jet
-          (
-              f_i_x1, 
-              f_i_x2,
-              f_ai_x1,
-              f_ai_x2,
-              num_flavors,
-              s_hat,
-              t_hat, 
-              u_hat
-          );
-
-    return params.K_factor * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
+    return K_factor * (M_PI * alpha_s * alpha_s / (s_hat * s_hat)) * d_sigma;
 }
 
 auto pqcd::sigma_1jet_integrand_binned
@@ -1581,14 +1063,15 @@ auto pqcd::sigma_1jet_integrand_binned
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
 
-    auto [ p_pdf, p_mand_s, p_bin, params ] =
+    auto [ p_pdf, p_mand_s, p_bin, params, nn_params ] =
         *(static_cast
              <std::tuple
                  < 
-                     std::shared_ptr<LHAPDF::GridPDF>, 
+                     std::shared_ptr<pdf_builder>, 
                      const double *const, 
                      const std::tuple<double, double, double, double> *const, 
-                     pqcd::sigma_jet_params
+                     pqcd::sigma_jet_params, 
+                     pqcd::nn_coll_params
                  > *
              >(p_fdata)
          );
@@ -1642,7 +1125,7 @@ auto pqcd::sigma_1jet_integrand_binned
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
-    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params)
+    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1660,14 +1143,15 @@ auto pqcd::sigma_jet_integrand_binned
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
 
-    auto [ p_pdf, p_mand_s, p_bin, params ] =
+    auto [ p_pdf, p_mand_s, p_bin, params, nn_params ] =
         *(static_cast
              <std::tuple
                  < 
-                     std::shared_ptr<LHAPDF::GridPDF>, 
+                     std::shared_ptr<pdf_builder>, 
                      const double *const, 
                      const std::tuple<double, double, double, double> *const, 
-                     pqcd::sigma_jet_params
+                     pqcd::sigma_jet_params, 
+                     pqcd::nn_coll_params
                  > *
              >(p_fdata)
          );
@@ -1721,7 +1205,7 @@ auto pqcd::sigma_jet_integrand_binned
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
-    p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params)
+    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1739,14 +1223,15 @@ auto pqcd::sigma_dijet_integrand_binned
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
 
-    auto [ p_pdf, p_mand_s, p_bin, params ] =
+    auto [ p_pdf, p_mand_s, p_bin, params, nn_params ] =
         *(static_cast
              <std::tuple
                  < 
-                     std::shared_ptr<LHAPDF::GridPDF>, 
+                     std::shared_ptr<pdf_builder>, 
                      const double *const, 
                      const std::tuple<double, double, double, double> *const, 
-                     pqcd::sigma_jet_params
+                     pqcd::sigma_jet_params, 
+                     pqcd::nn_coll_params
                  > *
              >(p_fdata)
          );
@@ -1794,7 +1279,7 @@ auto pqcd::sigma_dijet_integrand_binned
     const auto t_hat = - kt2*(1 + exp(-2.0*ystar));
     const auto u_hat = - kt2*(1 + exp( 2.0*ystar));
 
-    p_fval[0] = pqcd::diff_sigma::sigma_1jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params)
+    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params)
                     * 2.0 * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1811,11 +1296,12 @@ auto pqcd::sigma_jet_integrand
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
-    auto [ p_pdf, p_mand_s, p_p02, params ]
-        = *(static_cast<std::tuple<std::shared_ptr<LHAPDF::GridPDF>, 
+    auto [ p_pdf, p_mand_s, p_p02, params, nn_params ]
+        = *(static_cast<std::tuple<std::shared_ptr<pdf_builder>, 
                                    const double *const, 
                                    const double *const, 
-                                   pqcd::sigma_jet_params > *>(p_fdata));
+                                   pqcd::sigma_jet_params, 
+                                   pqcd::nn_coll_params > *>(p_fdata));
 
     double kt2;
     double y1, y2;
@@ -1861,28 +1347,28 @@ auto pqcd::sigma_jet_integrand
     }
     else//FULL SUMMATION
     {
-        p_fval[0] = pqcd::diff_sigma::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.d_params) 
+        p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params) 
                      * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
     return 0; // success
 }
 
-auto pqcd::f_ses
-(
-    const double &x, 
-    const double &q2, 
-    std::shared_ptr<LHAPDF::GridPDF> p_pdf
-) noexcept -> double
-{
-    double sum = 0;
-    for (int_fast8_t flavor = -5; flavor <= 5; ++flavor)
-    {
-        sum += (flavor == 0) ? p_pdf->xfxQ2(flavor, x, q2) : 4 * p_pdf->xfxQ2(flavor, x, q2) / 9;
-    }
-    //cout<<"x="<<*p_x<<", q2="<<*p_q2<<" SES="<<sum<<endl;
-    return sum;
-}
+// auto pqcd::f_ses
+// (
+//     const double &x, 
+//     const double &q2, 
+//     std::shared_ptr<pdf_builder> p_pdf
+// ) noexcept -> double
+// {
+//     double sum = 0;
+//     for (int_fast8_t flavor = -5; flavor <= 5; ++flavor)
+//     {
+//         sum += (flavor == 0) ? p_pdf->xfxQ2(flavor, x, q2) : 4 * p_pdf->xfxQ2(flavor, x, q2) / 9;
+//     }
+//     //cout<<"x="<<*p_x<<", q2="<<*p_q2<<" SES="<<sum<<endl;
+//     return sum;
+// }
 
 auto pqcd::scale_limits_from_0_1
 (
