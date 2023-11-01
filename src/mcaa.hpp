@@ -104,7 +104,8 @@ public:
     auto fit_sigma_jet_pt0_cutoff
     (
         double &pt02, 
-        const double &target,
+        const double &target, 
+        const pqcd::sigma_jet_params &params,
         const bool &verbose=true
     ) noexcept -> double;
 
@@ -140,7 +141,6 @@ private:
     std::shared_ptr<pdf_builder> pdf{};     // pointer to the LHAPDF PDF-object of the proton PDF
     std::shared_ptr<Tpp_builder> Tpp{};                            // nucleon overlap function
     double power_law{2.0};                        // parameter for the envelope function: sigma_jet < A*pT^(-power_law)
-    pqcd::diff_sigma::params diff_params;         // the struct of pQCD event parameters
     pqcd::sigma_jet_params jet_params;            // the struct of sigma_jet parameters
     nucleus_generator::nucleus_params nuc_params; // the struct of parameters for the nucleus generation
 

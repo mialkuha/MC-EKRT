@@ -71,81 +71,12 @@ public:
     (
         const double &kt, 
         const double &sqrt_s,
-        std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        pqcd::sigma_jet_params params,
-        const double &ave_T_AA_0
+        std::shared_ptr<pdf_builder> p_pdf, 
+        pqcd::sigma_jet_params params
     ) noexcept -> std::tuple<double,double>
     {
         double max_dsigma;
         double error_est;
-
-        if (params.d_params.npdfs_spatial)
-        {
-            if (params.snPDFs_linear)
-            {
-                //r=(1+cT)
-                const uint_fast16_t A = params.d_params.A,
-                                    B = params.d_params.B;
-                //c=A*(R-1)/TAA(0)
-                const double scaA = static_cast<double>(A) * 3.0, 
-                            intA = 1.0 - scaA;
-                const std::function<double(double const&)> 
-                    rA_spatial_ = [&](double const &r)
-                        {
-                            auto dummy = r*scaA + intA;
-                            return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-                        }; //r_s=1+c*sum(Tpp)
-
-                const double scaB = static_cast<double>(B) * 3.0, 
-                            intB = 1.0 - scaB;
-                const std::function<double(double const&)> 
-                    rB_spatial_ = [&](double const &r)
-                        {
-                            auto dummy = r*scaB + intB;
-                            return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-                        };
-
-                params.d_params.rA_spatial = rA_spatial_;
-                params.d_params.rB_spatial = rB_spatial_;
-            }
-            else
-            {
-                //r=exp(cT)
-
-                const std::function<double(double const&)> 
-                    rA_spatial_ = [c_func=params.c_A_func](double const &r)
-                        {
-                            if (r>0.0)
-                            {
-                                double c = c_func.value_at(r);
-                                auto dummy = std::exp(c * 0.4);
-                                return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-                            }
-                            else
-                            {
-                                return 0.0;
-                            }
-                        };
-
-                const std::function<double(double const&)> 
-                    rB_spatial_ = [c_func=params.c_A_func](double const &r)
-                        {
-                            if (r>0.0)
-                            {
-                                double c = c_func.value_at(r);
-                                auto dummy = std::exp(c * 0.4);
-                                return (dummy < 1.0 ) ? 1.0 : dummy; // looking for max: only antishadowing allowed
-                            }
-                            else
-                            {
-                                return 0.0;
-                            }
-                        };
-
-                params.d_params.rA_spatial = rA_spatial_;
-                params.d_params.rB_spatial = rB_spatial_;
-            }
-        }
 
         struct f_params fparams = {kt, sqrt_s, p_pdf, params};
         //Use Simplex algorithm by Nelder and Mead to find the maximum of dsigma
@@ -214,9 +145,8 @@ public:
     (
         const double &kt0, 
         const double &sqrt_s,
-        std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
-        pqcd::sigma_jet_params jet_params,
-        const double &ave_T_AA_0
+        std::shared_ptr<pdf_builder> p_pdf, 
+        pqcd::sigma_jet_params jet_params
     ) noexcept
     {
         // How tight we want the envelope to be, lower values == faster but more prone to error
@@ -238,14 +168,14 @@ public:
         {
             //Calculate the normalization for the ~1/kt part
             double dummy_kt0 = 1.0;
-            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma, err] = calcs::find_max_dsigma(dummy_kt0, sqrt_s, p_pdf, jet_params);
             env_norm1 = (max_dsigma + fabs(err)) * extra;
 
             //Calculate parameters for the a*kt^b part
             double kt1 = 2.0;
             double kt2 = 3.0;
-            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
-            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
             double logkt1 = std::log(kt1);
             double logkt2 = std::log(kt2);
             double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
@@ -308,8 +238,8 @@ public:
             //Calculate parameters for the a*kt^b part
             double kt1 = env_min_kt;
             double kt2 = env_min_kt + 1.0;
-            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
-            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto [max_dsigma1, err1] = calcs::find_max_dsigma(kt1, sqrt_s, p_pdf, jet_params);
+            auto [max_dsigma2, err2] = calcs::find_max_dsigma(kt2, sqrt_s, p_pdf, jet_params);
             double logkt1 = std::log(kt1);
             double logkt2 = std::log(kt2);
             double logy1 = std::log((max_dsigma1 + fabs(err1)) * extra);
@@ -360,7 +290,7 @@ public:
     {
         const double &kt;
         const double &sqrt_s;
-        std::shared_ptr<LHAPDF::GridPDF> p_pdf;
+        std::shared_ptr<pdf_builder> p_pdf;
         pqcd::sigma_jet_params sigma_params;
     };
 
@@ -381,8 +311,16 @@ public:
         double y1, y2;
         y1 = gsl_vector_get(v, 0);
         y2 = gsl_vector_get(v, 1);
+        
+        auto dummy = pqcd::nn_coll_params
+            (
+                0.0,
+                0.0,
+                false,
+                false
+            );
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, sigma_params, false, false);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_pdf, sigma_params, dummy, true, false);
         double total_xsection = 0;
         for (auto xsect : xsection)
         {
@@ -395,15 +333,15 @@ public:
     static auto prepare_sigma_jets
     (
         const bool read_sigmajets_from_file,
-        std::shared_ptr<LHAPDF::GridPDF> p_pdf, 
+        std::shared_ptr<pdf_builder> p_pdf, 
         const double &mand_s,
         const double &sqrt_s,
         const double &kt02, 
         const double &kt0, 
         const double &power_law,
         pqcd::sigma_jet_params jet_params,
-        const double &ave_T_AA_0,
-        const std::string &s_jet_file_name
+        const std::string &s_jet_file_name,
+        const bool &spatial_pdfs
     ) ->
     std::tuple
     <
@@ -414,48 +352,29 @@ public:
         std::optional<std::vector<double> >
     >
     {
-        const bool use_npdfs = (jet_params.d_params.projectile_with_npdfs 
-                                || jet_params.d_params.target_with_npdfs);
-        const bool spatial_pdfs = jet_params.d_params.npdfs_spatial;
         double dijet_norm = 0;
 
-        if //proton PDFs
-        (
-            !use_npdfs && !spatial_pdfs
-        )
-        {
-            std::cout<<"Calculating sigma_jet..."<<std::flush;
-            double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
-            std::cout<<"done!"<<std::endl;
-
-            dijet_norm = sigma_jet;
-
-            std::cout<<"Calculating envelope..."<<std::flush;
-            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
-            std::cout<<"done!"<<std::endl;
-
-            return std::make_tuple
-                (
-                    dijet_norm,
-                    variant_sigma_jet(sigma_jet),
-                    std::nullopt,
-                    variant_envelope_pars(env_params),
-                    std::nullopt
-                );
-        }
-        else if //nPDFS in use
+        if 
         (
             !spatial_pdfs
         )
         {
             std::cout<<"Calculating sigma_jet..."<<std::flush;
-            double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params);
+        
+            auto dummy = pqcd::nn_coll_params
+                (
+                    0.0,
+                    0.0,
+                    false,
+                    false
+                );
+            double sigma_jet = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params, dummy, false);
             std::cout<<"done!"<<std::endl;
 
             dijet_norm = sigma_jet;
 
             std::cout<<"Calculating envelope..."<<std::flush;
-            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
             std::cout<<"done!"<<std::endl;
 
             return std::make_tuple
@@ -472,17 +391,23 @@ public:
             if (read_sigmajets_from_file)
             {
                 std::cout<<"Reading spatial sigma_jets..."<<std::flush;
-                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial(s_jet_file_name, jet_params.d_params.K_factor);
+                variant_sigma_jet sigma_jet = calcs::read_sigma_jets_spatial(s_jet_file_name, jet_params.K_factor);
                 std::cout<<"done!"<<std::endl;
 
-                auto other_params = jet_params;
-                other_params.d_params.npdfs_spatial = false;
-                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+                std::cout<<"Calculating dijet_norm..."<<std::endl;
+                auto dummy = pqcd::nn_coll_params
+                    (
+                        0.0,
+                        0.0,
+                        false,
+                        false
+                    );
+                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params, dummy, true); //sigma_jet with ave nPDF
                 //dijet_norm = 93.7604;
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -511,21 +436,25 @@ public:
                             kt02, 
                             jet_params, 
                             upper_sumTpp_limit, 
-                            lower_sumTpp_limit,
-                            ave_T_AA_0
+                            lower_sumTpp_limit
                         );
                 std::cout<<"done!"<<std::endl;
 
 
                 std::cout<<"Calculating dijet_norm..."<<std::endl;
-                auto other_params = jet_params;
-                other_params.d_params.npdfs_spatial = false;
-                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, other_params); //sigma_jet with ave nPDF
+                auto dummy = pqcd::nn_coll_params
+                    (
+                        0.0,
+                        0.0,
+                        false,
+                        false
+                    );
+                dijet_norm = pqcd::calculate_sigma_jet(p_pdf, &mand_s, &kt02, jet_params, dummy, true); //sigma_jet with ave nPDF
                 //dijet_norm = 93.7604;
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params, ave_T_AA_0);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -553,7 +482,7 @@ public:
         const AA_collision_params &AA_params,
         const pqcd::sigma_jet_params &dsigma_params,
         const double &kt0,
-        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        std::shared_ptr<pdf_builder> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
         const bool &verbose
@@ -641,6 +570,13 @@ public:
 
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
+                            auto dummy = pqcd::nn_coll_params
+                                (
+                                    0.0,
+                                    0.0,
+                                    B->is_neutron,
+                                    A->is_neutron
+                                );
                             newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
@@ -652,8 +588,7 @@ public:
                                 dsigma_params,
                                 power_law,
                                 env_func_,
-                                B->is_neutron,
-                                A->is_neutron
+                                dummy
                             ));
                         }
 
@@ -760,6 +695,13 @@ public:
 
                         for (uint_fast8_t i=0; i < nof_dijets; i++)
                         {
+                            auto dummy = pqcd::nn_coll_params
+                                (
+                                    0.0,
+                                    0.0,
+                                    B->is_neutron,
+                                    A->is_neutron
+                                );
                             newpair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
@@ -771,8 +713,7 @@ public:
                                 dsigma_params,
                                 power_law,
                                 env_func_,
-                                B->is_neutron,
-                                A->is_neutron
+                                dummy
                             ));
                         }
 
@@ -826,7 +767,7 @@ public:
         const AA_collision_params &AA_params,
         pqcd::sigma_jet_params dsigma_params,
         const double &kt0,
-        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        std::shared_ptr<pdf_builder> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
         const bool &verbose,
@@ -938,98 +879,7 @@ public:
                         sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
                         //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                     }
-                    
-                    if (dsigma_params.snPDFs_linear)
-                    {
-                        //r=(1+cT)
 
-                        const uint_fast16_t NA = dsigma_params.d_params.A, 
-                                            NB = dsigma_params.d_params.B;
-                                            
-                        const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
-                        //c=A*(R-1)/TAA(0)
-                        const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                                    intA = 1.0 - scaA;
-                        const std::function<double(double const&)> 
-                            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
-                                {
-                                    auto dummy = r*scaA + intA;
-                                    // return dummy; // no cutoff
-                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
-                                    
-                                }; //r_s=1+c*sum(Tpp)
-
-                        const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                                    intB = 1.0 - scaB;
-                        const std::function<double(double const&)> 
-                            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
-                                {
-                                    auto dummy = r*scaB + intB;
-                                    // return dummy; // no cutoff
-                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
-                                };
-                                
-                        dsigma_params.d_params.rA_spatial = rA_spatial_;
-                        dsigma_params.d_params.rB_spatial = rB_spatial_;
-                    }
-                    else
-                    {
-                        //r=exp(cT)
-
-                        const std::function<double(double const&)> 
-                            rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
-                                {
-                                    if (r>0.0)
-                                    {
-                                        double c = c_func.value_at(r);
-                                        return std::exp(c * TAi);
-                                    }
-                                    else
-                                    {
-                                        return 0.0;
-                                    }
-                                };
-
-                        const std::function<double(double const&)> 
-                            rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
-                                {
-                                    if (r>0.0)
-                                    {
-                                        double c = c_func.value_at(r);
-                                        return std::exp(c * TBi);
-                                    }
-                                    else
-                                    {
-                                        return 0.0;
-                                    }
-                                };
-
-                        dsigma_params.d_params.rA_spatial = rA_spatial_;
-                        dsigma_params.d_params.rB_spatial = rB_spatial_;
-                    }
-
-                    // if (AA_params.reduce_nucleon_energies)
-                    // {
-                    //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
-                    //     pqcd::generate_bin_NN_coll
-                    //     (
-                    //         newpair, 
-                    //         sigma_jet, 
-                    //         AA_params.Tpp(newpair.getcr_bsquared()), 
-                    //         kt0,
-                    //         unirand, 
-                    //         eng,
-                    //         p_p_pdf,
-                    //         dsigma_params,
-                    //         power_law,
-                    //         envelope_maximum
-                    //     );
-                    // }
-                    // else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
@@ -1040,6 +890,13 @@ public:
                         const double sqrt_s = new_pair.getcr_sqrt_s();
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
+                            auto dummy = pqcd::nn_coll_params
+                                (
+                                    *sum_tppa,
+                                    *sum_tppb,
+                                    B->is_neutron,
+                                    A->is_neutron
+                                );
                             new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
@@ -1051,33 +908,11 @@ public:
                                 dsigma_params,
                                 power_law,
                                 env_func_,
-                                B->is_neutron,
-                                A->is_neutron
+                                dummy
                             ));
                         }
-
-                        // pqcd::generate_bin_NN_coll
-                        // (
-                        //     newpair, 
-                        //     sigma_jet, 
-                        //     AA_params.Tpp(newpair.getcr_bsquared()), 
-                        //     kt0,
-                        //     unirand, 
-                        //     eng,
-                        //     p_p_pdf,
-                        //     dsigma_params,
-                        //     power_law,
-                        //     env_func_,
-                        //     B->is_neutron,
-                        //     A->is_neutron
-                        // );
                     }
 
-                    // if (AA_params.reduce_nucleon_energies)
-                    // {
-                    //     newpair.reduce_energy_and_push_end_states_to_collider_frame();
-                    // }
-                    // else
                     {
                         new_pair.push_end_states_to_collider_frame();
                     }
@@ -1088,141 +923,14 @@ public:
             else
             {
                 double sigma_jet;
-                // if (AA_params.reduce_nucleon_energies) 
-                // {
-                //     array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
-                //     sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
-                // }
-                // else
                 {
                     array<double,2> args{*sum_tppa, *sum_tppb};
                     sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
                     //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                 }
-                
-                // newpair.calculate_xsects(sigma_jet, AA_params.Tpp, newpair.getcr_bsquared());
-                // auto ran = unirand(*eng);
-                // switch (AA_params.normalize_to)
-                // {
-                // case B2_normalization_mode::total:
-                //     ran *= newpair.getcr_max_tot_xsect();
-                //     break;
-                
-                // case B2_normalization_mode::inelastic:
-                //     ran *= newpair.getcr_max_inel_xsect();
-                //     break;
-                
-                // case B2_normalization_mode::nothing:
-                //     break;
-                
-                // default:
-                //     ran *= newpair.getcr_max_inel_xsect();
-                //     break;
-                // }
-
-                // if (ran > newpair.getcr_effective_inel_xsect())
-                // {
-                //     if (ran > newpair.getcr_effective_tot_xsect())
-                //     {
-                //         continue;
-                //     }
-                //     nof_softs++;
-                //     continue;
-                // }
+            
                 if (AA_params.calculate_end_state)
                 {
-                    
-                    if (dsigma_params.snPDFs_linear)
-                    {
-                        //r=(1+cT)
-
-                        const uint_fast16_t NA = dsigma_params.d_params.A, 
-                                            NB = dsigma_params.d_params.B;
-                                            
-                        const auto spatial_cutoff = dsigma_params.d_params.spatial_cutoff;
-                        //c=A*(R-1)/TAA(0)
-                        const double scaA = static_cast<double>(NA) * *sum_tppa / tAA_0, 
-                                    intA = 1.0 - scaA;
-                        const std::function<double(double const&)> 
-                            rA_spatial_ = [&,co=spatial_cutoff](double const &r)
-                                {
-                                    auto dummy = r*scaA + intA;
-                                    // return dummy; // no cutoff
-                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                                    // return (dummy < 1/static_cast<double>(NA) ) ? 1/static_cast<double>(NA) : dummy; // cutoff at 1+cT < A
-                                    
-                                }; //r_s=1+c*sum(Tpp)
-
-                        const double scaB = static_cast<double>(NB) * *sum_tppb / tBB_0, 
-                                    intB = 1.0 - scaB;
-                        const std::function<double(double const&)> 
-                            rB_spatial_ = [&,co=spatial_cutoff](double const &r)
-                                {
-                                    auto dummy = r*scaB + intB;
-                                    // return dummy; // no cutoff
-                                    // return (dummy < 0.0 ) ? 0.0 : dummy; // cutoff at 1+cT < 0
-                                    return (dummy < co ) ? co : dummy; // cutoff at 1+cT < spatial_cutoff
-                                    // return (dummy < 1/static_cast<double>(NB) ) ? 1/static_cast<double>(NB) : dummy; // cutoff at 1+cT < B
-                                };
-                                
-                        dsigma_params.d_params.rA_spatial = rA_spatial_;
-                        dsigma_params.d_params.rB_spatial = rB_spatial_;
-                    }
-                    else
-                    {
-                        //r=exp(cT)
-
-                        const std::function<double(double const&)> 
-                            rA_spatial_ = [TAi=*sum_tppa,c_func=dsigma_params.c_A_func](double const &r)
-                                {
-                                    if (r>0.0)
-                                    {
-                                        double c = c_func.value_at(r);
-                                        return std::exp(c * TAi);
-                                    }
-                                    else
-                                    {
-                                        return 0.0;
-                                    }
-                                };
-
-                        const std::function<double(double const&)> 
-                            rB_spatial_ = [TBi=*sum_tppb,c_func=dsigma_params.c_A_func](double const &r)
-                                {
-                                    if (r>0.0)
-                                    {
-                                        double c = c_func.value_at(r);
-                                        return std::exp(c * TBi);
-                                    }
-                                    else
-                                    {
-                                        return 0.0;
-                                    }
-                                };
-
-                        dsigma_params.d_params.rA_spatial = rA_spatial_;
-                        dsigma_params.d_params.rB_spatial = rB_spatial_;
-                    }
-
-                    // if (AA_params.reduce_nucleon_energies)
-                    // {
-                    //     double envelope_maximum = std::get<linear_interpolator>(env_func).value_at(newpair.getcr_sqrt_s());
-                    //     pqcd::generate_bin_NN_coll
-                    //     (
-                    //         newpair, 
-                    //         sigma_jet, 
-                    //         AA_params.Tpp(newpair.getcr_bsquared()), 
-                    //         kt0,
-                    //         unirand, 
-                    //         eng,
-                    //         p_p_pdf,
-                    //         dsigma_params,
-                    //         power_law,
-                    //         envelope_maximum
-                    //     );
-                    // }
-                    // else
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
 
@@ -1234,6 +942,13 @@ public:
 
                         for (uint_fast8_t i=0; i < nof_dijets; i++)
                         {
+                            auto dummy = pqcd::nn_coll_params
+                                (
+                                    *sum_tppa,
+                                    *sum_tppb,
+                                    B->is_neutron,
+                                    A->is_neutron
+                                );
                             auto new_dijet = pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
@@ -1245,8 +960,7 @@ public:
                                 dsigma_params,
                                 power_law,
                                 env_func_,
-                                B->is_neutron,
-                                A->is_neutron
+                                dummy
                             );
 
 
@@ -1333,7 +1047,7 @@ public:
         const AA_collision_params &AA_params,
         pqcd::sigma_jet_params dsigma_params,
         const double &kt0,
-        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf,
+        std::shared_ptr<pdf_builder> p_p_pdf,
         const double &power_law,
         variant_envelope_pars &env_func,
         const bool &verbose,
@@ -1803,25 +1517,28 @@ private:
     (
         const std::string filename,
         const double &tolerance, 
-        std::shared_ptr<LHAPDF::GridPDF> p_p_pdf, 
-        /*std::shared_ptr<LHAPDF::GridPDF> p_n_pdf,*/ 
+        std::shared_ptr<pdf_builder> p_p_pdf, 
         const double &mand_s, 
         const double &kt02, 
         const pqcd::sigma_jet_params &jet_params, 
         const double &upper_sumTpp_limit, 
-        const double &lower_sumTpp_limit, 
-        const double &ave_T_AA_0
+        const double &lower_sumTpp_limit
     ) noexcept -> InterpMultilinear<2, double>
     {
         const double marginal = 1.2; //20% more divisions than the tolerance gives us on the edges
         std::array<uint_fast16_t,2> dim_Ns{0}; //How many points to calculate in each dimension
         std::array<double,4> corners{0};
-        const double tAA_0 = ave_T_AA_0;//29.5494;//30.5
-        const double tBB_0 = ave_T_AA_0;//29.5494;//30.5
 
         auto sigma_jet_function = [=](const double sum_tppa, const double sum_tppb)
         {
-            return pqcd::calculate_spatial_sigma_jet(p_p_pdf,/* p_n_pdf,*/ &mand_s, &kt02, jet_params, sum_tppa, sum_tppb, tAA_0, tBB_0);
+            auto dummy = pqcd::nn_coll_params
+                (
+                    sum_tppa,
+                    sum_tppb,
+                    false,
+                    false
+                );
+            return pqcd::calculate_sigma_jet(p_p_pdf, &mand_s, &kt02, jet_params, dummy, false);
         };
 
         std::array<std::future<double>, 8> corner_futures{};
@@ -1880,7 +1597,7 @@ private:
 
         std::ofstream sigma_jet_grid_file;
         sigma_jet_grid_file.open(filename, std::ios::out);
-        sigma_jet_grid_file << "%mand_s=" << mand_s << " kt02=" << kt02 << " p_pdf=" << p_p_pdf->info().get_entry("SetIndex") << std::endl;
+        sigma_jet_grid_file << "%mand_s=" << mand_s << " kt02=" << kt02 << " p_pdf=" << p_p_pdf->set_index() << std::endl;
         sigma_jet_grid_file << "%num_elements=" << num_elements << std::endl;
         sigma_jet_grid_file << "%num_sum_T_pp_A=" << dim_Ns[0] << std::endl;
         sigma_jet_grid_file << "%num_sum_T_pp_B=" << dim_Ns[1] << std::endl;
@@ -1908,17 +1625,21 @@ private:
         {
             uint_fast64_t jj = *it % rad;
             uint_fast64_t ii = (*it - jj) / rad;
-            double dummy = pqcd::calculate_spatial_sigma_jet
+            auto dummy_nn = pqcd::nn_coll_params
+                (
+                    grid1[ii], 
+                    grid2[jj], 
+                    false,
+                    false
+                );
+            double dummy = pqcd::calculate_sigma_jet
                             (
-                                p_p_pdf, 
-                                /*p_n_pdf,*/ 
+                                p_p_pdf,
                                 &mand_s, 
                                 &kt02, 
                                 jet_params, 
-                                grid1[ii], 
-                                grid2[jj], 
-                                tAA_0, 
-                                tBB_0
+                                dummy_nn, 
+                                false
                             );
             f_values[*it] = dummy;
             {
@@ -1928,7 +1649,7 @@ private:
             }
         }
         
-        double K_fac = jet_params.d_params.K_factor;
+        double K_fac = jet_params.K_factor;
 
         for (uint_fast64_t i=0; i<dim_Ns[0]; i++)
         {

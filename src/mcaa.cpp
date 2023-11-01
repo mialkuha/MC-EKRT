@@ -6,8 +6,7 @@ mcaa::mcaa
 (
     const std::string &initfile
 ) 
-: diff_params(false,false,false,false,false,false,1,0,1,1u,1u,1u,1u),
-  jet_params(this->diff_params,pqcd::scaled_from_kt,1,false),
+: jet_params(pqcd::scaled_from_kt,1,1.0,false),
   nuc_params(1u,1u,1u,1u,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,1.0,false,false,false,1u,1.0)
 {
     auto 
@@ -186,29 +185,11 @@ mcaa::mcaa
     {
         this->power_law = 2.0;
     }
-    
-    this->diff_params = pqcd::diff_sigma::params(
-    /*projectile_with_npdfs=    */(p_is_AA && p_use_npdfs),
-    /*target_with_npdfs=        */(!p_is_pp && p_use_npdfs),
-    /*isoscalar_projectile=     */false,
-    /*isoscalar_target=         */false,
-    /*npdfs_spatial=            */p_use_snpdfs,
-    /*only_protons=             */p_only_protons,
-    /*npdf_setnumber=           */1,
-    /*spatial_cutoff=           */spatial_cutoff,
-    /*K_factor=                 */K_factor,
-    /*A=                        */(p_is_AA)? p_A : 1u,  //Pb 
-    /*B=                        */(p_is_pp)? 1u : p_A,  //Pb
-    /*ZA=                       */(p_is_AA)? p_ZA : 1u, //Pb
-    /*ZB=                       */(p_is_pp)? 1u : p_ZA  //Pb
-    /*p_n_pdf=                  */
-    /*rA_spatial=               */
-    /*rB_spatial=               */);
 
     this->jet_params = pqcd::sigma_jet_params(
-    /*d_params=                 */this->diff_params,
     /*scale_choice=             */pqcd::scaled_from_kt,
     /*scalar=                   */1.0,
+    /*K_factor=                 */this->K_factor,
     /*use_ses=                  */false);
 
     double hotspot_distr_width = std::sqrt(this->proton_width_2-std::pow(p_hotspot_width,2));
@@ -261,6 +242,7 @@ auto mcaa::fit_sigma_jet_pt0_cutoff
 (
     double &pt02, 
     const double &target, 
+    const pqcd::sigma_jet_params &params,
     const bool &verbose
 ) noexcept -> double
 {
@@ -269,7 +251,14 @@ auto mcaa::fit_sigma_jet_pt0_cutoff
 
     auto difference_to_target = [&](const double &_kt02)
     {
-        return pqcd::calculate_sigma_jet(this->pdf, &(this->mand_s), &_kt02, this->jet_params) - target;
+        auto dummy = pqcd::nn_coll_params
+            (
+                0.0,
+                0.0,
+                false,
+                false
+            );
+        return pqcd::calculate_sigma_jet(this->pdf, &(this->mand_s), &_kt02, params, dummy, false) - target;
     };
 
     helpers::secant_method(&pt02, difference_to_target, 1e-3, &sigma_jet);
@@ -293,11 +282,11 @@ auto mcaa::find_sigma_jet_cutoff_Q
     {
         double kt02dummy = 4.0;
         auto jet_params_ = pqcd::sigma_jet_params(
-        /*d_params=                 */this->jet_params.d_params,
         /*scale_choice=             */this->jet_params.scale_c,
         /*scalar=                   */scalar_,
+        /*K_factor=                 */this->K_factor,
         /*use_ses=                  */this->jet_params.use_ses);
-        auto kt02_ = this->fit_sigma_jet_pt0_cutoff(kt02dummy, target);
+        auto kt02_ = this->fit_sigma_jet_pt0_cutoff(kt02dummy, target, jet_params_, verbose);
         return kt02_ - pt02;
     };
 
@@ -402,7 +391,7 @@ auto mcaa::throw_location_for_dijet
 
 auto mcaa::sqrtalphas(double Q) noexcept -> double
 {
-    auto alphas = this->p_pdf->alphasQ(Q);
+    auto alphas = this->pdf->alphasQ(Q);
     return std::sqrt(alphas);
 }
 
@@ -570,56 +559,54 @@ auto mcaa::run() -> void
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
     
-    std::vector<double> Rs_as_vector, cs_as_vector;
+    // std::vector<double> Rs_as_vector, cs_as_vector;
 
-    //if linear snPDFs
-    if (this->snPDFs && (this->T_AA_0 == 0.0) && this->snPDFs_linear)
-    {
-        std::cout<<"Calculating T_AA(0)"<<std::endl;
+    // //if linear snPDFs
+    // if (this->snPDFs && (this->T_AA_0 == 0.0) && this->snPDFs_linear)
+    // {
+    //     std::cout<<"Calculating T_AA(0)"<<std::endl;
 
-        this->T_AA_0 = this->Tpp->calculate_T_AA_0
-        (
-            this->nuc_params,
-            1e-5,
-            verbose
-        );
+    //     this->T_AA_0 = this->Tpp->calculate_T_AA_0
+    //     (
+    //         this->nuc_params,
+    //         1e-5,
+    //         verbose
+    //     );
 
-        std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
-    } //if exponential snPDFs
-    else if (this->snPDFs && (this->T_AA_0 == 0.0))
-    {
-        std::cout<<"Calculating R_A - c_A table"<<std::endl;
+    //     std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
+    // } //if exponential snPDFs
+    // else if (this->snPDFs && (this->T_AA_0 == 0.0))
+    // {
+    //     std::cout<<"Calculating R_A - c_A table"<<std::endl;
 
-        auto [R_A_table, c_A_table] = this->Tpp->calculate_R_c_table
-        (
-            this->nuc_params,
-            1e-5,
-            verbose
-        );
-        std::cout<<"Done! {c,R} pairs:"<<std::endl;
+    //     auto [R_A_table, c_A_table] = this->Tpp->calculate_R_c_table
+    //     (
+    //         this->nuc_params,
+    //         1e-5,
+    //         verbose
+    //     );
+    //     std::cout<<"Done! {c,R} pairs:"<<std::endl;
 
-        for (uint_fast8_t i=0; i<24; i++)
-        {
-            std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
-        }
-        std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
+    //     for (uint_fast8_t i=0; i<24; i++)
+    //     {
+    //         std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
+    //     }
+    //     std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
         
-        for (uint_fast8_t i=0; i<25; i++)
-        {
-            Rs_as_vector.push_back(R_A_table[i]);
-            cs_as_vector.push_back(c_A_table[i]);
-        }
+    //     for (uint_fast8_t i=0; i<25; i++)
+    //     {
+    //         Rs_as_vector.push_back(R_A_table[i]);
+    //         cs_as_vector.push_back(c_A_table[i]);
+    //     }
 
-        auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
+    //     auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
     
-        this->jet_params = pqcd::sigma_jet_params(
-        /*d_params=                 */this->jet_params.d_params,
-        /*scale_choice=             */this->jet_params.scale_c,
-        /*scalar=                   */this->jet_params.scalar,
-        /*use_ses=                  */this->jet_params.use_ses,
-        /*snPDFs_linear=            */this->snPDFs_linear,
-        /*c_A_func=                 */c_A_from_R);
-    }
+    //     this->jet_params = pqcd::sigma_jet_params(
+    //     /*scale_choice=             */this->jet_params.scale_c,
+    //     /*scalar=                   */this->jet_params.scalar,
+    //     /*K_factor=                 */this->K_factor,
+    //     /*use_ses=                  */this->jet_params.use_ses);
+    // }
 
     auto
     [
@@ -632,15 +619,15 @@ auto mcaa::run() -> void
     calcs::prepare_sigma_jets
     (
         this->read_sigmajets_from_file,
-        this->p_pdf, 
+        this->pdf, 
         this->mand_s,
         this->sqrt_s,
         this->kt02, 
         this->kt0,
         this->power_law,
         this->jet_params,
-        this->T_AA_0,
-        this->sigmajet_filename
+        this->sigmajet_filename,
+        this->snPDFs
     );
 
     if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
@@ -865,7 +852,7 @@ auto mcaa::run() -> void
                             coll_params, 
                             this->jet_params,
                             this->kt0,
-                            this->p_pdf,
+                            this->pdf,
                             this->power_law,
                             env_func,
                             verbose,

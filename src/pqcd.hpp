@@ -152,7 +152,8 @@ public:
       const double &t_hat, 
       const double &u_hat, 
       const double &K_factor,
-      const pqcd::nn_coll_params &nn_params
+      pqcd::nn_coll_params &nn_params,
+      const bool &average
     ) noexcept -> double;
 
     struct sigma_jet_params
@@ -192,8 +193,9 @@ public:
       const double &y2,
       std::shared_ptr<pdf_builder> p_p_pdf,
       pqcd::sigma_jet_params sigma_params,
-      const pqcd::nn_coll_params &nn_params,
-      bool debug = false //true prints the calculated processes
+      pqcd::nn_coll_params &nn_params,
+      bool max,
+      bool debug //true prints the calculated processes
     ) noexcept -> std::vector<xsection_id>;
 
     static auto generate_2_to_2_scatt
@@ -207,7 +209,7 @@ public:
         pqcd::sigma_jet_params params,
         const double &power_law,
         double &envelope_maximum,
-        const pqcd::nn_coll_params &nn_params
+        pqcd::nn_coll_params &nn_params
       ) noexcept -> dijet_specs;
 
     static auto generate_2_to_2_scatt
@@ -221,7 +223,7 @@ public:
         pqcd::sigma_jet_params params,
         const double &power_law,
         envelope_func &env_func,
-        const pqcd::nn_coll_params &nn_params
+        pqcd::nn_coll_params &nn_params
       ) noexcept -> dijet_specs;
 
     static auto sigma_jet_integrand
@@ -308,7 +310,8 @@ public:
         const double *const p_mand_s, 
         const double *const p_kt2_lower_cutoff, 
         pqcd::sigma_jet_params params,
-        pqcd::nn_coll_params nn_params
+        pqcd::nn_coll_params nn_params,
+        const bool &average
       ) noexcept -> double;
 
     static auto calculate_sigma_1jet_binned

@@ -5,6 +5,7 @@
 
 #include <array>
 #include <functional>
+#include <omp.h>
 #include <string>
 #include <tuple>
 
@@ -15,7 +16,7 @@
 #pragma GCC diagnostic ignored "-Wshorten-64-to-32"
 #pragma GCC diagnostic ignored "-Wold-style-cast"
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-#include "eps09.cxx"
+#include "eps09.h"
 #include "LHAPDF/GridPDF.h"
 #pragma GCC diagnostic pop
 
@@ -86,7 +87,7 @@ public:
             }
             //r=(1+cT)
             //c=A*(R-1)/TAA(0)
-            this->rA_spatial = [=](double const &r, double const &sum_tppa)
+            this->rA_spatial = [=, this](double const &r, double const &sum_tppa)
             {
                 auto scaA = static_cast<double>(this->A) * sum_tppa / tAA_0;
                 auto intA = 1.0 - scaA;
@@ -98,7 +99,7 @@ public:
                 
             }; //r_s=1+c*sum(Tpp)
 
-            this->rB_spatial = [=](double const &r, double const &sum_tppb)
+            this->rB_spatial = [=, this](double const &r, double const &sum_tppb)
             {
                 auto scaB = static_cast<double>(this->B) * sum_tppb / tAA_0;
                 auto intB = 1.0 - scaB;
@@ -136,7 +137,7 @@ public:
 
             this->c_A_func = linear_interpolator(Rs_as_vector, cs_as_vector);
 
-            this->rA_spatial = [=](double const &r, double const &sum_tppa)
+            this->rA_spatial = [=, this](double const &r, double const &sum_tppa)
             {
                 if (r>0.0)
                 {
@@ -149,7 +150,7 @@ public:
                 }
             };
 
-            this->rB_spatial = [=](double const &r, double const &sum_tppb)
+            this->rB_spatial = [=, this](double const &r, double const &sum_tppb)
             {
                 if (r>0.0)
                 {
@@ -169,10 +170,12 @@ public:
         const double &x1, 
         const double &x2, 
         const double &q2,
-        const bool &projectile_neutron,
         const bool &target_neutron,
+        const bool &projectile_neutron,
         const double &sum_tppa,
-        const double &sum_tppb
+        const double &sum_tppb,
+        const bool &average,
+        const bool &max
     ) noexcept -> std::tuple
         <
             std::array<double, 7>,
@@ -190,11 +193,18 @@ public:
             ru = ruv + (rus - ruv) * this->p_pdf->xfxQ2(-1, x1, q2) / this->p_pdf->xfxQ2(1, x1, q2);
             rd = rdv + (rds - rdv) * this->p_pdf->xfxQ2(-2, x1, q2) / this->p_pdf->xfxQ2(2, x1, q2);
 
-            if (this->npdfs_spatial)
+            if (!average && this->npdfs_spatial)
             {
                 ru = this->rA_spatial(ru, sum_tppa); rd = this->rA_spatial(rd, sum_tppa); rus = this->rA_spatial(rus, sum_tppa);
                 rds = this->rA_spatial(rds, sum_tppa); rs = this->rA_spatial(rs, sum_tppa); rc = this->rA_spatial(rc, sum_tppa); 
                 rb = this->rA_spatial(rb, sum_tppa); rt = this->rA_spatial(rt, sum_tppa); rg = this->rA_spatial(rg, sum_tppa);
+            }
+
+            if (max)
+            {
+                ru = (ru > 1.0)? ru: 1.0; rd = (rd > 1.0)? rd: 1.0; rus = (rus > 1.0)? rus: 1.0;
+                rds = (rds > 1.0)? rds: 1.0; rs = (rs > 1.0)? rs: 1.0; rc = (rc > 1.0)? rc: 1.0; 
+                rb = (rb > 1.0)? rb: 1.0; rt = (rt > 1.0)? rt: 1.0; rg = (rg > 1.0)? rg: 1.0;
             }
         }
         std::array<double, 7> f_i_x1 = 
@@ -224,11 +234,18 @@ public:
             ru = ruv + (rus - ruv) * this->p_pdf->xfxQ2(-1, x2, q2) / this->p_pdf->xfxQ2(1, x2, q2);
             rd = rdv + (rds - rdv) * this->p_pdf->xfxQ2(-2, x2, q2) / this->p_pdf->xfxQ2(2, x2, q2);
 
-            if (this->npdfs_spatial)
+            if (!average && this->npdfs_spatial)
             {
                 ru = this->rB_spatial(ru, sum_tppb); rd = this->rB_spatial(rd, sum_tppb); rus = this->rB_spatial(rus, sum_tppb);
                 rds = this->rB_spatial(rds, sum_tppb); rs = this->rB_spatial(rs, sum_tppb); rc = this->rB_spatial(rc, sum_tppb); 
                 rb = this->rB_spatial(rb, sum_tppb); rt = this->rB_spatial(rt, sum_tppb); rg = this->rB_spatial(rg, sum_tppb);
+            }
+
+            if (max)
+            {
+                ru = (ru > 1.0)? ru: 1.0; rd = (rd > 1.0)? rd: 1.0; rus = (rus > 1.0)? rus: 1.0;
+                rds = (rds > 1.0)? rds: 1.0; rs = (rs > 1.0)? rs: 1.0; rc = (rc > 1.0)? rc: 1.0; 
+                rb = (rb > 1.0)? rb: 1.0; rt = (rt > 1.0)? rt: 1.0; rg = (rg > 1.0)? rg: 1.0;
             }
         }
         else
@@ -314,9 +331,10 @@ public:
         return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);
     }
 
-
     auto alphasQ2(const double &q2) const -> const double { return this->p_pdf->alphasQ2(q2); };
+    auto alphasQ(const double &q) const -> const double { return this->p_pdf->alphasQ(q); };
     auto num_flavors() const -> const uint_fast8_t { return static_cast<uint_fast8_t>(std::stoi(this->p_pdf->info().get_entry("NumFlavors"))); };
+    auto set_index() const -> const std::string { return this->p_pdf->info().get_entry("SetIndex"); };
 private:
     bool projectile_with_npdfs{true};
     bool target_with_npdfs{true};

@@ -173,7 +173,7 @@ auto pqcd::generate_2_to_2_scatt
     pqcd::sigma_jet_params params,
     const double &power_law,
     double &envelope_maximum,
-    const pqcd::nn_coll_params &nn_params
+    pqcd::nn_coll_params &nn_params
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -204,7 +204,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params, false, false);
 
         double total_xsection = 0;
 
@@ -273,7 +273,7 @@ auto pqcd::generate_2_to_2_scatt
     pqcd::sigma_jet_params params,
     const double &power_law,
     envelope_func &env_func,
-    const pqcd::nn_coll_params &nn_params
+    pqcd::nn_coll_params &nn_params
 ) noexcept -> dijet_specs
 {
     dijet_specs event;
@@ -307,7 +307,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params, false, false);
 
         double total_xsection = 0;
 
@@ -365,7 +365,8 @@ auto pqcd::calculate_sigma_jet
     const double *const p_mand_s,
     const double *const p_kt2_lower_cutoff, 
     pqcd::sigma_jet_params params,
-    pqcd::nn_coll_params nn_params
+    pqcd::nn_coll_params nn_params,
+    const bool &average
 ) noexcept -> double
 {
     double sigma_jet, error;
@@ -378,9 +379,10 @@ auto pqcd::calculate_sigma_jet
         const double *const, 
         const double *const, 
         pqcd::sigma_jet_params, 
-        pqcd::nn_coll_params 
+        pqcd::nn_coll_params,
+        const bool
     > 
-        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, params, nn_params};
+        fdata = {p_pdf, p_mand_s, p_kt2_lower_cutoff, params, nn_params, average};
 
     int not_success;
 
@@ -647,8 +649,9 @@ auto pqcd::diff_cross_section_2jet
     const double &y2,
     std::shared_ptr<pdf_builder> pdf,
     pqcd::sigma_jet_params sigma_params,
-    const pqcd::nn_coll_params &nn_params,
-    bool debug// = false //true prints the calculated processes
+    pqcd::nn_coll_params &nn_params,
+    bool max,
+    bool debug //true prints the calculated processes
 ) noexcept -> std::vector<xsection_id>
 {
     std::vector<xsection_id> xsection;
@@ -658,7 +661,7 @@ auto pqcd::diff_cross_section_2jet
     xsection_id process;
     
 
-    //Mandelstam variables for the subprocesses    
+    //Mandelstam variables for the subprocesses
     const double kt2 = kt * kt; 
     const auto s_hat = pqcd::s_hat_from_ys(y1, y2, kt2);
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
@@ -702,15 +705,18 @@ auto pqcd::diff_cross_section_2jet
     //Nuclear modifications and PDF manipulations 
     auto [ f_i_x1, f_i_x2, f_ai_x1, f_ai_x2 ] 
         = pdf->make_pdfs
-          (
-              x1, 
-              x2, 
-              q2, 
-              nn_params.target_neutron,
-              nn_params.projectile_neutron,
-              nn_params.sum_tppa,
-              nn_params.sum_tppb
-          );
+        (
+            x1, 
+            x2, 
+            q2, 
+            nn_params.target_neutron,
+            nn_params.projectile_neutron,
+            nn_params.sum_tppa,
+            nn_params.sum_tppb,
+            false,
+            max
+        );
+    
           
     if (debug)
     {
@@ -1017,7 +1023,8 @@ auto pqcd::sigma_jet
     const double &t_hat, 
     const double &u_hat, 
     const double &K_factor,
-    const pqcd::nn_coll_params &nn_params
+    pqcd::nn_coll_params &nn_params,
+    const bool &average
 ) noexcept -> double
 {
     const double alpha_s = pdf->alphasQ2(q2);
@@ -1032,7 +1039,9 @@ auto pqcd::sigma_jet
               nn_params.target_neutron,
               nn_params.projectile_neutron,
               nn_params.sum_tppa,
-              nn_params.sum_tppb
+              nn_params.sum_tppb,
+              average,
+              false
           );
 
     auto d_sigma 
@@ -1125,7 +1134,7 @@ auto pqcd::sigma_1jet_integrand_binned
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
-    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params)
+    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params, false)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1205,7 +1214,7 @@ auto pqcd::sigma_jet_integrand_binned
     const auto t_hat = pqcd::t_hat_from_ys(y1, y2, kt2);
     const auto u_hat = pqcd::u_hat_from_ys(y1, y2, kt2);
 
-    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params)
+    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params, false)
                     * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1279,7 +1288,7 @@ auto pqcd::sigma_dijet_integrand_binned
     const auto t_hat = - kt2*(1 + exp(-2.0*ystar));
     const auto u_hat = - kt2*(1 + exp( 2.0*ystar));
 
-    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params)
+    p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params, false)
                     * 2.0 * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
 
     return 0; // success
@@ -1296,12 +1305,13 @@ auto pqcd::sigma_jet_integrand
 {
     (void)ndim;
     (void)fdim; //To silence "unused" warnings
-    auto [ p_pdf, p_mand_s, p_p02, params, nn_params ]
+    auto [ p_pdf, p_mand_s, p_p02, params, nn_params, average ]
         = *(static_cast<std::tuple<std::shared_ptr<pdf_builder>, 
                                    const double *const, 
                                    const double *const, 
                                    pqcd::sigma_jet_params, 
-                                   pqcd::nn_coll_params > *>(p_fdata));
+                                   pqcd::nn_coll_params,
+                                   const bool > *>(p_fdata));
 
     double kt2;
     double y1, y2;
@@ -1347,7 +1357,7 @@ auto pqcd::sigma_jet_integrand
     }
     else//FULL SUMMATION
     {
-        p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params) 
+        p_fval[0] = pqcd::sigma_jet(x1, x2, fac_scale, p_pdf, s_hat, t_hat, u_hat, params.K_factor, nn_params, average) 
                      * jacobian * 10 / pow(FMGEV, 2); //UNITS: mb
     }
 
