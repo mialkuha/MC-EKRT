@@ -558,137 +558,88 @@ auto mcaa::run() -> void
     const std::vector<double> y_bins{helpers::linspace(-ylim, ylim, 40u)};
     const std::vector<double> b_bins{helpers::linspace(this->b_min, this->b_max, 21u)};
     std::vector<double> et_bins{helpers::loglinspace(2*kt0, 30000, 31u)};
-    
-    // std::vector<double> Rs_as_vector, cs_as_vector;
 
-    // //if linear snPDFs
-    // if (this->snPDFs && (this->T_AA_0 == 0.0) && this->snPDFs_linear)
+    // auto
+    // [
+    //     dijet_norm,
+    //     sigma_jet,
+    //     mand_s_array,
+    //     env_func,
+    //     sqrt_s_array
+    // ] = 
+    // calcs::prepare_sigma_jets
+    // (
+    //     this->read_sigmajets_from_file,
+    //     this->pdf, 
+    //     this->mand_s,
+    //     this->sqrt_s,
+    //     this->kt02, 
+    //     this->kt0,
+    //     this->power_law,
+    //     this->jet_params,
+    //     this->sigmajet_filename,
+    //     this->snPDFs
+    // );
+
+    // if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
     // {
-    //     std::cout<<"Calculating T_AA(0)"<<std::endl;
 
-    //     this->T_AA_0 = this->Tpp->calculate_T_AA_0
-    //     (
-    //         this->nuc_params,
-    //         1e-5,
-    //         verbose
-    //     );
+    //     auto dummy = std::get<double>(sigma_jet) / (4 * M_PI * this->proton_width_2);
+    //     dummy = dummy / 10; //mb -> fm²
 
-    //     std::cout<<"Calculated T_AA(0) = "<< this->T_AA_0 <<std::endl;
-    // } //if exponential snPDFs
-    // else if (this->snPDFs && (this->T_AA_0 == 0.0))
+    //     this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
+    //     std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
+    // }
+    // else if (this->sigma_inel_from_sigma_jet)
     // {
-    //     std::cout<<"Calculating R_A - c_A table"<<std::endl;
+    //     auto dummy = dijet_norm / (4 * M_PI * this->proton_width_2);
+    //     dummy = dummy / 10; //mb -> fm²
 
-    //     auto [R_A_table, c_A_table] = this->Tpp->calculate_R_c_table
-    //     (
-    //         this->nuc_params,
-    //         1e-5,
-    //         verbose
-    //     );
-    //     std::cout<<"Done! {c,R} pairs:"<<std::endl;
-
-    //     for (uint_fast8_t i=0; i<24; i++)
-    //     {
-    //         std::cout<<"{"<<c_A_table[i]<<","<<R_A_table[i]<<"},";
-    //     }
-    //     std::cout<<"{"<<c_A_table[24]<<","<<R_A_table[24]<<"}}"<<std::endl;
-        
-    //     for (uint_fast8_t i=0; i<25; i++)
-    //     {
-    //         Rs_as_vector.push_back(R_A_table[i]);
-    //         cs_as_vector.push_back(c_A_table[i]);
-    //     }
-
-    //     auto c_A_from_R = linear_interpolator(Rs_as_vector, cs_as_vector);
-    
-    //     this->jet_params = pqcd::sigma_jet_params(
-    //     /*scale_choice=             */this->jet_params.scale_c,
-    //     /*scalar=                   */this->jet_params.scalar,
-    //     /*K_factor=                 */this->K_factor,
-    //     /*use_ses=                  */this->jet_params.use_ses);
+    //     this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
+    //     std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
     // }
 
-    auto
-    [
-        dijet_norm,
-        sigma_jet,
-        mand_s_array,
-        env_func,
-        sqrt_s_array
-    ] = 
-    calcs::prepare_sigma_jets
-    (
-        this->read_sigmajets_from_file,
-        this->pdf, 
-        this->mand_s,
-        this->sqrt_s,
-        this->kt02, 
-        this->kt0,
-        this->power_law,
-        this->jet_params,
-        this->sigmajet_filename,
-        this->snPDFs
-    );
+    // if (this->AA_inel_same_as_NN)
+    // {
+    //     this->sigma_inel_AA = this->sigma_inel;
+    // }
 
-    if (this->sigma_inel_from_sigma_jet && !this->snPDFs)
-    {
+    // bool use_nn_b2_max = true; //TODO GET RID OF MAGIC NUMBERS
+    // double tpp_min = 1e-8; //TODO GET RID OF MAGIC NUMBERS
 
-        auto dummy = std::get<double>(sigma_jet) / (4 * M_PI * this->proton_width_2);
-        dummy = dummy / 10; //mb -> fm²
-
-        this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
-        std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
-    }
-    else if (this->sigma_inel_from_sigma_jet)
-    {
-        auto dummy = dijet_norm / (4 * M_PI * this->proton_width_2);
-        dummy = dummy / 10; //mb -> fm²
-
-        this->sigma_inel = (4 * M_PI * this->proton_width_2) * (M_EULER + std::log(dummy) + gsl_sf_expint_E1(dummy)) * 10; //1 mb = 0.1 fm^2
-        std::cout<<"sigma_inel = "<<this->sigma_inel<<std::endl;
-    }
-
-    if (this->AA_inel_same_as_NN)
-    {
-        this->sigma_inel_AA = this->sigma_inel;
-    }
-
-    bool use_nn_b2_max = true; //TODO GET RID OF MAGIC NUMBERS
-    double tpp_min = 1e-8; //TODO GET RID OF MAGIC NUMBERS
-
-    double nn_b2_max = 1.0;
-    if (use_nn_b2_max)
-    {
-        double dummy = 0; //not needed here
-        auto difference_to_target = [tpp_min, tpp=this->Tpp](const double &b2)
-        {
-            return tpp_min - tpp->at(b2);
-        };
-        helpers::secant_method(&nn_b2_max, difference_to_target, tpp_min, &dummy);
-        if (this->verbose)
-        {
-            std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp->at(nn_b2_max)<<std::endl;
-        }
-    }
+    // double nn_b2_max = 1.0;
+    // if (use_nn_b2_max)
+    // {
+    //     double dummy = 0; //not needed here
+    //     auto difference_to_target = [tpp_min, tpp=this->Tpp](const double &b2)
+    //     {
+    //         return tpp_min - tpp->at(b2);
+    //     };
+    //     helpers::secant_method(&nn_b2_max, difference_to_target, tpp_min, &dummy);
+    //     if (this->verbose)
+    //     {
+    //         std::cout<<"Found b2max = "<<nn_b2_max<<", Tpp(b2max) = "<<this->Tpp->at(nn_b2_max)<<std::endl;
+    //     }
+    // }
 
     if (this->verbose) std::cout<<"Done!"<<std::endl;
 
-    AA_collision_params coll_params
-    {
-    /*mc_glauber_mode=          */this->MC_Glauber,
-    /*pp_scattering=            */this->is_pp,
-    /*pA_scattering=            */this->is_pA,
-    /*spatial_pdfs=             */this->snPDFs,
-    /*calculate_end_state=      */this->calculate_end_state,
-    /*use_nn_b2_max=            */use_nn_b2_max,
-    /*sigma_inel=               */this->sigma_inel,
-    /*Tpp=                      */this->Tpp,
-    /*normalize_to=             */B2_normalization_mode::inelastic,
-    /*sqrt_s=                   */this->sqrt_s,
-    /*energy_threshold=         */this->kt0,
-    /*nn_b2_max=                */nn_b2_max,
-    /*T_AA_0=                   */this->T_AA_0
-    };
+    // AA_collision_params coll_params
+    // {
+    // /*mc_glauber_mode=          */this->MC_Glauber,
+    // /*pp_scattering=            */this->is_pp,
+    // /*pA_scattering=            */this->is_pA,
+    // /*spatial_pdfs=             */this->snPDFs,
+    // /*calculate_end_state=      */this->calculate_end_state,
+    // /*use_nn_b2_max=            */use_nn_b2_max,
+    // /*sigma_inel=               */this->sigma_inel,
+    // /*Tpp=                      */this->Tpp,
+    // /*normalize_to=             */B2_normalization_mode::inelastic,
+    // /*sqrt_s=                   */this->sqrt_s,
+    // /*energy_threshold=         */this->kt0,
+    // /*nn_b2_max=                */nn_b2_max,
+    // /*T_AA_0=                   */this->T_AA_0
+    // };
 
     auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
     std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
@@ -734,428 +685,633 @@ auto mcaa::run() -> void
     std::atomic<uint_fast64_t> running_count{desired_N_events};
 
 
-    //--------------------------------------------//
-    // THESE ARE A HACK TO SAVE THE WORK THIS FAR //
-    // IN THE CASE OF A UNEXPECTED TERMINATION    //
-    //--------------------------------------------//
-    std::signal(SIGINT, abort_handler);
-    std::set_terminate([](){
-        std::cout << std::endl << "Unhandled exception" << std::endl;
-        //g_bug_bool = true;
-    });
+    // auto dummy = pqcd::nn_coll_params
+    //         (
+    //             0.0,
+    //             0.0,
+    //             false,
+    //             false
+    //         );
+    // pqcd::calculate_sigma_jet(this->pdf, &this->mand_s, &this->kt02, this->jet_params, dummy, false);
+    std::ofstream outfile;
+    outfile.open("out.csv");
 
-    try
     {
-        //----------------------------------------------------------------//
-        // THIS IS THE PARALLELLIZED MAIN LOOP FOR ALL OF THE EVENTS      //
-        // INCLUDES NUCLEUS GENERATION, COLLISION CALCULATIONS, FILTERING //
-        // AND OBSERVABLE CALCULATIONS                                    //
-        //----------------------------------------------------------------//
-        
-        #pragma omp parallel
+        auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
+
+        for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
         {
-            auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
-
-            #pragma omp for
-            for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
+            calcs::generate_nuclei
+            (
+                this->nuc_params, 
+                this->sqrt_s, 
+                0.0, 
+                eng, 
+                verbose,
+                false,
+                this->Tpp,
+                outfile
+            );
+            AA_events_done++;
+            if (AA_events_done % 10 == 0 )
             {
-                if (user_aborted)
-                {
-                    continue;
-                }
-                do //while (g_bug_bool)
-                {
-                    uint_fast32_t NColl = 0;
-                    std::vector<nn_coll> binary_collisions;
-                    std::vector<dijet_with_coords> filtered_scatterings;
-                    double impact_parameter;
-                    double b_min2 = this->b_min*this->b_min;
-                    double b_max2 = this->b_max*this->b_max;
-
-                    std::vector<nucleon> pro, tar;
-                    uint_fast16_t times_discarded = 0;
-                    
-                    //Keep generating nuclei until the triggering condition is met
-                    bool bugged, triggered;
-                    // "ball" diameter = distance at which two nucleons interact in MC Glauber
-                    const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
-                    do //while (!triggered || bugged)  
-                    {
-                        //B^2 from a uniform distribution
-                        impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
-                
-                        times_discarded++;
-                        if (times_discarded > 1000)
-                        {
-                            std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
-                                        <<"Check impact parameters and/or collsion probabilities."
-                                        <<std::endl;
-                            times_discarded = 0;
-                        }
-
-                        bugged = false;
-                        triggered = false;
-                        try
-                        {
-                            auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
-                            (
-                                this->nuc_params, 
-                                this->sqrt_s, 
-                                impact_parameter, 
-                                eng, 
-                                verbose
-                            );
-                            pro = std::move(pro_dummy);
-                            tar = std::move(tar_dummy);
-                        }
-                        catch(const std::exception& e)
-                        {
-                            std::cout << e.what() << " in main, trying again"<<std::endl;
-                            bugged = true;
-                        }
-
-                        for (auto A : pro)
-                        {
-                            for (auto B : tar)
-                            {
-                                // "ball" diameter = distance at which two nucleons interact
-                                const double dij2 = A.calculate_bsquared(B);
-
-                                if (dij2 <= d2) // triggering condition
-                                {
-                                    triggered = true;
-                                    continue;
-                                }
-                            }
-                            if (triggered)
-                            {
-                                continue;
-                            }
-                        }
-
-                    } while (!triggered || bugged);
-
-                    //Demand at least one hard scattering
-                    do //while (NColl<1)
-                    {
-                        binary_collisions.clear();
-                        if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
-
-                        calcs::collide_nuclei
-                        (
-                            pro, 
-                            tar, 
-                            binary_collisions, 
-                            sigma_jet,
-                            unirand, 
-                            eng, 
-                            coll_params, 
-                            this->jet_params,
-                            this->kt0,
-                            this->pdf,
-                            this->power_law,
-                            env_func,
-                            verbose,
-                            this->M_factor,
-                            this->proton_width,
-                            this->is_sat_y_dep
-                        );
-                        
-                        NColl = static_cast<uint_fast32_t>(binary_collisions.size());
-                    } while (NColl<1);
-                    
-
-                    double sum_ET = 0;
-                    double sum_ET_midrap = 0;
-
-                    if (end_state_filtering)
-                    {
-                        double sum_E = 0;
-                        this->filter_end_state
-                        (
-                            binary_collisions, 
-                            filtered_scatterings,
-                            eng,
-                            pro,
-                            tar
-                        );
-
-                        // std::vector<std::tuple<double, double> > new_jets;
-                        // std::vector<std::tuple<double, double> > new_dijets;
-                        // std::vector<std::tuple<double, double> > new_ET_y;
-                        // std::vector<std::tuple<double, double> > new_E_y;
-                        // std::vector<std::tuple<double, double> > new_N_y;
-                        // std::vector<std::tuple<double, double> > new_ET_eta;
-                        // std::vector<std::tuple<double, double> > new_E_eta;
-                        
-                        for (auto e_co : filtered_scatterings)
-                        {
-                            auto e = e_co.dijet;
-
-                            // new_jets.emplace_back(e.kt, e.y1);
-                            // new_jets.emplace_back(e.kt, e.y2);
-                            
-                            // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
-                            
-                            // new_ET_y.emplace_back(e.y1, e.kt);
-                            // new_ET_y.emplace_back(e.y2, e.kt);
-                            
-                            // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-                            
-                            // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                            // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                            
-                            // new_N_y.emplace_back(e.y1, 1);
-                            // new_N_y.emplace_back(e.y2, 1);
-                            
-                            // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
-                            
-                            sum_ET += 2*e.kt;
-                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
-
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
-                            {
-                                sum_ET_midrap += e.kt;
-                            }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
-                            {
-                                sum_ET_midrap += e.kt;
-                            }
-                        }
-
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(jets_mutex);
-                        //    jets.add(new_jets);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dijets_mutex);
-                        //    dijets.add(new_dijets);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
-                        //    dETdy.add(new_ET_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
-                        //    dEdy.add(new_E_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
-                        //    dNdy.add(new_N_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
-                        //    dETdeta.add(new_ET_eta);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
-                        //    dEdeta.add(new_E_eta);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
-                        //    dNdET.add(std::make_tuple(sum_ET, 1));
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
-                        //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
-                        //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
-                        // }
-                        
-                        {/////
-                            const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
-                            total_energy << sum_ET << ' ' << sum_E << std::endl;/////
-                        }/////
-                    }
-
-                    {
-                        const std::lock_guard<std::mutex> lock(AA_events_mutex);
-                        AA_events_done++;
-                        if (AA_events_done % 100 == 0 )
-                        {
-                            std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
-                        }
-                    }
-
-                    uint_fast32_t Npart=0;
-                    for (auto &A : pro)
-                    {
-                        if (A.wounded)
-                        {
-                            Npart++;
-                        }
-                    }
-                    for (auto &B : tar)
-                    {
-                        if (B.wounded)
-                        {
-                            Npart++;
-                        }
-                    }
-
-                    {
-                        const std::lock_guard<std::mutex> lock(colls_mutex);
-                        io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
-                        io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
-                        collisions_for_reporting.push_back(coll);
-                        collisions_for_reporting_midrap.push_back(coll_midrap);
-                        
-                        if (save_endstate_jets)
-                        {
-                            colls_scatterings.insert({coll, filtered_scatterings});
-                        }
-                    }
-                } while (g_bug_bool);
+                std::cout <<"\rNuclear pairs calculated: " << AA_events_done << std::flush;
             }
+            
         }
     }
-    catch(const std::exception& e)
-    {
-        std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
-    }
-    std::cout<<" ...done!"<<std::endl;
+    return;
+
+    
+    // uint_fast16_t n_bins = 100;
+    // double lowA = 207.5;
+    // double lowN = 0.99;
+    // double deltaA = (208.5 - lowA)/n_bins;
+    // double deltaN = (1.01 - lowN)/n_bins;
+    // for (int i = 0; i < n_bins+1; i++)
+    // {
+    //     std::cout << lowA + i*deltaA << ',';
+    // }
+    // std::cout << std::endl;
+    // for (int i = 0; i < n_bins+1; i++)
+    // {
+    //     std::cout << lowN + i*deltaN << ',';
+    // }
+    // std::cout << std::endl;
+    // double largestN = 1;
+    // double largestA = 208;
+
+    // std::vector<uint_fast64_t> nuclei_in_bin(n_bins, 0);
+    // std::vector<uint_fast64_t> nucleons_in_bin(n_bins, 0);
+
+
+    // auto dummy = pqcd::nn_coll_params
+    //         (
+    //             0.0,
+    //             0.0,
+    //             false,
+    //             false
+    //         );
+    // pqcd::calculate_sigma_jet(this->pdf, &this->mand_s, &this->kt02, this->jet_params, dummy, false);
+
+    // #pragma omp parallel
+    // {
+    //     auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
+    //     #pragma omp for
+    //     for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
+    //     {
+    //         auto [pro, tar] = calcs::generate_nuclei
+    //         (
+    //             this->nuc_params, 
+    //             this->sqrt_s, 
+    //             0.0, 
+    //             eng, 
+    //             verbose
+    //         );
+
+    //         auto [ inteA, nucleonsA ] = this->pdf->integrate_pdfs(pro, this->Tpp, 172*172);
+    //         auto [ inteB, nucleonsB ] = this->pdf->integrate_pdfs(tar, this->Tpp, 172*172);
+    //         // std::cout<<inteA<<' '<<inteB<<std::endl;
+    //         // for (auto n : nucleonsA)
+    //         // {
+    //         //     std::cout<<n<<' ';
+    //         // }
+    //         // std::cout<<std::endl;1.01755 207.994
+            
+    //         {
+    //             const std::lock_guard<std::mutex> lock(AA_events_mutex);
+    //             if (inteA < largestA)
+    //             {
+    //                 largestA = inteA;
+    //                 std::cout<<largestA<<std::endl;
+    //             }
+    //             if (inteB < largestA)
+    //             {
+    //                 largestA = inteB;
+    //                 std::cout<<largestA<<std::endl;
+    //             }
+
+    //             bool found =false;
+    //             for (int i = 0; i < n_bins-1; i++)
+    //             {
+    //                 if (lowA + (i+1)*deltaA > inteA)
+    //                 {
+    //                     found = true;
+    //                     nuclei_in_bin[i]++;
+    //                     break;
+    //                 }
+    //             }
+    //             if (!found)
+    //             {
+    //                 nuclei_in_bin[n_bins-1]++;
+    //             }
+    //             found =false;
+    //             for (int i = 0; i < n_bins-1; i++)
+    //             {
+    //                 if (lowA + (i+1)*deltaA > inteB)
+    //                 {
+    //                     found = true;
+    //                     nuclei_in_bin[i]++;
+    //                     break;
+    //                 }
+    //             }
+    //             if (!found)
+    //             {
+    //                 nuclei_in_bin[n_bins-1]++;
+    //             }
+                
+    //             for (auto n :  nucleonsA)
+    //             {
+    //                 if (n < largestN)
+    //                 {
+    //                     largestN = n;
+    //                     std::cout<<largestN<<std::endl;
+    //                 }
+    //                 found =false;
+    //                 for (int i = 0; i < n_bins-1; i++)
+    //                 {
+    //                     if (lowN + (i+1)*deltaN > n)
+    //                     {
+    //                         found = true;
+    //                         nucleons_in_bin[i]++;
+    //                         break;
+    //                     }
+    //                 }
+    //                 if (!found)
+    //                 {
+    //                     nucleons_in_bin[n_bins-1]++;
+    //                 }
+    //             }
+    //             for (auto n :  nucleonsB)
+    //             {
+    //                 if (n < largestN)
+    //                 {
+    //                     largestN = n;
+    //                     std::cout<<largestN<<std::endl;
+    //                 }
+    //                 found =false;
+    //                 for (int i = 0; i < n_bins-1; i++)
+    //                 {
+    //                     if (lowN + (i+1)*deltaN > n)
+    //                     {
+    //                         found = true;
+    //                         nucleons_in_bin[i]++;
+    //                         break;
+    //                     }
+    //                 }
+    //                 if (!found)
+    //                 {
+    //                     nucleons_in_bin[n_bins-1]++;
+    //                 }
+    //             }
+
+    //             AA_events_done++;
+    //             if (AA_events_done % 100 == 0 )
+    //             {
+    //                 std::cout <<"\rNuclear pairs calculated: " << AA_events_done << std::flush;
+    //             }
+    //         }
+    //     }
+    // }
+    // std::cout << std::endl;
+        
+    // for (int i = 0; i < n_bins; i++)
+    // {
+    //     std::cout << nuclei_in_bin[i] / static_cast<double>(2*this->desired_N_events* /*events_jets.size()**/deltaA/**((i+0.5)*delta)*/) << ',';
+    // }
+    // std::cout << std::endl;
+        
+    // for (int i = 0; i < n_bins; i++)
+    // {
+    //     std::cout << nucleons_in_bin[i] / static_cast<double>(2*208*this->desired_N_events* /*events_jets.size()**/deltaN/**((i+0.5)*delta)*/) << ',';
+    // }
+    // std::cout << std::endl;
+
+    // return;
+
+
+    // //--------------------------------------------//
+    // // THESE ARE A HACK TO SAVE THE WORK THIS FAR //
+    // // IN THE CASE OF A UNEXPECTED TERMINATION    //
+    // //--------------------------------------------//
+    // std::signal(SIGINT, abort_handler);
+    // std::set_terminate([](){
+    //     std::cout << std::endl << "Unhandled exception" << std::endl;
+    //     //g_bug_bool = true;
+    // });
+
+    // try
+    // {
+    //     //----------------------------------------------------------------//
+    //     // THIS IS THE PARALLELLIZED MAIN LOOP FOR ALL OF THE EVENTS      //
+    //     // INCLUDES NUCLEUS GENERATION, COLLISION CALCULATIONS, FILTERING //
+    //     // AND OBSERVABLE CALCULATIONS                                    //
+    //     //----------------------------------------------------------------//
+        
+    //     #pragma omp parallel
+    //     {
+    //         auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
+
+    //         #pragma omp for
+    //         for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
+    //         {
+    //             if (user_aborted)
+    //             {
+    //                 continue;
+    //             }
+    //             do //while (g_bug_bool)
+    //             {
+    //                 uint_fast32_t NColl = 0;
+    //                 std::vector<nn_coll> binary_collisions;
+    //                 std::vector<dijet_with_coords> filtered_scatterings;
+    //                 double impact_parameter;
+    //                 double b_min2 = this->b_min*this->b_min;
+    //                 double b_max2 = this->b_max*this->b_max;
+
+    //                 std::vector<nucleon> pro, tar;
+    //                 uint_fast16_t times_discarded = 0;
+                    
+    //                 //Keep generating nuclei until the triggering condition is met
+    //                 bool bugged, triggered;
+    //                 // "ball" diameter = distance at which two nucleons interact in MC Glauber
+    //                 const double d2 = this->sigma_inel_AA/(M_PI*10.0); // in fm^2
+    //                 do //while (!triggered || bugged)  
+    //                 {
+    //                     //B^2 from a uniform distribution
+    //                     impact_parameter = sqrt(b_min2 + unirand(*eng)*(b_max2-b_min2));
+                
+    //                     times_discarded++;
+    //                     if (times_discarded > 1000)
+    //                     {
+    //                         std::cout<<std::endl<<"Generated nuclei discarded over 1000 times. "
+    //                                     <<"Check impact parameters and/or collsion probabilities."
+    //                                     <<std::endl;
+    //                         times_discarded = 0;
+    //                     }
+
+    //                     bugged = false;
+    //                     triggered = false;
+    //                     try
+    //                     {
+    //                         // auto [pro_dummy, tar_dummy] = calcs::generate_nuclei
+    //                         // (
+    //                         //     this->nuc_params, 
+    //                         //     this->sqrt_s, 
+    //                         //     impact_parameter, 
+    //                         //     eng, 
+    //                         //     verbose
+    //                         // );
+    //                         // pro = std::move(pro_dummy);
+    //                         // tar = std::move(tar_dummy);
+    //                     }
+    //                     catch(const std::exception& e)
+    //                     {
+    //                         std::cout << e.what() << " in main, trying again"<<std::endl;
+    //                         bugged = true;
+    //                     }
+
+    //                     for (auto A : pro)
+    //                     {
+    //                         for (auto B : tar)
+    //                         {
+    //                             // "ball" diameter = distance at which two nucleons interact
+    //                             const double dij2 = A.calculate_bsquared(B);
+
+    //                             if (dij2 <= d2) // triggering condition
+    //                             {
+    //                                 triggered = true;
+    //                                 continue;
+    //                             }
+    //                         }
+    //                         if (triggered)
+    //                         {
+    //                             continue;
+    //                         }
+    //                     }
+
+    //                 } while (!triggered || bugged);
+
+    //                 //Demand at least one hard scattering
+    //                 do //while (NColl<1)
+    //                 {
+    //                     binary_collisions.clear();
+    //                     if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
+
+    //                     calcs::collide_nuclei
+    //                     (
+    //                         pro, 
+    //                         tar, 
+    //                         binary_collisions, 
+    //                         sigma_jet,
+    //                         unirand, 
+    //                         eng, 
+    //                         coll_params, 
+    //                         this->jet_params,
+    //                         this->kt0,
+    //                         this->pdf,
+    //                         this->power_law,
+    //                         env_func,
+    //                         verbose,
+    //                         this->M_factor,
+    //                         this->proton_width,
+    //                         this->is_sat_y_dep
+    //                     );
+                        
+    //                     NColl = static_cast<uint_fast32_t>(binary_collisions.size());
+    //                 } while (NColl<1);
+                    
+
+    //                 double sum_ET = 0;
+    //                 double sum_ET_midrap = 0;
+
+    //                 if (end_state_filtering)
+    //                 {
+    //                     double sum_E = 0;
+    //                     this->filter_end_state
+    //                     (
+    //                         binary_collisions, 
+    //                         filtered_scatterings,
+    //                         eng,
+    //                         pro,
+    //                         tar
+    //                     );
+
+    //                     // std::vector<std::tuple<double, double> > new_jets;
+    //                     // std::vector<std::tuple<double, double> > new_dijets;
+    //                     // std::vector<std::tuple<double, double> > new_ET_y;
+    //                     // std::vector<std::tuple<double, double> > new_E_y;
+    //                     // std::vector<std::tuple<double, double> > new_N_y;
+    //                     // std::vector<std::tuple<double, double> > new_ET_eta;
+    //                     // std::vector<std::tuple<double, double> > new_E_eta;
+                        
+    //                     for (auto e_co : filtered_scatterings)
+    //                     {
+    //                         auto e = e_co.dijet;
+
+    //                         // new_jets.emplace_back(e.kt, e.y1);
+    //                         // new_jets.emplace_back(e.kt, e.y2);
+                            
+    //                         // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                            
+    //                         // new_ET_y.emplace_back(e.y1, e.kt);
+    //                         // new_ET_y.emplace_back(e.y2, e.kt);
+                            
+    //                         // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                            
+    //                         // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+    //                         // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                            
+    //                         // new_N_y.emplace_back(e.y1, 1);
+    //                         // new_N_y.emplace_back(e.y2, 1);
+                            
+    //                         // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                            
+    //                         sum_ET += 2*e.kt;
+    //                         sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
+
+    //                         if (e.y1 >= -0.5 && e.y1 <= 0.5)
+    //                         {
+    //                             sum_ET_midrap += e.kt;
+    //                         }
+    //                         if (e.y2 >= -0.5 && e.y2 <= 0.5)
+    //                         {
+    //                             sum_ET_midrap += e.kt;
+    //                         }
+    //                     }
+
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(jets_mutex);
+    //                     //    jets.add(new_jets);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dijets_mutex);
+    //                     //    dijets.add(new_dijets);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
+    //                     //    dETdy.add(new_ET_y);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
+    //                     //    dEdy.add(new_E_y);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
+    //                     //    dNdy.add(new_N_y);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
+    //                     //    dETdeta.add(new_ET_eta);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
+    //                     //    dEdeta.add(new_E_eta);
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
+    //                     //    dNdET.add(std::make_tuple(sum_ET, 1));
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
+    //                     //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
+    //                     // }
+                        
+    //                     // {
+    //                     //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
+    //                     //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
+    //                     // }
+                        
+    //                     {/////
+    //                         const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
+    //                         total_energy << sum_ET << ' ' << sum_E << std::endl;/////
+    //                     }/////
+    //                 }
+
+    //                 {
+    //                     const std::lock_guard<std::mutex> lock(AA_events_mutex);
+    //                     AA_events_done++;
+    //                     if (AA_events_done % 100 == 0 )
+    //                     {
+    //                         std::cout <<"\rA+A collisions calculated: " << AA_events_done << std::flush;
+    //                     }
+    //                 }
+
+    //                 uint_fast32_t Npart=0;
+    //                 for (auto &A : pro)
+    //                 {
+    //                     if (A.wounded)
+    //                     {
+    //                         Npart++;
+    //                     }
+    //                 }
+    //                 for (auto &B : tar)
+    //                 {
+    //                     if (B.wounded)
+    //                     {
+    //                         Npart++;
+    //                     }
+    //                 }
+
+    //                 {
+    //                     const std::lock_guard<std::mutex> lock(colls_mutex);
+    //                     io::Coll coll(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET);
+    //                     io::Coll coll_midrap(NColl, Npart, 2*filtered_scatterings.size(), impact_parameter, sum_ET_midrap);
+    //                     collisions_for_reporting.push_back(coll);
+    //                     collisions_for_reporting_midrap.push_back(coll_midrap);
+                        
+    //                     if (save_endstate_jets)
+    //                     {
+    //                         colls_scatterings.insert({coll, filtered_scatterings});
+    //                     }
+    //                 }
+    //             } while (g_bug_bool);
+    //         }
+    //     }
+    // }
+    // catch(const std::exception& e)
+    // {
+    //     std::cout<<std::endl<<"Threw " << e.what() <<std::endl;
+    // }
+    // std::cout<<" ...done!"<<std::endl;
 
     
 
-    //io::print_histos
-    //(
-    //    name_postfix,
-    //    jets,
-    //    dijets,
-    //    dETdy,
-    //    dEdy,
-    //    dNdy,
-    //    dNdET,
-    //    dETdeta,
-    //    dEdeta,
-    //    dETdb,
-    //    dEdb,
-    //    dijet_norm,
-    //    AA_events_done
-    //);
-    if (collisions_for_reporting.size() >= 50)
-    {
-        uint_fast8_t nBins = 18;
-        double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
-        double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
-        std::ofstream glauber_report_file;
-        std::string g_name{"g_report_"+this->name+".dat"};
-        std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
+    // //io::print_histos
+    // //(
+    // //    name_postfix,
+    // //    jets,
+    // //    dijets,
+    // //    dETdy,
+    // //    dEdy,
+    // //    dNdy,
+    // //    dNdET,
+    // //    dETdeta,
+    // //    dEdeta,
+    // //    dETdb,
+    // //    dEdb,
+    // //    dijet_norm,
+    // //    AA_events_done
+    // //);
+    // if (collisions_for_reporting.size() >= 50)
+    // {
+    //     uint_fast8_t nBins = 18;
+    //     double binsLow[] = {0., 0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 0.0, 0.0, 0.0, 0.0};
+    //     double binsHigh[] = {0.02, 0.04, 0.06, 0.08, 0.1, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 0.05, 0.1, 0.8, 1.0};
+    //     std::ofstream glauber_report_file;
+    //     std::string g_name{"g_report_"+this->name+".dat"};
+    //     std::string g_name_midrap{"g_report_midrap_"+this->name+".dat"};
                                                 
-        glauber_report_file.open(g_name, std::ios::out);
-        io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
-        glauber_report_file.close();
-        glauber_report_file.open(g_name_midrap, std::ios::out);
-        io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
-        glauber_report_file.close();
+    //     glauber_report_file.open(g_name, std::ios::out);
+    //     io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
+    //     glauber_report_file.close();
+    //     glauber_report_file.open(g_name_midrap, std::ios::out);
+    //     io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
+    //     glauber_report_file.close();
 
-        if (save_endstate_jets)
-        {
-            std::vector<std::tuple<double,double> > centBins;
-            std::ifstream cents_input(this->centrality_filename);
-            if (!cents_input.is_open())
-            {
-                std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
-                centBins.push_back(std::tuple<double,double>{0.0, 1.0});
-                return;
-            }
-            std::string line;
-            for (; std::getline(cents_input, line);)
-            {
-                std::stringstream ss(line);
-                std::string token;
-                std::getline(ss, token, ',');
-                double centLow = std::stod(token);
-                std::getline(ss, token, ',');
-                double centHigh = std::stod(token);
-                centBins.push_back(std::tuple<double,double>{centLow, centHigh});
-            }
-            cents_input.close();
+    //     if (save_endstate_jets)
+    //     {
+    //         std::vector<std::tuple<double,double> > centBins;
+    //         std::ifstream cents_input(this->centrality_filename);
+    //         if (!cents_input.is_open())
+    //         {
+    //             std::cout<<"Could not open "<<this->centrality_filename<<std::endl;
+    //             centBins.push_back(std::tuple<double,double>{0.0, 1.0});
+    //             return;
+    //         }
+    //         std::string line;
+    //         for (; std::getline(cents_input, line);)
+    //         {
+    //             std::stringstream ss(line);
+    //             std::string token;
+    //             std::getline(ss, token, ',');
+    //             double centLow = std::stod(token);
+    //             std::getline(ss, token, ',');
+    //             double centHigh = std::stod(token);
+    //             centBins.push_back(std::tuple<double,double>{centLow, centHigh});
+    //         }
+    //         cents_input.close();
 
-            std::string name_pfs{this->name+".dat"};
+    //         std::string name_pfs{this->name+".dat"};
 
-            std::ofstream jet_file;
+    //         std::ofstream jet_file;
 
-            for (auto [centLow, centHigh] : centBins)
-            {
-                std::stringstream jetsname{""};
-                jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-                jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
+    //         for (auto [centLow, centHigh] : centBins)
+    //         {
+    //             std::stringstream jetsname{""};
+    //             jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+    //             jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
 
-                histo_1d dETdy_by_cent{y_bins};
-                histo_1d dEdy_by_cent{y_bins};
-                std::vector<std::tuple<double, double> > new_ET_y;
-                std::vector<std::tuple<double, double> > new_E_y;
+    //             histo_1d dETdy_by_cent{y_bins};
+    //             histo_1d dEdy_by_cent{y_bins};
+    //             std::vector<std::tuple<double, double> > new_ET_y;
+    //             std::vector<std::tuple<double, double> > new_E_y;
 
-                uint_fast64_t N_evts_tot = colls_scatterings.size();
-                // Make sure that no rounding downwards.
-                double eps = 0.1/static_cast<double>(N_evts_tot);
+    //             uint_fast64_t N_evts_tot = colls_scatterings.size();
+    //             // Make sure that no rounding downwards.
+    //             double eps = 0.1/static_cast<double>(N_evts_tot);
 
-                uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
-                uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
-                uint_fast64_t n_in_bin = upper_ind - lower_ind;
+    //             uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
+    //             uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
+    //             uint_fast64_t n_in_bin = upper_ind - lower_ind;
 
-                //total number of events in this bin
-                jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
+    //             //total number of events in this bin
+    //             jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
 
-                auto it = colls_scatterings.crbegin();
-                std::advance(it, lower_ind);
+    //             auto it = colls_scatterings.crbegin();
+    //             std::advance(it, lower_ind);
 
-                for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
-                {
-                    for (auto e_co : it->second)
-                    {
-                        auto e = e_co.dijet;
+    //             for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
+    //             {
+    //                 for (auto e_co : it->second)
+    //                 {
+    //                     auto e = e_co.dijet;
 
-                        new_ET_y.emplace_back(e.y1, e.kt);
-                        new_ET_y.emplace_back(e.y2, e.kt);
+    //                     new_ET_y.emplace_back(e.y1, e.kt);
+    //                     new_ET_y.emplace_back(e.y2, e.kt);
 
-                        new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                        new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                    }
-                    io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
-                }
-                jet_file.close();
-                std::cout<<n_in_bin<<std::endl;
+    //                     new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+    //                     new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+    //                 }
+    //                 io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
+    //             }
+    //             jet_file.close();
+    //             std::cout<<n_in_bin<<std::endl;
 
-                dETdy_by_cent.add(new_ET_y);
-                dEdy_by_cent.add(new_E_y);
+    //             dETdy_by_cent.add(new_ET_y);
+    //             dEdy_by_cent.add(new_E_y);
 
-                std::stringstream outname{""};
+    //             std::stringstream outname{""};
 
-                outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-                io::print_1d_histo
-                (
-                    dEdy_by_cent, 
-                    outname.str(), 
-                    1.0/ static_cast<double>(n_in_bin),
-                    false
-                );
-                outname.seekp(0);
-                outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
-                io::print_1d_histo
-                (
-                    dETdy_by_cent,
-                    outname.str(), 
-                    1.0/ static_cast<double>(n_in_bin),
-                    false
-                );
-            }
-        }
-    }
-    else
-    {
-        std::cout<<"Simulation finished succesfully with "<<collisions_for_reporting.size()<<" collisions. Run >50 to produce output files"<<std::endl;
-    }
+    //             outname<<"dEdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+    //             io::print_1d_histo
+    //             (
+    //                 dEdy_by_cent, 
+    //                 outname.str(), 
+    //                 1.0/ static_cast<double>(n_in_bin),
+    //                 false
+    //             );
+    //             outname.seekp(0);
+    //             outname<<"dETdy_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+    //             io::print_1d_histo
+    //             (
+    //                 dETdy_by_cent,
+    //                 outname.str(), 
+    //                 1.0/ static_cast<double>(n_in_bin),
+    //                 false
+    //             );
+    //         }
+    //     }
+    // }
+    // else
+    // {
+    //     std::cout<<"Simulation finished succesfully with "<<collisions_for_reporting.size()<<" collisions. Run >50 to produce output files"<<std::endl;
+    // }
 }

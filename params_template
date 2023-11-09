@@ -4,7 +4,7 @@
 name example_name                # Name of the run, affects output filenames and such 
 sigmajet_filename example_sigma_jet.dat  # Filename for the spatially dependent sigma_jet grid
 centrality_filename centrality_bins.csv  # Filename for the centrality bins for the reporting
-n_events 2000                   # How many events should be simulated
+n_events 200                   # How many events should be simulated
 b_max 20.0                       # (fm) maximum of the impact parameter
 b_min 0.0                        # (fm) minimum of the impact parameter 
 sqrt_s 5020.0                    # (GeV) sqrt(s) for the hard process 
@@ -20,8 +20,8 @@ spatial_cutoff 0                 # If calculate_spatial_cutoff is false, this va
 A 208                            # Mass number of the colliding nucleus
 ZA 82                            # Atomic number of the colliding nucleus
 M_factor 2.5                     # Saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
-correct_overlap_bias true        # If there will be a minimum distance between the nucleons in a nucleus
-nn_min_dist 0.4                  # (fm) minimum distance between the nucleons in a nucleus
+correct_overlap_bias false        # If there will be a minimum distance between the nucleons in a nucleus
+nn_min_dist 0.0                  # (fm) minimum distance between the nucleons in a nucleus
 nuclear_RA 6.62435               # (fm) nucleus R0 for the 2pF-distribution of the projectile
 nuclear_RB 6.62435               # (fm) nucleus R0 for the 2pF-distribution of the target
 nuclear_dA 0.5498                # (fm) nucleus d for the 2pF-distribution of the projectile
@@ -36,14 +36,14 @@ rad_max 30.0                     # (fm) nucleons' maximum distance from the cent
 rad_min 0.0                      # (fm) nucleons' minimum distance from the center of the nucleus
 shift_cms true                   # If the nucleus' cms should be corrected after sampling the nucleons
 hotspots false                   # BUGGED STILL, DON'T USE If the nucleons should have hotspots in them 
-n_hotspots 0                     # How many hotspots in each nucleon
+n_hotspots 3                     # How many hotspots in each nucleon
 hotspot_width 0.0                # The gaussian width of the hotspots' thickness function (if 0, use 20% of the nucleon width)
 # GENERAL FLAGS
 is_aa true                       # If the run is nucleus-nucleus
 is_pa false                      # If the run is proton-nucleus
 is_pp false                      # If the run is proton-proton 
 is_mc_glauber false              # If true, nucleon-nucleon collisions are decided like with hard spheres
-read_sigmajets_from_file false    # If the sigma_jets are precalculated
+read_sigmajets_from_file true    # If the sigma_jets are precalculated
 # QCD FLAGS
 proton_width_static false        # If the proton width should be a static value or depend on sqrt(s)
 sigma_inel_from_sigma_jet true   # Is sigma_inel static or calculated from eikonal model

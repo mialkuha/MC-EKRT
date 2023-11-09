@@ -1166,7 +1166,8 @@ public:
         const double &impact_parameter,
         std::shared_ptr<std::mt19937> eng,
         const bool verbose,
-        const bool read_nuclei_from_file=false
+        const bool read_nuclei_from_file,
+        std::shared_ptr<Tpp_builder> Tpp, std::ofstream &outfile
     )
     {
         std::vector<nucleon> pro, tar;
@@ -1201,7 +1202,8 @@ public:
                             false,
                             sqrt_s/2.0, 
                             -impact_parameter/2., 
-                            eng
+                            eng,
+                            Tpp, outfile
                         );
                     tar = nucleus_generator::generate_nucleus
                         (
@@ -1209,7 +1211,8 @@ public:
                             true,
                             sqrt_s/2.0, 
                             impact_parameter/2., 
-                            eng
+                            eng,
+                            Tpp, outfile
                         );
                 }
                 catch(const std::exception& e)

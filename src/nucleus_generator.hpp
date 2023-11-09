@@ -5,12 +5,14 @@
 
 #include <cmath>
 #include <functional>
+#include <fstream>
 #include <memory>
 #include <random>
 #include <vector>
 
 #include "nucleon.hpp"
 #include "typedefs.hpp"
+#include "Tpp_builder.hpp"
 
 class nucleus_generator
 {
@@ -87,7 +89,8 @@ public:
         {}
     };
     static std::vector<nucleon> generate_nucleus(const nucleus_params & params, const bool &target, const double & mom, 
-        const double & xshift, std::shared_ptr<std::mt19937> random_generator);
+        const double & xshift, std::shared_ptr<std::mt19937> random_generator,
+        std::shared_ptr<Tpp_builder> Tpp, std::ofstream &outfile);
 protected:
     static coords throw_nucleon_coords(std::shared_ptr<std::mt19937> random_generator, const double & R0, const double & d, const double & beta2, const double & beta3, const double & beta4) noexcept;
     static double throw_radial(const double & random_number) noexcept;
