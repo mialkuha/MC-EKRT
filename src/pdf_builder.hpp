@@ -176,7 +176,7 @@ public:
         const double &sum_tppb,
         const bool &average,
         const bool &max
-    ) noexcept -> std::tuple
+    ) const noexcept -> std::tuple
         <
             std::array<double, 7>,
             std::array<double, 7>,
@@ -184,148 +184,125 @@ public:
             std::array<double, 7>
         >
     {
-        double ruv = 1.0, rdv = 1.0, rus = 1.0, rds = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
-        double ru = 1.0, rd = 1.0;
+        double rdv = 1.0, ruv = 1.0, rds = 1.0, rus = 1.0, rs = 1.0, rc = 1.0, rb = 1.0, rt = 1.0, rg = 1.0;
+        double rd = 1.0, ru = 1.0;
+        std::vector<double> xfx{13,0.0};
+        this->p_pdf->xfxQ2(x1, q2, xfx);
+
 
         if (this->projectile_with_npdfs)
         {
             eps09(1, this->npdf_setnumber, static_cast<int>(this->A), x1, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
-            ru = ruv + (rus - ruv) * this->p_pdf->xfxQ2(-1, x1, q2) / this->p_pdf->xfxQ2(1, x1, q2);
-            rd = rdv + (rds - rdv) * this->p_pdf->xfxQ2(-2, x1, q2) / this->p_pdf->xfxQ2(2, x1, q2);
+            rd = rdv + (rds - rdv) * xfx[5] / xfx[7];
+            ru = ruv + (rus - ruv) * xfx[4] / xfx[8];
 
             if (!average && this->npdfs_spatial)
             {
-                ru = this->rA_spatial(ru, sum_tppa); rd = this->rA_spatial(rd, sum_tppa); rus = this->rA_spatial(rus, sum_tppa);
-                rds = this->rA_spatial(rds, sum_tppa); rs = this->rA_spatial(rs, sum_tppa); rc = this->rA_spatial(rc, sum_tppa); 
+                rd = this->rA_spatial(rd, sum_tppa); ru = this->rA_spatial(ru, sum_tppa); rds = this->rA_spatial(rds, sum_tppa);
+                rus = this->rA_spatial(rus, sum_tppa); rs = this->rA_spatial(rs, sum_tppa); rc = this->rA_spatial(rc, sum_tppa); 
                 rb = this->rA_spatial(rb, sum_tppa); rt = this->rA_spatial(rt, sum_tppa); rg = this->rA_spatial(rg, sum_tppa);
             }
 
             if (max)
             {
-                ru = (ru > 1.0)? ru: 1.0; rd = (rd > 1.0)? rd: 1.0; rus = (rus > 1.0)? rus: 1.0;
-                rds = (rds > 1.0)? rds: 1.0; rs = (rs > 1.0)? rs: 1.0; rc = (rc > 1.0)? rc: 1.0; 
+                rd = (rd > 1.0)? rd: 1.0; ru = (ru > 1.0)? ru: 1.0; rds = (rds > 1.0)? rds: 1.0;
+                rus = (rus > 1.0)? rus: 1.0; rs = (rs > 1.0)? rs: 1.0; rc = (rc > 1.0)? rc: 1.0; 
                 rb = (rb > 1.0)? rb: 1.0; rt = (rt > 1.0)? rt: 1.0; rg = (rg > 1.0)? rg: 1.0;
             }
         }
         std::array<double, 7> f_i_x1 = 
         {
-            rg * this->p_pdf->xfxQ2(0, x1, q2),
-            ru * this->p_pdf->xfxQ2(1, x1, q2),
-            rd * this->p_pdf->xfxQ2(2, x1, q2),
-            rs * this->p_pdf->xfxQ2(3, x1, q2),
-            rc * this->p_pdf->xfxQ2(4, x1, q2),
-            rb * this->p_pdf->xfxQ2(5, x1, q2),
-            rt * this->p_pdf->xfxQ2(6, x1, q2)
+            rg * xfx[6],
+            rd * xfx[7],
+            ru * xfx[8],
+            rs * xfx[9],
+            rc * xfx[10],
+            rb * xfx[11],
+            rt * xfx[12]
         };
         std::array<double, 7> f_ai_x1 = 
         {
-            rg * this->p_pdf->xfxQ2(0, x1, q2),
-            rus * this->p_pdf->xfxQ2(-1, x1, q2),
-            rds * this->p_pdf->xfxQ2(-2, x1, q2),
-            rs * this->p_pdf->xfxQ2(-3, x1, q2),
-            rc * this->p_pdf->xfxQ2(-4, x1, q2),
-            rb * this->p_pdf->xfxQ2(-5, x1, q2),
-            rt * this->p_pdf->xfxQ2(-6, x1, q2)
+            rg * xfx[6],
+            rds * xfx[5],
+            rus * xfx[4],
+            rs * xfx[3],
+            rc * xfx[2],
+            rb * xfx[1],
+            rt * xfx[0]
         };
+
+
+        this->p_pdf->xfxQ2(x2, q2, xfx);
 
         if (this->target_with_npdfs)
         {
             eps09(1, this->npdf_setnumber, static_cast<int>(this->B), x2, sqrt(q2), ruv, rdv, rus, rds, rs, rc, rb, rg);
-            ru = ruv + (rus - ruv) * this->p_pdf->xfxQ2(-1, x2, q2) / this->p_pdf->xfxQ2(1, x2, q2);
-            rd = rdv + (rds - rdv) * this->p_pdf->xfxQ2(-2, x2, q2) / this->p_pdf->xfxQ2(2, x2, q2);
+            rd = rdv + (rds - rdv) * xfx[5] / xfx[7];
+            ru = ruv + (rus - ruv) * xfx[4] / xfx[8];
 
             if (!average && this->npdfs_spatial)
             {
-                ru = this->rB_spatial(ru, sum_tppb); rd = this->rB_spatial(rd, sum_tppb); rus = this->rB_spatial(rus, sum_tppb);
-                rds = this->rB_spatial(rds, sum_tppb); rs = this->rB_spatial(rs, sum_tppb); rc = this->rB_spatial(rc, sum_tppb); 
+                rd = this->rB_spatial(rd, sum_tppb); ru = this->rB_spatial(ru, sum_tppb); rds = this->rB_spatial(rds, sum_tppb);
+                rus = this->rB_spatial(rus, sum_tppb); rs = this->rB_spatial(rs, sum_tppb); rc = this->rB_spatial(rc, sum_tppb); 
                 rb = this->rB_spatial(rb, sum_tppb); rt = this->rB_spatial(rt, sum_tppb); rg = this->rB_spatial(rg, sum_tppb);
             }
 
             if (max)
             {
-                ru = (ru > 1.0)? ru: 1.0; rd = (rd > 1.0)? rd: 1.0; rus = (rus > 1.0)? rus: 1.0;
-                rds = (rds > 1.0)? rds: 1.0; rs = (rs > 1.0)? rs: 1.0; rc = (rc > 1.0)? rc: 1.0; 
+                rd = (rd > 1.0)? rd: 1.0; ru = (ru > 1.0)? ru: 1.0; rds = (rds > 1.0)? rds: 1.0;
+                rus = (rus > 1.0)? rus: 1.0; rs = (rs > 1.0)? rs: 1.0; rc = (rc > 1.0)? rc: 1.0; 
                 rb = (rb > 1.0)? rb: 1.0; rt = (rt > 1.0)? rt: 1.0; rg = (rg > 1.0)? rg: 1.0;
             }
         }
         else
         {
-            ru = 1.0; rd = 1.0; ruv = 1.0; rdv = 1.0; rus = 1.0; rds = 1.0; 
+            rd = 1.0; ru = 1.0; rdv = 1.0; ruv = 1.0; rds = 1.0; rus = 1.0; 
             rs = 1.0; rc = 1.0; rb = 1.0; rt = 1.0; rg = 1.0; 
         }
         std::array<double, 7> f_i_x2 = 
         {
-            rg * this->p_pdf->xfxQ2(0, x2, q2),
-            ru * this->p_pdf->xfxQ2(1, x2, q2),
-            rd * this->p_pdf->xfxQ2(2, x2, q2),
-            rs * this->p_pdf->xfxQ2(3, x2, q2),
-            rc * this->p_pdf->xfxQ2(4, x2, q2),
-            rb * this->p_pdf->xfxQ2(5, x2, q2),
-            rb * this->p_pdf->xfxQ2(6, x2, q2)
+            rg * xfx[6],
+            rd * xfx[7],
+            ru * xfx[8],
+            rs * xfx[9],
+            rc * xfx[10],
+            rb * xfx[11],
+            rt * xfx[12]
         };
         std::array<double, 7> f_ai_x2 = 
         {
-            rg * this->p_pdf->xfxQ2(0, x2, q2),
-            rus * this->p_pdf->xfxQ2(-1, x2, q2),
-            rds * this->p_pdf->xfxQ2(-2, x2, q2),
-            rs * this->p_pdf->xfxQ2(-3, x2, q2),
-            rc * this->p_pdf->xfxQ2(-4, x2, q2),
-            rb * this->p_pdf->xfxQ2(-5, x2, q2),
-            rb * this->p_pdf->xfxQ2(-6, x2, q2)
+            rg * xfx[6],
+            rds * xfx[5],
+            rus * xfx[4],
+            rs * xfx[3],
+            rc * xfx[2],
+            rb * xfx[1],
+            rt * xfx[0]
         };
-
-        if (!this->projectile_with_npdfs && this->isoscalar_projectile)
-        {
-            double ZoA = /*82/208.0*/ static_cast<double>(this->ZA) / static_cast<double>(this->A);
-            double NoA = /*126/208.0*/ static_cast<double>(this->A - this->ZA) / static_cast<double>(this->A);
-            double u, ub, d, db;
-            u = f_i_x1[1];
-            ub = f_ai_x1[1];
-            d = f_i_x1[2];
-            db = f_ai_x1[2];
-            f_i_x1[1] = ZoA * u + NoA * d;
-            f_i_x1[2] = ZoA * d + NoA * u;
-            f_ai_x1[1] = ZoA * ub + NoA * db;
-            f_ai_x1[2] = ZoA * db + NoA * ub;
-        }    
-        if (!this->target_with_npdfs && this->isoscalar_target)
-        {
-            double ZoA = /*82/208.0*/ static_cast<double>(this->ZB) / static_cast<double>(this->B);
-            double NoA = /*126/208.0*/ static_cast<double>(this->B - this->ZB) / static_cast<double>(this->B);
-            double u, ub, d, db;
-            u = f_i_x2[1];
-            ub = f_ai_x2[1];
-            d = f_i_x2[2];
-            db = f_ai_x2[2];
-            f_i_x2[1] = ZoA * u + NoA * d;
-            f_i_x2[2] = ZoA * d + NoA * u;
-            f_ai_x2[1] = ZoA * ub + NoA * db;
-            f_ai_x2[2] = ZoA * db + NoA * ub;
-        }
 
         if (!this->only_protons && projectile_neutron)
         {
             double u, ub, d, db;
-            u  = f_i_x1[1];
-            d  = f_i_x1[2];
-            ub = f_ai_x1[1];
-            db = f_ai_x1[2];
-            f_i_x1[1] = d;
-            f_i_x1[2] = u;
-            f_ai_x1[1] = db;
-            f_ai_x1[2] = ub;
+            d  = f_i_x1[1];
+            u  = f_i_x1[2];
+            db = f_ai_x1[1];
+            ub = f_ai_x1[2];
+            f_i_x1[1] = u;
+            f_i_x1[2] = d;
+            f_ai_x1[1] = ub;
+            f_ai_x1[2] = db;
         }    
         if (!this->only_protons && target_neutron)
         {
             double u, ub, d, db;
-            u  = f_i_x2[1];
-            d  = f_i_x2[2];
-            ub = f_ai_x2[1];
-            db = f_ai_x2[2];
-            f_i_x2[1] = d;
-            f_i_x2[2] = u;
-            f_ai_x2[1] = db;
-            f_ai_x2[2] = ub;
+            d  = f_i_x2[1];
+            u  = f_i_x2[2];
+            db = f_ai_x2[1];
+            ub = f_ai_x2[2];
+            f_i_x2[1] = u;
+            f_i_x2[2] = d;
+            f_ai_x2[1] = ub;
+            f_ai_x2[2] = db;
         }
 
         return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);

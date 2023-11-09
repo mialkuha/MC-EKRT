@@ -171,25 +171,17 @@ public:
         {
             uint_fast16_t A = static_cast<uint_fast16_t>(nucleus.size());
             
-            std::vector<double> tps(A, 0.0);
-            
             for (uint_fast16_t i=0; i<A; i++)
             {
                 auto [x2, y2, z2] = nucleus.at(i).co;
                 // T^i_p(x) = 2*T_pp(2*(x-x_i)^2)
-                tps.at(i) = 2.0 * this->func(2.0*(pow(x-x2,2) + pow(y-y2,2)), nullptr);
-            }
-            for (uint_fast16_t i=0; i<A; i++)
-            {
-                sum_tp += tps.at(i);
+                sum_tp += 2.0 * this->func(2.0*(pow(x-x2,2) + pow(y-y2,2)), nullptr);
             }
         }
         else
         {
             uint_fast16_t A = static_cast<uint_fast16_t>(nucleus.size());
             uint_fast16_t N_hs = static_cast<uint_fast16_t>(nucleus.at(0).hotspots.size());
-            
-            std::vector<double> tps(A, 0.0);
             
             for (uint_fast16_t i=0; i<A; i++)
             {
@@ -200,12 +192,7 @@ public:
                     auto [x2, y2, z2] = hs.co;
                     b_squareds.at(ind++) = 2.0*(pow(x-x2,2) + pow(y-y2,2));
                 }
-
-                tps.at(i) = 2.0 * this->func(0.0, &b_squareds);
-            }
-            for (uint_fast16_t i=0; i<A; i++)
-            {
-                sum_tp += tps.at(i);
+                sum_tp += 2.0 * this->func(0.0, &b_squareds);
             }
         }
         return sum_tp;
