@@ -9,6 +9,7 @@
 #include <memory>
 #include <random>
 #include <vector>
+#include <gsl/gsl_sf_lambert.h>
 
 #include "nucleon.hpp"
 #include "typedefs.hpp"

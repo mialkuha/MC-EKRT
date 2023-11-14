@@ -129,17 +129,27 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params &p
             double dummy2 = 0.0;
             double dummy3 = 0.0;
             double dummy4 = 0.0;
+            double dummy5 = 0.0;
+            double ta = Tpp->calculate_TA(x, y, generated_nucleus);
             for (auto a : generated_nucleus)
             {
                 double TN = Tpp->calculate_TN(x, y, a);
+                // if (ta < 0.2 && TN > 0.4*ta )
+                // {
+                //     continue;
+                // }
                 double dummy = Tpp->calculate_sum_tpp(a, generated_nucleus);
-                dummy1 += TN * std::exp(-10.0 * dummy);
-                dummy2 += TN * std::exp(-7.0 * dummy);
-                dummy3 += TN * std::exp(-5.0 * dummy);
-                dummy4 += TN * std::exp(-3.0 * dummy);
+                // if (dummy < 1e-3)
+                // {
+                //     continue;
+                // }
+                dummy1 += TN * gsl_sf_lambert_W0(100.0 *dummy)/(100.0*dummy);//std::exp(-10.0 * dummy);
+                dummy2 += TN * gsl_sf_lambert_W0(50.0 *dummy)/(50.0*dummy);//std::exp(-7.0 * dummy);
+                dummy3 += TN * gsl_sf_lambert_W0(25.0 *dummy)/(25.0*dummy);//std::exp(-5.0 * dummy);
+                dummy4 += TN * gsl_sf_lambert_W0(5.0 *dummy)/(5.0*dummy);//std::exp(-3.0 * dummy);
+                dummy5 += TN * gsl_sf_lambert_W0(1500.0 *dummy)/(dummy);//std::exp(-3.0 * dummy);
             }
-            double dummy = Tpp->calculate_TA(x, y, generated_nucleus);
-            outfile<<x<<','<<y<<','<<dummy<<','<<dummy1<<','<<dummy2<<','<<dummy3<<','<<dummy4<<std::endl;
+            outfile<<x<<','<<y<<','<<ta<<','<<dummy1<<','<<dummy2<<','<<dummy3<<','<<dummy4<<','<<dummy5<<std::endl;
             // coords co{x,y,0.0};
             // grid.push_back(std::make_tuple(100.0, 100.0, 0.0, 0.0, co));
         }

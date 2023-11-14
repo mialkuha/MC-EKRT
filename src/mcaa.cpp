@@ -694,10 +694,10 @@ auto mcaa::run() -> void
     //         );
     // pqcd::calculate_sigma_jet(this->pdf, &this->mand_s, &this->kt02, this->jet_params, dummy, false);
     std::ofstream outfile;
-    outfile.open("out.csv");
+    outfile.open("out_7.csv");
 
     {
-        auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
+        auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
 
         for (auto it = event_indexes.begin(); it < event_indexes.end(); it++) 
         {
