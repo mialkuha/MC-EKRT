@@ -883,6 +883,7 @@ public:
          use_npdfs,
          use_snpdfs,
          snpdfs_linear,
+         snpdfs_new,
          calculate_spatial_cutoff,
          calculate_end_state,
          calculate_tata,
@@ -950,6 +951,7 @@ public:
             {"use_npdfs", use_npdfs},
             {"use_snpdfs", use_snpdfs},
             {"snpdfs_linear", snpdfs_linear},
+            {"snpdfs_new", snpdfs_new},
             {"calculate_spatial_cutoff", calculate_spatial_cutoff},
             {"calculate_end_state", calculate_end_state},
             {"calculate_tata", calculate_tata},
@@ -1008,6 +1010,7 @@ public:
         bool use_npdfs{true};
         bool use_snpdfs{true}; 
         bool snpdfs_linear{false};
+        bool snpdfs_new{false};
         bool calculate_spatial_cutoff{false};
         bool calculate_end_state{true};
         bool calculate_tata{true};
@@ -1189,6 +1192,9 @@ public:
                     case io::Param::snpdfs_linear:
                         line_stream >> std::boolalpha >> snpdfs_linear;
                         break;
+                    case io::Param::snpdfs_new:
+                        line_stream >> std::boolalpha >> snpdfs_new;
+                        break;
                     case io::Param::calculate_spatial_cutoff:
                         line_stream >> std::boolalpha >> calculate_spatial_cutoff;
                         break;
@@ -1282,6 +1288,7 @@ public:
                     use_npdfs,
                     use_snpdfs,
                     snpdfs_linear,
+                    snpdfs_new,
                     calculate_spatial_cutoff,
                     calculate_end_state,
                     calculate_tata,

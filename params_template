@@ -52,6 +52,7 @@ only_protons false               # If the nucleons are all protons
 use_npdfs true                   # If there should be nuclear corrections in nucleus' PDFs
 use_snpdfs true                  # If the used nPDF should be spatially dependent or average
 snpdfs_linear false              # If the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
+snpdfs_new false                  # If the used spatial nuclear modification should be exp(cT) (false) or the new model (true)
 calculate_spatial_cutoff false   # If to calculate the spatial cutoff (T_p(0))/(3T_A(0)) or if it's something user provided (Only relevant with linear snPDFs)
 # OUTPUT FLAGS
 calculate_end_state true         # false=no jets will be calculated, only collisions

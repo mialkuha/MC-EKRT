@@ -58,6 +58,7 @@ mcaa::mcaa
         p_use_npdfs,
         p_use_snpdfs,
         p_snpdfs_linear,
+        p_snpdfs_new,
         p_calculate_spatial_cutoff,
         p_calculate_end_state,
         p_calculate_tata,
@@ -90,6 +91,7 @@ mcaa::mcaa
     this->only_protons               = p_only_protons; 
     this->snPDFs                     = p_use_snpdfs;
     this->snPDFs_linear              = p_snpdfs_linear;
+    this->snPDFs_new                 = p_snpdfs_new;
     this->is_sat_y_dep               = p_is_sat_y_dep;
     this->pt_ordering                = p_is_pt_ordering;
     this->t03_ordering               = p_is_t03_ordering;
@@ -228,6 +230,7 @@ mcaa::mcaa
     /*isoscalar_target=           */false,
     /*npdfs_spatial=              */p_use_snpdfs,
     /*snPDFs_linear=              */p_snpdfs_linear,
+    /*snPDFs_new=                 */p_snpdfs_new,
     /*only_protons=               */p_only_protons,
     /*npdf_setnumber=             */1,
     /*A=                          */(p_is_AA)? p_A : 1u,  //Pb 

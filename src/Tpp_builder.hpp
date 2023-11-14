@@ -3,8 +3,11 @@
 #ifndef TPP_HPP
 #define TPP_HPP
 
+#include <array>
+#include <gsl/gsl_sf_lambert.h>
 #include <vector>
 
+#include "generic_helpers.hpp"
 #include "nn_coll.hpp"
 #include "nucleon.hpp"
 #include "typedefs.hpp"
@@ -321,6 +324,103 @@ public:
         }
 
         for (uint_fast8_t i=0; i<25; i++)
+        {
+            ave_R_vector[i] = std::reduce(block_averages[i].begin(), block_averages[i].end(), 0.0) / block_amount;
+        }
+        std::cout<<"A-configs calculated: "<<block_amount*200<<std::endl;
+
+        return std::make_tuple(ave_R_vector,c_vector);
+    }
+
+    auto calculate_R_c_table_new
+    (
+        const nucleus_generator::nucleus_params &nuc_params,
+        const double &rel_tolerance,
+        const bool verbose
+    ) -> std::tuple<std::array<double, 51>, std::array<double, 51> >
+    {
+        constexpr std::size_t table_size = 51;
+        std::vector<uint_fast8_t> block_indexes(200);
+        std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
+        
+        std::array<double, table_size> c_vector;
+        c_vector.fill(0.0);
+        auto loglin = helpers::loglinspace(1e-3, 150.0, table_size/2);
+        for (uint_fast8_t i=0, j=table_size/2-1; i<table_size/2; i++, j--)
+        {
+            c_vector[i] = -loglin[j];
+        }
+        loglin = helpers::loglinspace(1e-3, 25.0, table_size/2);
+        for (uint_fast8_t i=(table_size/2) +1, j=0; i<table_size; i++, j++)
+        {
+            c_vector[i] = loglin[j];
+        }
+        
+        std::array<double, table_size> ave_R_vector;
+        ave_R_vector.fill(0.0);
+
+        uint_fast8_t block_amount = 50;
+        std::array<std::array<double, 50>, table_size> block_averages;
+
+        #pragma omp parallel
+        {
+            auto eng = std::make_shared<std::mt19937>(static_cast<ulong>((omp_get_thread_num() + 1))*static_cast<ulong>(std::chrono::system_clock::now().time_since_epoch().count()));
+
+            #pragma omp for
+            for (uint_fast8_t block_index=0; block_index<block_amount; block_index++)
+            {
+                std::array<std::array<double, 200>, table_size> R_vectors;
+                for (auto it = block_indexes.begin(); it < block_indexes.end(); it++)
+                {
+                    std::vector<nucleon> nucl, other;
+                    std::vector<uint_fast8_t> nucl_indexes(nuc_params.A);
+                    std::iota(nucl_indexes.begin(), nucl_indexes.end(), 0);
+                    std::array<std::vector<double>, table_size> sum_tpps;
+                    for (uint_fast8_t i=0; i<table_size; i++)
+                    {
+                        sum_tpps[i] = std::vector<double>(nuc_params.A);
+                    }
+
+                    nucl = nucleus_generator::generate_nucleus
+                        (
+                            nuc_params,
+                            false,
+                            0.0, 
+                            0.0, 
+                            eng
+                        );
+
+                    for (auto itt = nucl_indexes.begin(); itt < nucl_indexes.end(); itt++)
+                    {
+                        auto dummy = this->calculate_sum_tpp(nucl[*itt], nucl);
+                        for (uint_fast8_t i=0; i<table_size; i++)
+                        {
+                            double arg = c_vector[i] * dummy;
+                            if (arg >= 0.0)
+                            {
+                                sum_tpps[i][*itt] = std::exp(arg);
+                            }
+                            else
+                            {
+                                sum_tpps[i][*itt] = gsl_sf_lambert_W0(-arg) / (-arg);
+                            }
+                        }
+                    }
+
+                    for (uint_fast8_t i=0; i<table_size; i++)
+                    {
+                        R_vectors[i][*it] = std::reduce(sum_tpps[i].begin(), sum_tpps[i].end(), 0.0) / static_cast<double>(nuc_params.A);
+                    }
+                }
+
+                for (uint_fast8_t i=0; i<table_size; i++)
+                {
+                    block_averages[i][block_index] = std::reduce(R_vectors[i].begin(), R_vectors[i].end(), 0.0) / 200.0;
+                }
+            }
+        }
+
+        for (uint_fast8_t i=0; i<table_size; i++)
         {
             ave_R_vector[i] = std::reduce(block_averages[i].begin(), block_averages[i].end(), 0.0) / block_amount;
         }
