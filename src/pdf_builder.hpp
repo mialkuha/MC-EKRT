@@ -119,13 +119,13 @@ public:
                 verbose);
             std::cout << "Done! {c,R} pairs:" << std::endl;
 
-            for (uint_fast8_t i = 0; i < 50; i++)
+            for (uint_fast8_t i = 0; i < 100; i++)
             {
                 std::cout << "{" << c_A_table[i] << "," << R_A_table[i] << "},";
             }
-            std::cout << "{" << c_A_table[50] << "," << R_A_table[50] << "}}" << std::endl;
+            std::cout << "{" << c_A_table[100] << "," << R_A_table[100] << "}}" << std::endl;
 
-            for (uint_fast8_t i = 0; i < 51; i++)
+            for (uint_fast8_t i = 0; i < 101; i++)
             {
                 Rs_as_vector.push_back(R_A_table[i]);
                 cs_as_vector.push_back(c_A_table[i]);
@@ -140,9 +140,11 @@ public:
                     double arg = this->c_A_func.value_at(r) * sum_tppa;
                     if (arg >= 0.0)
                     {
-                        return std::exp(arg);
+                        return 1.0+std::log(1.0+arg);
+                        // return std::exp(arg);
                     }
-                    return gsl_sf_lambert_W0(-arg) / (-arg);
+                    return 1.0 / (1.0-arg);
+                    // return gsl_sf_lambert_W0(-arg) / (-arg);
                 }
                 else
                 {
@@ -157,9 +159,11 @@ public:
                     double arg = this->c_A_func.value_at(r) * sum_tppb;
                     if (arg >= 0.0)
                     {
-                        return std::exp(arg);
+                        return 1.0+std::log(1.0+arg);
+                        // return std::exp(arg);
                     }
-                    return gsl_sf_lambert_W0(-arg) / (-arg);
+                    return 1.0 / (1.0-arg);
+                    // return gsl_sf_lambert_W0(-arg) / (-arg);
                 }
                 else
                 {

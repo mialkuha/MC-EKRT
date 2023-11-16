@@ -80,6 +80,7 @@ public:
     double sigma_inel_AA{70.0};                     // (mb) inelastic cross section for the triggering
     double sqrt_s{5020.0};                          // (GeV) sqrt(s) for the hard process 
     double T_AA_0{0.0};                             // (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
+    double envelope_marginal{1.05};                 // How tight we want the envelope of dsigma to be, lower values == faster but more prone to error
     std::uniform_int_distribution<> hs_dist{0,0};   // distribution for choosing a random hotspot
 
 

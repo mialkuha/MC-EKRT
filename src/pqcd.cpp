@@ -326,7 +326,7 @@ auto pqcd::generate_2_to_2_scatt
             std::cout<<"y2 = "<<y2<<std::endl;
             std::cout<<"total_xsection = "<<total_xsection<<std::endl;
             std::cout<<"limit = "<<env_func.func(kt)<<std::endl<<std::endl;
-            std::cout<<"Maybe check the power-law behaviour."<<std::endl;
+            std::cout<<"Maybe increase envelope_marginal."<<std::endl;
             continue;
         }
 

@@ -16,6 +16,7 @@ sigma_inel 70.0                  # (mb) inelastic nucleon-nucleon cross section 
 sigma_inel_AA 0                  # (mb) inelastic cross section for the triggering. 0 = calculate at the start.
 T_AA_0_for_snpdfs 0              # (fm^-2) T_AA(0) for the normalization of c_A(x):s in snPDFs. 0 = calculate at the start.
 spatial_cutoff 0                 # If calculate_spatial_cutoff is false, this value will limit the spatial (1+cT) from below (Only relevant with linear snPDFs)
+envelope_marginal 1.05           # How tight we want the envelope of dsigma to be, lower values == faster but more prone to error
 # NUCLEAR PARAMETERS
 A 208                            # Mass number of the colliding nucleus
 ZA 82                            # Atomic number of the colliding nucleus

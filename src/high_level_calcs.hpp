@@ -145,12 +145,13 @@ public:
     (
         const double &kt0, 
         const double &sqrt_s,
+        const double &envelope_marginal,
         std::shared_ptr<pdf_builder> p_pdf, 
         pqcd::sigma_jet_params jet_params
     ) noexcept
     {
         // How tight we want the envelope to be, lower values == faster but more prone to error
-        double extra = 1.05;
+        double extra = envelope_marginal;
 
         double env_min_kt=kt0;
         double env_norm1=0;
@@ -339,6 +340,7 @@ public:
         const double &kt02, 
         const double &kt0, 
         const double &power_law,
+        const double &envelope_marginal,
         pqcd::sigma_jet_params jet_params,
         const std::string &s_jet_file_name,
         const bool &spatial_pdfs
@@ -374,7 +376,7 @@ public:
             dijet_norm = sigma_jet;
 
             std::cout<<"Calculating envelope..."<<std::flush;
-            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+            auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, envelope_marginal, p_pdf, jet_params);
             std::cout<<"done!"<<std::endl;
 
             return std::make_tuple
@@ -407,7 +409,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, envelope_marginal, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple
@@ -454,7 +456,7 @@ public:
                 std::cout<<"dijet_norm = "<<dijet_norm<<std::endl;
 
                 std::cout<<"Calculating envelope..."<<std::flush;
-                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, p_pdf, jet_params);
+                auto env_params = calcs::calculate_envelope_params(kt0, sqrt_s, envelope_marginal, p_pdf, jet_params);
                 std::cout<<"done!"<<std::endl;
 
                 return std::make_tuple

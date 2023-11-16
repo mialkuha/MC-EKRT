@@ -25,6 +25,7 @@ mcaa::mcaa
         p_sigma_inel_AA,
         p_T_AA_0_for_snpdfs,
         p_spatial_cutoff,
+        p_envelope_marginal,
         p_A,
         p_ZA,
         p_M_factor,
@@ -113,6 +114,7 @@ mcaa::mcaa
     this->sigma_inel_AA              = p_sigma_inel_AA;
     this->sqrt_s                     = p_sqrt_s;
     this->T_AA_0                     = p_T_AA_0_for_snpdfs;
+    this->envelope_marginal          = p_envelope_marginal;
 
     this->verbose                    = false;
     this->kt02                       = p_kt0*p_kt0;
@@ -628,6 +630,7 @@ auto mcaa::run() -> void
         this->kt02, 
         this->kt0,
         this->power_law,
+        this->envelope_marginal,
         this->jet_params,
         this->sigmajet_filename,
         this->snPDFs
@@ -693,8 +696,7 @@ auto mcaa::run() -> void
     /*T_AA_0=                   */this->T_AA_0
     };
 
-    auto cmpLambda = [](const io::Coll &lhs, const io::Coll &rhs) { return io::compET(lhs, rhs); };
-    std::map<io::Coll, std::vector<dijet_with_coords>, decltype(cmpLambda)> colls_scatterings(cmpLambda);
+    std::vector<std::tuple<io::Coll, std::vector<dijet_with_coords> > > colls_scatterings;
 
     // auto cmpLambda = [](const std::tuple<double, double> &lhs, const std::tuple<double, double> &rhs) { return std::get<0>(lhs) < std::get<0>(rhs); }; /////
     // std::map<io::Coll, std::tuple<double, double>, decltype(cmpLambda)> colls_sumet_midet(cmpLambda); /////
@@ -1016,7 +1018,7 @@ auto mcaa::run() -> void
                         
                         if (save_endstate_jets)
                         {
-                            colls_scatterings.insert({coll, filtered_scatterings});
+                            colls_scatterings.push_back({coll, filtered_scatterings});
                         }
                     }
                 } while (g_bug_bool);
@@ -1058,9 +1060,11 @@ auto mcaa::run() -> void
                                                 
         glauber_report_file.open(g_name, std::ios::out);
         io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
+        std::cout<<collisions_for_reporting.size()<<std::endl;
         glauber_report_file.close();
         glauber_report_file.open(g_name_midrap, std::ios::out);
         io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
+        std::cout<<collisions_for_reporting_midrap.size()<<std::endl;
         glauber_report_file.close();
 
         if (save_endstate_jets)
@@ -1089,6 +1093,13 @@ auto mcaa::run() -> void
             std::string name_pfs{this->name+".dat"};
 
             std::ofstream jet_file;
+ 
+            std::sort(colls_scatterings.begin(), colls_scatterings.end(), [](const std::tuple<io::Coll, std::vector<dijet_with_coords> > &a, const std::tuple<io::Coll, std::vector<dijet_with_coords> > &b)
+            {
+                auto [ac, as] = a;
+                auto [bc, bs] = b;
+                return ac.getET() < bc.getET();
+            });
 
             for (auto [centLow, centHigh] : centBins)
             {
@@ -1104,10 +1115,13 @@ auto mcaa::run() -> void
                 uint_fast64_t N_evts_tot = colls_scatterings.size();
                 // Make sure that no rounding downwards.
                 double eps = 0.1/static_cast<double>(N_evts_tot);
+        std::cout<<colls_scatterings.size()<<std::endl;
 
                 uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
                 uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
                 uint_fast64_t n_in_bin = upper_ind - lower_ind;
+        std::cout<<lower_ind<<std::endl;
+        std::cout<<upper_ind<<std::endl;
 
                 //total number of events in this bin
                 jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
@@ -1117,7 +1131,8 @@ auto mcaa::run() -> void
 
                 for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
                 {
-                    for (auto e_co : it->second)
+                    auto [co, sc] = *it;
+                    for (auto e_co : sc)
                     {
                         auto e = e_co.dijet;
 
@@ -1127,7 +1142,7 @@ auto mcaa::run() -> void
                         new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
                         new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
                     }
-                    io::append_single_coll_binary(jet_file, it->second, unirand, eng_shared);
+                    io::append_single_coll_binary(jet_file, sc, unirand, eng_shared);
                 }
                 jet_file.close();
                 std::cout<<n_in_bin<<std::endl;

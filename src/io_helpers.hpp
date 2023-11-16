@@ -850,6 +850,7 @@ public:
          sigma_inel_AA,
          T_AA_0_for_snpdfs,
          spatial_cutoff,
+         envelope_marginal,
          A,
          ZA,
          M_factor,
@@ -918,6 +919,7 @@ public:
             {"sigma_inel_AA", sigma_inel_AA},
             {"T_AA_0_for_snpdfs", T_AA_0_for_snpdfs},
             {"spatial_cutoff", spatial_cutoff},
+            {"envelope_marginal", envelope_marginal},
             {"A", A},
             {"ZA", ZA},
             {"M_factor", M_factor},
@@ -977,6 +979,7 @@ public:
         double sigma_inel_AA{0.0};
         double T_AA_0_for_snpdfs{0.0};
         double spatial_cutoff{0.0};
+        double envelope_marginal{1.05};
         uint_fast16_t A{208};
         uint_fast16_t ZA{82};
         double M_factor{2.5};
@@ -1092,6 +1095,9 @@ public:
                         break;
                     case io::Param::spatial_cutoff:
                         line_stream >> spatial_cutoff;
+                        break;
+                    case io::Param::envelope_marginal:
+                        line_stream >> envelope_marginal;
                         break;
                     case io::Param::A:
                         line_stream >> A;
@@ -1255,6 +1261,7 @@ public:
                     sigma_inel_AA,
                     T_AA_0_for_snpdfs,
                     spatial_cutoff,
+                    envelope_marginal,
                     A,
                     ZA,
                     M_factor,

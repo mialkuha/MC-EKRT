@@ -4,12 +4,15 @@
 #define TPP_HPP
 
 #include <array>
+#include <chrono>
 #include <gsl/gsl_sf_lambert.h>
+#include <omp.h>
 #include <vector>
 
 #include "generic_helpers.hpp"
 #include "nn_coll.hpp"
 #include "nucleon.hpp"
+#include "nucleus_generator.hpp"
 #include "typedefs.hpp"
 
 class Tpp_builder
@@ -337,9 +340,9 @@ public:
         const nucleus_generator::nucleus_params &nuc_params,
         const double &rel_tolerance,
         const bool verbose
-    ) -> std::tuple<std::array<double, 51>, std::array<double, 51> >
+    ) -> std::tuple<std::array<double, 101>, std::array<double, 101> >
     {
-        constexpr std::size_t table_size = 51;
+        constexpr std::size_t table_size = 101;
         std::vector<uint_fast8_t> block_indexes(200);
         std::iota(block_indexes.begin(), block_indexes.end(), 0); //generates the list as {0,1,2,3,...}
         
@@ -350,7 +353,7 @@ public:
         {
             c_vector[i] = -loglin[j];
         }
-        loglin = helpers::loglinspace(1e-3, 25.0, table_size/2);
+        loglin = helpers::loglinspace(1e-3, 1e15, table_size/2);
         for (uint_fast8_t i=(table_size/2) +1, j=0; i<table_size; i++, j++)
         {
             c_vector[i] = loglin[j];
@@ -398,11 +401,13 @@ public:
                             double arg = c_vector[i] * dummy;
                             if (arg >= 0.0)
                             {
-                                sum_tpps[i][*itt] = std::exp(arg);
+                                sum_tpps[i][*itt] = 1.0+std::log(1.0+arg);
+                                // sum_tpps[i][*itt] = std::exp(arg);
                             }
                             else
                             {
-                                sum_tpps[i][*itt] = gsl_sf_lambert_W0(-arg) / (-arg);
+                                sum_tpps[i][*itt] = 1.0 / (1.0-arg);
+                                // sum_tpps[i][*itt] = gsl_sf_lambert_W0(-arg) / (-arg);
                             }
                         }
                     }
