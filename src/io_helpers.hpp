@@ -701,6 +701,123 @@ public:
         }
     }
 */
+    static auto parse_output_params() noexcept
+    -> std::tuple<bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool, bool> 
+    {
+        bool w_t01 = true;
+        bool w_t02 = true;
+        bool w_x = true;
+        bool w_y = true;
+        bool w_pt = true;
+        bool w_y1 = true;
+        bool w_y2 = true;
+        bool w_phi = true;
+        bool w_tata = true;
+        bool w_init1 = true;
+        bool w_init2 = true;
+        bool w_final1 = true;
+        bool w_final2 = true;
+        bool w_ia = true;
+        bool w_ib = true;
+        bool w_xa = true;
+        bool w_ya = true;
+        bool w_za = true;
+        bool w_xb = true;
+        bool w_yb = true;
+        bool w_zb = true;
+        bool w_a_is_neutron = true;
+        bool w_b_is_neutron = true;
+
+        std::ifstream output_params("output_params");
+        if (!output_params.is_open())
+        {
+            std::cout<<"Could not open output_params, will output default parameters "<<std::endl;
+        }
+        else
+        {
+            w_t01 = false;
+            w_t02 = false;
+            w_x = false;
+            w_y = false;
+            w_pt = false;
+            w_y1 = false;
+            w_y2 = false;
+            w_phi = false;
+            w_tata = false;
+            w_init1 = false;
+            w_init2 = false;
+            w_final1 = false;
+            w_final2 = false;
+            w_ia = false;
+            w_ib = false;
+            w_xa = false;
+            w_ya = false;
+            w_za = false;
+            w_xb = false;
+            w_yb = false;
+            w_zb = false;
+            w_a_is_neutron = false;
+            w_b_is_neutron = false;
+            std::string line;
+            for (; std::getline(output_params, line);)
+            {
+                std::istringstream line_stream(line);
+                std::string param_name;
+                line_stream >> param_name;
+                if (param_name == "t01") { w_t01 = true; }
+                else if (param_name == "t02") { w_t02 = true; }
+                else if (param_name == "x") { w_x = true; }
+                else if (param_name == "y") { w_y = true; }
+                else if (param_name == "pt") { w_pt = true; }
+                else if (param_name == "y1") { w_y1 = true; }
+                else if (param_name == "y2") { w_y2 = true; }
+                else if (param_name == "phi") { w_phi = true; }
+                else if (param_name == "tata") { w_tata = true; }
+                else if (param_name == "init1") { w_init1 = true; }
+                else if (param_name == "init2") { w_init2 = true; }
+                else if (param_name == "final1") { w_final1 = true; }
+                else if (param_name == "final2") { w_final2 = true; }
+                else if (param_name == "ia") { w_ia = true; }
+                else if (param_name == "ib") { w_ib = true; }
+                else if (param_name == "xa") { w_xa = true; }
+                else if (param_name == "ya") { w_ya = true; }
+                else if (param_name == "za") { w_za = true; }
+                else if (param_name == "xb") { w_xb = true; }
+                else if (param_name == "yb") { w_yb = true; }
+                else if (param_name == "zb") { w_zb = true; }
+                else if (param_name == "a_is_neutron") { w_a_is_neutron = true; }
+                else if (param_name == "b_is_neutron") { w_b_is_neutron = true; }
+            }
+            output_params.close();
+        }
+        return std::make_tuple
+            (
+                w_t01,
+                w_t02,
+                w_x,
+                w_y,
+                w_pt,
+                w_y1,
+                w_y2,
+                w_phi,
+                w_tata,
+                w_init1,
+                w_init2,
+                w_final1,
+                w_final2,
+                w_ia,
+                w_ib,
+                w_xa,
+                w_ya,
+                w_za,
+                w_xb,
+                w_yb,
+                w_zb,
+                w_a_is_neutron,
+                w_b_is_neutron 
+            );
+    }
+
 
     static auto append_single_coll_binary
     (
@@ -710,6 +827,32 @@ public:
         std::shared_ptr<std::mt19937> random_generator
     ) noexcept -> void
     {        
+        auto [ 
+            w_t01,
+            w_t02,
+            w_x,
+            w_y,
+            w_pt,
+            w_y1,
+            w_y2,
+            w_phi,
+            w_tata,
+            w_init1,
+            w_init2,
+            w_final1,
+            w_final2,
+            w_ia,
+            w_ib,
+            w_xa,
+            w_ya,
+            w_za,
+            w_xb,
+            w_yb,
+            w_zb,
+            w_a_is_neutron,
+            w_b_is_neutron 
+        ] = parse_output_params();
+
         //double pt, y1, y2, t0, x, y, z, energy, px, py, pz, tata, phi;
         double pt, y1, y2, t01, t02, x, y, tata, phi;
         particle_id init1, init2, final1, final2;
@@ -754,31 +897,31 @@ public:
             //px = pt*std::cos(theta);
             //py = pt*std::sin(theta);
             //pz = pt*std::sinh(y1);
-            jet_file.write(reinterpret_cast<char*>(&t01)    , sizeof t01);    //t01
-            jet_file.write(reinterpret_cast<char*>(&t02)    , sizeof t02);    //t02
-            jet_file.write(reinterpret_cast<char*>(&x)      , sizeof x);      //x
-            jet_file.write(reinterpret_cast<char*>(&y)      , sizeof y);      //y
-            jet_file.write(reinterpret_cast<char*>(&pt)     , sizeof pt);     //p_T
-            jet_file.write(reinterpret_cast<char*>(&y1)     , sizeof y1);     //y1
-            jet_file.write(reinterpret_cast<char*>(&y2)     , sizeof y2);     //y2
-            jet_file.write(reinterpret_cast<char*>(&phi)    , sizeof phi);    //phi
-            jet_file.write(reinterpret_cast<char*>(&tata)   , sizeof tata);   //T_A * T_A
-            
-            jet_file.write(reinterpret_cast<char*>(&init1)  , sizeof init1);  //flavour of incoming 1
-            jet_file.write(reinterpret_cast<char*>(&init2)  , sizeof init2);  //flavour of incoming 2
-            jet_file.write(reinterpret_cast<char*>(&final1) , sizeof final1); //flavour of outgoing 1
-            jet_file.write(reinterpret_cast<char*>(&final2) , sizeof final2); //flavour of outgoing 2
+            if (w_t01)  { jet_file.write(reinterpret_cast<char*>(&t01) , sizeof t01 ); } //t01
+            if (w_t02)  { jet_file.write(reinterpret_cast<char*>(&t02) , sizeof t02 ); } //t02
+            if (w_x)    { jet_file.write(reinterpret_cast<char*>(&x)   , sizeof x   ); } //x
+            if (w_y)    { jet_file.write(reinterpret_cast<char*>(&y)   , sizeof y   ); } //y
+            if (w_pt)   { jet_file.write(reinterpret_cast<char*>(&pt)  , sizeof pt  ); } //p_T
+            if (w_y1)   { jet_file.write(reinterpret_cast<char*>(&y1)  , sizeof y1  ); } //y1
+            if (w_y2)   { jet_file.write(reinterpret_cast<char*>(&y2)  , sizeof y2  ); } //y2
+            if (w_phi)  { jet_file.write(reinterpret_cast<char*>(&phi) , sizeof phi ); } //phi
+            if (w_tata) { jet_file.write(reinterpret_cast<char*>(&tata), sizeof tata); } //T_A * T_A
 
-            jet_file.write(reinterpret_cast<char*>(&ia)           , sizeof ia);     //index of mother a
-            jet_file.write(reinterpret_cast<char*>(&ib)           , sizeof ib);     //index of mother b
-            jet_file.write(reinterpret_cast<char*>(&xa)           , sizeof xa); 
-            jet_file.write(reinterpret_cast<char*>(&ya)           , sizeof ya); 
-            jet_file.write(reinterpret_cast<char*>(&za)           , sizeof za);
-            jet_file.write(reinterpret_cast<char*>(&xb)           , sizeof xb);
-            jet_file.write(reinterpret_cast<char*>(&yb)           , sizeof yb);    
-            jet_file.write(reinterpret_cast<char*>(&zb)           , sizeof zb);    
-            jet_file.write(reinterpret_cast<char*>(&a_is_neutron) , sizeof a_is_neutron);    
-            jet_file.write(reinterpret_cast<char*>(&b_is_neutron) , sizeof b_is_neutron);    
+            if (w_init1)  { jet_file.write(reinterpret_cast<char*>(&init1) , sizeof init1 ); } //flavour of incoming 1
+            if (w_init2)  { jet_file.write(reinterpret_cast<char*>(&init2) , sizeof init2 ); } //flavour of incoming 2
+            if (w_final1) { jet_file.write(reinterpret_cast<char*>(&final1), sizeof final1); } //flavour of outgoing 1
+            if (w_final2) { jet_file.write(reinterpret_cast<char*>(&final2), sizeof final2); } //flavour of outgoing 2
+
+            if (w_ia) { jet_file.write(reinterpret_cast<char*>(&ia), sizeof ia); } //index of mother a
+            if (w_ib) { jet_file.write(reinterpret_cast<char*>(&ib), sizeof ib); } //index of mother b
+            if (w_xa) { jet_file.write(reinterpret_cast<char*>(&xa), sizeof xa); }
+            if (w_ya) { jet_file.write(reinterpret_cast<char*>(&ya), sizeof ya); }
+            if (w_za) { jet_file.write(reinterpret_cast<char*>(&za), sizeof za); }
+            if (w_xb) { jet_file.write(reinterpret_cast<char*>(&xb), sizeof xb); }
+            if (w_yb) { jet_file.write(reinterpret_cast<char*>(&yb), sizeof yb); }   
+            if (w_zb) { jet_file.write(reinterpret_cast<char*>(&zb), sizeof zb); }   
+            if (w_a_is_neutron) { jet_file.write(reinterpret_cast<char*>(&a_is_neutron) , sizeof a_is_neutron); }   
+            if (w_b_is_neutron) { jet_file.write(reinterpret_cast<char*>(&b_is_neutron) , sizeof b_is_neutron); }   
 
             // jet 2
             //energy = pt*std::cosh(y2);
@@ -1246,67 +1389,67 @@ public:
         std::cout<<"Read "<< count <<" parameters from a file "<< filename <<std::endl;
 
         return std::make_tuple
-                (
-                    name,
-                    sigmajet_filename,
-                    centrality_filename,
-                    n_events,
-                    b_max,
-                    b_min,
-                    sqrt_s,
-                    K_factor,
-                    kt0,
-                    proton_width,
-                    sigma_inel,
-                    sigma_inel_AA,
-                    T_AA_0_for_snpdfs,
-                    spatial_cutoff,
-                    envelope_marginal,
-                    A,
-                    ZA,
-                    M_factor,
-                    correct_overlap_bias,
-                    nn_min_dist,
-                    nuclear_RA,
-                    nuclear_RB,
-                    nuclear_dA,
-                    nuclear_dB,
-                    nuclear_beta2A,
-                    nuclear_beta2B,
-                    nuclear_beta3A,
-                    nuclear_beta3B,
-                    nuclear_beta4A,
-                    nuclear_beta4B,
-                    rad_max,
-                    rad_min,
-                    shift_cms,
-                    hotspots,
-                    n_hotspots,
-                    hotspot_width,
-                    is_aa,
-                    is_pa,
-                    is_pp,
-                    is_mc_glauber,
-                    read_sigmajets_from_file,
-                    proton_width_static,
-                    sigma_inel_from_sigma_jet,
-                    AA_inel_same_as_NN,
-                    only_protons,
-                    use_npdfs,
-                    use_snpdfs,
-                    snpdfs_linear,
-                    snpdfs_new,
-                    calculate_spatial_cutoff,
-                    calculate_end_state,
-                    calculate_tata,
-                    save_endstate_jets,
-                    end_state_filtering,
-                    is_mom_cons,
-                    is_saturation,
-                    is_sat_y_dep,
-                    pt_ordering,
-                    t03_ordering
-                );
+            (
+                name,
+                sigmajet_filename,
+                centrality_filename,
+                n_events,
+                b_max,
+                b_min,
+                sqrt_s,
+                K_factor,
+                kt0,
+                proton_width,
+                sigma_inel,
+                sigma_inel_AA,
+                T_AA_0_for_snpdfs,
+                spatial_cutoff,
+                envelope_marginal,
+                A,
+                ZA,
+                M_factor,
+                correct_overlap_bias,
+                nn_min_dist,
+                nuclear_RA,
+                nuclear_RB,
+                nuclear_dA,
+                nuclear_dB,
+                nuclear_beta2A,
+                nuclear_beta2B,
+                nuclear_beta3A,
+                nuclear_beta3B,
+                nuclear_beta4A,
+                nuclear_beta4B,
+                rad_max,
+                rad_min,
+                shift_cms,
+                hotspots,
+                n_hotspots,
+                hotspot_width,
+                is_aa,
+                is_pa,
+                is_pp,
+                is_mc_glauber,
+                read_sigmajets_from_file,
+                proton_width_static,
+                sigma_inel_from_sigma_jet,
+                AA_inel_same_as_NN,
+                only_protons,
+                use_npdfs,
+                use_snpdfs,
+                snpdfs_linear,
+                snpdfs_new,
+                calculate_spatial_cutoff,
+                calculate_end_state,
+                calculate_tata,
+                save_endstate_jets,
+                end_state_filtering,
+                is_mom_cons,
+                is_saturation,
+                is_sat_y_dep,
+                pt_ordering,
+                t03_ordering
+            );
     }
 
     static auto print_histos
