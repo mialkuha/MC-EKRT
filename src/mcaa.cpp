@@ -1060,11 +1060,9 @@ auto mcaa::run() -> void
                                                 
         glauber_report_file.open(g_name, std::ios::out);
         io::mc_glauber_style_report(collisions_for_reporting, this->sigma_inel, collisions_for_reporting.size(), nBins, binsLow, binsHigh, glauber_report_file);
-        std::cout<<collisions_for_reporting.size()<<std::endl;
         glauber_report_file.close();
         glauber_report_file.open(g_name_midrap, std::ios::out);
         io::mc_glauber_style_report(collisions_for_reporting_midrap, this->sigma_inel, collisions_for_reporting_midrap.size(), nBins, binsLow, binsHigh, glauber_report_file);
-        std::cout<<collisions_for_reporting_midrap.size()<<std::endl;
         glauber_report_file.close();
 
         if (save_endstate_jets)
@@ -1115,13 +1113,10 @@ auto mcaa::run() -> void
                 uint_fast64_t N_evts_tot = colls_scatterings.size();
                 // Make sure that no rounding downwards.
                 double eps = 0.1/static_cast<double>(N_evts_tot);
-        std::cout<<colls_scatterings.size()<<std::endl;
 
                 uint_fast64_t lower_ind = static_cast<uint_fast64_t>(centLow*static_cast<double>(N_evts_tot)+eps);
                 uint_fast64_t upper_ind = static_cast<uint_fast64_t>(centHigh*static_cast<double>(N_evts_tot)+eps);
                 uint_fast64_t n_in_bin = upper_ind - lower_ind;
-        std::cout<<lower_ind<<std::endl;
-        std::cout<<upper_ind<<std::endl;
 
                 //total number of events in this bin
                 jet_file.write(reinterpret_cast<char*>(&n_in_bin), sizeof n_in_bin);
@@ -1145,8 +1140,7 @@ auto mcaa::run() -> void
                     io::append_single_coll_binary(jet_file, sc, unirand, eng_shared);
                 }
                 jet_file.close();
-                std::cout<<n_in_bin<<std::endl;
-
+                
                 dETdy_by_cent.add(new_ET_y);
                 dEdy_by_cent.add(new_E_y);
 
