@@ -870,17 +870,8 @@ public:
                 if (AA_params.calculate_end_state)
                 {
                     double sigma_jet;
-                    // if (AA_params.reduce_nucleon_energies)
-                    // {
-                    //     array<double,3> args{*sum_tppa, *sum_tppb, pow(newpair.getcr_sqrt_s(), 2)};
-                    //     sigma_jet = std::get<InterpMultilinear<3, double> >(sigma_jets).interp(args.begin());
-                    // }
-                    // else //Single sigma_jet
-                    {
-                        array<double,2> args{*sum_tppa, *sum_tppb};
-                        sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
-                        //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
-                    }
+                    array<double,2> args{*sum_tppa, *sum_tppb};
+                    sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
 
                     {
                         auto env_func_ = std::get<envelope_func>(env_func);
@@ -893,12 +884,12 @@ public:
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
                             auto dummy = pqcd::nn_coll_params
-                                (
-                                    *sum_tppa,
-                                    *sum_tppb,
-                                    B->is_neutron,
-                                    A->is_neutron
-                                );
+                            (
+                                *sum_tppa,
+                                *sum_tppb,
+                                B->is_neutron,
+                                A->is_neutron
+                            );
                             new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
@@ -928,7 +919,6 @@ public:
                 {
                     array<double,2> args{*sum_tppa, *sum_tppb};
                     sigma_jet = std::get<InterpMultilinear<2, double> >(sigma_jets).interp(args.begin());
-                    //pqcd::calculate_spatial_sigma_jet(p_p_pdf, p_n_pdf, &mand_s, &kt02, &jet_params, &sum_tppa, &sum_tppb, &tAA_0, &tBB_0);
                 }
             
                 if (AA_params.calculate_end_state)
@@ -945,13 +935,13 @@ public:
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
                             auto dummy = pqcd::nn_coll_params
-                                (
-                                    *sum_tppa,
-                                    *sum_tppb,
-                                    B->is_neutron,
-                                    A->is_neutron
-                                );
-                            auto new_dijet = pqcd::generate_2_to_2_scatt
+                            (
+                                *sum_tppa,
+                                *sum_tppb,
+                                B->is_neutron,
+                                A->is_neutron
+                            );
+                            new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
                                 kt0,
@@ -963,69 +953,11 @@ public:
                                 power_law,
                                 env_func_,
                                 dummy
-                            );
-
-
-                            if (is_sat_y_dep == 6)
-                            {
-                                auto kt2 = std::pow(new_dijet.kt,2);
-                                auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
-
-                                auto param = std::normal_distribution<double>::param_type{0., proton_width};
-                                std::normal_distribution<double> normal_dist(0,0);
-                                auto dx = normal_dist(*eng,param);
-                                auto dy = normal_dist(*eng,param);
-
-                                auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
-                                auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
-                                nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0, 0};
-                                auto dijet_tppa = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, pro);
-                                auto dijet_tppb = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, tar);
-
-                                if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
-                                {
-                                    continue;
-                                }
-                                else if (dijet_tppb * new_dijet.pro_pdf * dijet_area > M_factor)
-                                {
-                                    continue;
-                                }
-                                else
-                                {
-                                    new_pair.dijets.push_back(new_dijet);
-                                }
-                            }
-                            else
-                            {
-                                new_pair.dijets.push_back(new_dijet);
-                            }
+                            ));
                         }
-
-                        // pqcd::generate_bin_NN_coll
-                        // (
-                        //     newpair, 
-                        //     sigma_jet, 
-                        //     AA_params.Tpp(newpair.getcr_bsquared()), 
-                        //     kt0,
-                        //     unirand, 
-                        //     eng,
-                        //     p_p_pdf,
-                        //     dsigma_params,
-                        //     power_law,
-                        //     env_func_,
-                        //     B->is_neutron,
-                        //     A->is_neutron
-                        // );
                     }
 
-                    // if (AA_params.reduce_nucleon_energies)
-                    // {
-                    //     newpair.reduce_energy_and_push_end_states_to_collider_frame();
-                    // }
-                    // else
-                    {
-                        new_pair.push_end_states_to_collider_frame();
-                    }
+                    new_pair.push_end_states_to_collider_frame();
                 }
                 new_pair.wound();
                 binary_collisions.push_back(std::move(new_pair));

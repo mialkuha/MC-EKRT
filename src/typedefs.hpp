@@ -24,8 +24,8 @@ struct dijet_specs
     particle_id init2{0};
     particle_id final1{0};
     particle_id final2{0};
-    double pro_pdf{0};
-    double tar_pdf{0};
+    bool valence1{false};
+    bool valence2{false};
 };
 
 struct envelope_func

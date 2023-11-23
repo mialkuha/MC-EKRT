@@ -1197,6 +1197,7 @@ public:
         calculate_tata,
         save_endstate_jets,
         end_state_filtering,
+        is_val_cons,
         is_mom_cons,
         is_saturation,
         is_sat_y_dep,
@@ -1263,6 +1264,7 @@ public:
             {"calculate_tata", calculate_tata},
             {"save_endstate_jets", save_endstate_jets},
             {"end_state_filtering", end_state_filtering},
+            {"is_val_cons", is_val_cons},
             {"is_mom_cons", is_mom_cons},
             {"is_saturation", is_saturation},
             {"is_sat_y_dep", is_sat_y_dep},
@@ -1322,6 +1324,7 @@ public:
         bool calculate_tata{true};
         bool save_endstate_jets{true};
         bool end_state_filtering{true};
+        bool is_val_cons{true};
         bool is_mom_cons{true};
         bool is_saturation{true};
         uint_fast16_t is_sat_y_dep{0};
@@ -1519,6 +1522,9 @@ public:
                 case io::Param::end_state_filtering:
                     line_stream >> std::boolalpha >> end_state_filtering;
                     break;
+                case io::Param::is_val_cons:
+                    line_stream >> std::boolalpha >> is_val_cons;
+                    break;
                 case io::Param::is_mom_cons:
                     line_stream >> std::boolalpha >> is_mom_cons;
                     break;
@@ -1603,6 +1609,7 @@ public:
             calculate_tata,
             save_endstate_jets,
             end_state_filtering,
+            is_val_cons,
             is_mom_cons,
             is_saturation,
             is_sat_y_dep,

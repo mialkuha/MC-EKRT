@@ -208,20 +208,6 @@ public:
         std::shared_ptr<pdf_builder> p_p_pdf,
         pqcd::sigma_jet_params params,
         const double &power_law,
-        double &envelope_maximum,
-        pqcd::nn_coll_params &nn_params
-      ) noexcept -> dijet_specs;
-
-    static auto generate_2_to_2_scatt
-      (
-        const double &sqrt_s,
-        const double &kt_min,
-        const double &kt_max,
-        std::uniform_real_distribution<double> unirand, 
-        std::shared_ptr<std::mt19937> eng,
-        std::shared_ptr<pdf_builder> p_p_pdf,
-        pqcd::sigma_jet_params params,
-        const double &power_law,
         envelope_func &env_func,
         pqcd::nn_coll_params &nn_params
       ) noexcept -> dijet_specs;

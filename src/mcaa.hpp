@@ -42,6 +42,7 @@ public:
     bool is_pp{false};                     // if the run is proton-proton
     bool nPDFs{true};                      // if there should be nuclear corrections in nucleus' PDFs
     bool MC_Glauber{true};                 // if true, nucleon-nucleon collisions are decided like with hard spheres
+    bool val_cons{true};                   // if the valence quark number should be conserved
     bool mom_cons{true};                   // if the momentum should be conserved
     bool read_sigmajets_from_file{false};  // if the sigma_jets are precalculated
     bool proton_width_static{false};       // if the proton width should be a static value or depend on sqrt(s)

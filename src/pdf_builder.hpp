@@ -140,10 +140,10 @@ public:
                     double arg = this->c_A_func.value_at(r) * sum_tppa;
                     if (arg >= 0.0)
                     {
-                        return 1.0+std::log(1.0+arg);
+                        return 1.0 + std::log(1.0 + arg);
                         // return std::exp(arg);
                     }
-                    return 1.0 / (1.0-arg);
+                    return 1.0 / (1.0 - arg);
                     // return gsl_sf_lambert_W0(-arg) / (-arg);
                 }
                 else
@@ -159,10 +159,10 @@ public:
                     double arg = this->c_A_func.value_at(r) * sum_tppb;
                     if (arg >= 0.0)
                     {
-                        return 1.0+std::log(1.0+arg);
+                        return 1.0 + std::log(1.0 + arg);
                         // return std::exp(arg);
                     }
-                    return 1.0 / (1.0-arg);
+                    return 1.0 / (1.0 - arg);
                     // return gsl_sf_lambert_W0(-arg) / (-arg);
                 }
                 else
@@ -387,6 +387,24 @@ public:
         }
 
         return std::make_tuple(f_i_x1, f_i_x2, f_ai_x1, f_ai_x2);
+    }
+
+    auto check_valence(
+        const double &x,
+        const double &q2,
+        const particle_id &parton_id,
+        const bool &is_neutron,
+        const double &rand) const -> const bool
+    {
+        //If neutron, flip pid between 1<-->2, if not neutron, stays as it is
+        const particle_id pid =(!is_neutron)? parton_id: ((parton_id == 1)? 2: 1);
+
+        const double parton_pdf = this->p_pdf->xfxQ2(pid, x, q2);
+        const double anti_parton_pdf = this->p_pdf->xfxQ2(-pid, x, q2);
+
+        const double valence = parton_pdf - anti_parton_pdf;
+
+        return (valence/parton_pdf)>rand;
     }
 
     auto alphasQ2(const double &q2) const -> const double { return this->p_pdf->alphasQ2(q2); };

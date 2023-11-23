@@ -65,6 +65,7 @@ mcaa::mcaa
         p_calculate_tata,
         p_save_endstate_jets,
         p_end_state_filtering,
+        p_is_val_cons,
         p_is_mom_cons,
         p_is_saturation,
         p_is_sat_y_dep,
@@ -82,6 +83,7 @@ mcaa::mcaa
     this->is_pp                      = p_is_pp; 
     this->nPDFs                      = p_use_npdfs; 
     this->MC_Glauber                 = p_is_mc_glauber; 
+    this->val_cons                   = p_is_val_cons; 
     this->mom_cons                   = p_is_mom_cons; 
     this->read_sigmajets_from_file   = p_read_sigmajets_from_file; 
     this->proton_width_static        = p_proton_width_static; 
@@ -414,6 +416,9 @@ auto mcaa::filter_end_state
 
     std::unordered_map<nucleon*, double> x1s;
     std::unordered_map<nucleon*, double> x2s;
+
+    std::unordered_map<nucleon*, std::tuple<uint_fast8_t, uint_fast8_t> > valence1_nums;
+    std::unordered_map<nucleon*, std::tuple<uint_fast8_t, uint_fast8_t> > valence2_nums;
     
 
     std::normal_distribution<double> normal_dist(0,0);
@@ -437,6 +442,10 @@ auto mcaa::filter_end_state
     double kt;
     double y1, y2;
     double i_x1_sum_to_be, i_x2_sum_to_be;
+    bool valence_down;
+    bool proton;
+    double num_vu1_to_be, num_vd1_to_be;
+    double num_vu2_to_be, num_vd2_to_be;
     double tata = 0.0;
 
 
@@ -445,6 +454,89 @@ auto mcaa::filter_end_state
         kt = cand.dijet.kt;
         y1 = cand.dijet.y1;
         y2 = cand.dijet.y2;
+
+        if (this->val_cons)
+        {
+            //VALENCE QUARKS CONSERVATION
+
+            if (cand.dijet.valence1)
+            {
+                proton = !cand.pro_nucleon->is_neutron;
+                if (cand.dijet.init1 == 1)
+                {
+                    valence_down = true;
+                    num_vu1_to_be = 0;
+                    num_vd1_to_be = 1;
+                }
+                else if (cand.dijet.init1 == 2)
+                {
+                    valence_down = false;
+                    num_vu1_to_be = 1;
+                    num_vd1_to_be = 0;
+                }
+                else
+                {
+                    std::cout<<"init1="<<cand.dijet.init1<<" claims to be valence"<<std::endl;
+                    exit(1); 
+                }
+                
+                auto valence_nums = valence1_nums.find(cand.pro_nucleon);
+                if (valence_nums != valence1_nums.end())
+                {
+                    auto [num_vu, num_vd] = valence_nums->second;
+                    num_vu1_to_be = num_vu + (!valence_down);
+                    num_vd1_to_be = num_vd + valence_down;
+
+                    if (num_vu1_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                    {
+                        continue;
+                    }
+                    if (num_vd1_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                    {
+                        continue;
+                    }
+                }
+            }
+
+            if (cand.dijet.valence2)
+            {
+                proton = !cand.tar_nucleon->is_neutron;
+                if (cand.dijet.init2 == 1)
+                {
+                    valence_down = true;
+                    num_vu2_to_be = 0;
+                    num_vd2_to_be = 1;
+                }
+                else if (cand.dijet.init2 == 2)
+                {
+                    valence_down = false;
+                    num_vu2_to_be = 1;
+                    num_vd2_to_be = 0;
+                }
+                else
+                {
+                    std::cout<<"init2="<<cand.dijet.init2<<" claims to be valence"<<std::endl;
+                    exit(1); 
+                }
+                
+                auto valence_nums = valence2_nums.find(cand.tar_nucleon);
+                if (valence_nums != valence2_nums.end())
+                {
+                    auto [num_vu, num_vd] = valence_nums->second;
+                    num_vu2_to_be = num_vu + (!valence_down);
+                    num_vd2_to_be = num_vd + valence_down;
+
+                    if (num_vu2_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                    {
+                        continue;
+                    }
+                    if (num_vd2_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                    {
+                        continue;
+                    }
+                }
+            }
+        }
 
         if (this->mom_cons)
         {
@@ -510,6 +602,18 @@ auto mcaa::filter_end_state
             //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
             //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
             tata = this->Tpp->calculate_TA(cand_x, cand_y, pro) * this->Tpp->calculate_TA(cand_x, cand_y, tar);
+        }
+
+        if (this->val_cons)
+        {
+            if (cand.dijet.valence1)
+            {
+                valence1_nums.insert_or_assign(cand.pro_nucleon, std::make_tuple(num_vu1_to_be, num_vd1_to_be));
+            }
+            if (cand.dijet.valence2)
+            {
+                valence2_nums.insert_or_assign(cand.tar_nucleon, std::make_tuple(num_vu2_to_be, num_vd2_to_be));
+            }
         }
 
         if (this->mom_cons)

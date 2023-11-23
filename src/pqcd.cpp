@@ -160,8 +160,6 @@ auto pqcd::diff_sigma::full_partonic_bookkeeping_1jet
     return sum;
 }
 
-std::mutex g_envelope_maximum_mutex;
-
 auto pqcd::generate_2_to_2_scatt
 (
     const double &sqrt_s,
@@ -169,107 +167,7 @@ auto pqcd::generate_2_to_2_scatt
     const double &kt_max,
     std::uniform_real_distribution<double> unirand, 
     std::shared_ptr<std::mt19937> eng,
-    std::shared_ptr<pdf_builder> p_p_pdf,
-    pqcd::sigma_jet_params params,
-    const double &power_law,
-    double &envelope_maximum,
-    pqcd::nn_coll_params &nn_params
-) noexcept -> dijet_specs
-{
-    dijet_specs event;
-
-    double y1_min, y1_max, y2_min, y2_max, y1, y2;
-    double kt;
-    double rand[4];
-    double ratio;
-    bool is_below = false;
-    
-    y1_min = static_cast<double>(-log(sqrt_s / kt_min));
-    y1_max = static_cast<double>( log(sqrt_s / kt_min));
-    y2_min = static_cast<double>(-log(sqrt_s / kt_min));
-    y2_max = static_cast<double>( log(sqrt_s / kt_min));
-
-    while (!is_below)
-    {
-        for (auto & r : rand)
-        {
-            r = unirand(*eng);
-        }
-
-        //kT from a power law:
-        kt = pow(pow(kt_min, 1-power_law) + rand[0]*( pow(kt_max, 1-power_law) - pow(kt_min, 1-power_law) ),
-                 1.0/(1.0-power_law));
-        
-        //ys from uniform distribution
-        y1 = y1_min + rand[1]*(y1_max - y1_min);
-        y2 = y2_min + rand[2]*(y2_max - y2_min);
-
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params, false, false);
-
-        double total_xsection = 0;
-
-        for (auto xsect : xsection)
-        {
-            total_xsection += xsect.sigma;
-        }
-
-        ratio = total_xsection / (envelope_maximum * pow(kt, -power_law));
-
-        if (ratio > 1)
-        {
-            std::cout<<std::endl<<"Limiting function smaller than cross section!!"<<std::endl;
-            std::cout<<"kT = "<<kt<<std::endl;
-            std::cout<<"y1 = "<<y1<<std::endl;
-            std::cout<<"y2 = "<<y2<<std::endl;
-            std::cout<<"total_xsection = "<<total_xsection<<std::endl;
-            std::cout<<"limit = "<<(envelope_maximum * pow(kt, -power_law))<<std::endl<<std::endl;
-            std::cout<<"Maybe check the power-law behaviour."<<std::endl;
-
-            std::cout<<"Changing the envelope_maximum from "<<envelope_maximum;
-            {
-                const std::lock_guard<std::mutex> lock(g_envelope_maximum_mutex);
-                envelope_maximum = total_xsection * pow(kt, power_law);
-            }
-            std::cout<<" to "<<envelope_maximum<<std::endl<<std::endl;
-            continue;
-        }
-
-        if (ratio > rand[3])
-        {
-            is_below = true;
-            double rand_xsect = total_xsection * unirand(*eng);
-            double sum = 0;
-            
-            for (auto xsect : xsection)
-            {
-                sum += xsect.sigma;
-                if (sum > rand_xsect)
-                {
-                    event.init1 = xsect.init1;
-                    event.init2 = xsect.init2;
-                    event.final1 = xsect.final1;
-                    event.final2 = xsect.final2;
-                    break;
-                }
-            }
-        }
-    }
-
-    event.kt = kt;
-    event.y1 = y1;
-    event.y2 = y2;
-
-    return event;
-}
-
-auto pqcd::generate_2_to_2_scatt
-(
-    const double &sqrt_s,
-    const double &kt_min,
-    const double &kt_max,
-    std::uniform_real_distribution<double> unirand, 
-    std::shared_ptr<std::mt19937> eng,
-    std::shared_ptr<pdf_builder> p_p_pdf,
+    std::shared_ptr<pdf_builder> pdf,
     pqcd::sigma_jet_params params,
     const double &power_law,
     envelope_func &env_func,
@@ -307,7 +205,7 @@ auto pqcd::generate_2_to_2_scatt
         y1 = y1_min + rand[1]*(y1_max - y1_min);
         y2 = y2_min + rand[2]*(y2_max - y2_min);
 
-        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, p_p_pdf, params, nn_params, false, false);
+        auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, kt, y1, y2, pdf, params, nn_params, false, false);
 
         double total_xsection = 0;
 
@@ -354,6 +252,20 @@ auto pqcd::generate_2_to_2_scatt
     event.kt = kt;
     event.y1 = y1;
     event.y2 = y2;
+
+    if (event.init1 == 1 || event.init1 == 2 )
+    {
+        double x1 = (kt / sqrt_s) * (exp(y1) + exp(y2));
+        double rando = unirand(*eng);
+        event.valence1 = pdf->check_valence(x1, kt*kt, event.init1, nn_params.projectile_neutron, rando);
+    }
+
+    if (event.init2 == 1 || event.init2 == 2 )
+    {
+        double x2 = (kt / sqrt_s) * (exp(-y1) + exp(-y2));
+        double rando = unirand(*eng);
+        event.valence2 = pdf->check_valence(x2, kt*kt, event.init2, nn_params.target_neutron, rando);
+    }
 
     return event;
 }
