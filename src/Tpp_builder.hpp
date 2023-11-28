@@ -235,7 +235,7 @@ public:
                     nucl = nucleus_generator::generate_nucleus
                         (
                             nuc_params,
-                            false,
+                            true,
                             0.0, 
                             0.0, 
                             eng
@@ -298,7 +298,7 @@ public:
                     nucl = nucleus_generator::generate_nucleus
                         (
                             nuc_params,
-                            false,
+                            true,
                             0.0, 
                             0.0, 
                             eng
@@ -387,7 +387,7 @@ public:
                     nucl = nucleus_generator::generate_nucleus
                         (
                             nuc_params,
-                            false,
+                            true,
                             0.0, 
                             0.0, 
                             eng

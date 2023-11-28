@@ -786,11 +786,6 @@ public:
             std::cout<<"SPATIAL NPDFS REQUESTED IN PROTON-PROTON COLLISION!!!"<<std::endl;
             exit(1);
         }
-        else if (AA_params.pA_scattering)
-        {
-            std::cout<<"SPATIAL NPDFS REQUESTED IN PROTON-NUCLEUS COLLISION!!! (NOT IMPLEMENTED)"<<std::endl;
-            exit(1);
-        }
 
         double tAA_0 = AA_params.T_AA_0;
         double tBB_0 = AA_params.T_AA_0;
