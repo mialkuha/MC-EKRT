@@ -386,8 +386,7 @@ auto mcaa::throw_location_for_dijet
     }
     else
     {
-        uint_fast16_t fst = this->hs_dist(*random_generator);
-        uint_fast16_t snd = this->hs_dist(*random_generator);
+        auto [ fst, snd ]  = this->Tpp->throw_random_peak_indices(dijet.pro_nucleon->hotspots, dijet.tar_nucleon->hotspots, random_generator);
         retx = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.x + dijet.tar_nucleon->hotspots.at(snd).co.x + M_SQRT2*dx);
         rety = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.y + dijet.tar_nucleon->hotspots.at(snd).co.y + M_SQRT2*dy);
     }

@@ -434,6 +434,43 @@ public:
         return std::make_tuple(ave_R_vector,c_vector);
     }
 
+    auto throw_random_peak_indices
+    (
+        const std::vector<hotspot_info> &pro_hotspots,
+        const std::vector<hotspot_info> &tar_hotspots,
+        std::shared_ptr<std::mt19937> random_generator
+    ) -> std::tuple<uint_fast8_t, uint_fast8_t >
+    {
+        std::vector<std::tuple<double, uint_fast8_t, uint_fast8_t> > tpps;
+        double total_tpp = 0.0;
+
+        for (uint_fast8_t i = 0; i < pro_hotspots.size(); i++)
+        {
+            auto [x1, y1, z1] = pro_hotspots[i].co;
+            for (uint_fast8_t j = 0; j < tar_hotspots.size(); j++)
+            {
+                auto [x2, y2, z2] = tar_hotspots[j].co;
+                double bsquared = pow(x1-x2,2) + pow(y1-y2,2);
+                double tpp = exp(-bsquared / (4 * this->hs_width_2)); // Normalization doesn't matter
+                total_tpp += tpp;
+                tpps.push_back({tpp, i, j});
+            }
+        }
+
+        std::uniform_real_distribution<> dis(0.0, total_tpp);
+        double ran_tpp = dis(*random_generator);
+
+        total_tpp = 0.0;
+        for (auto [tpp, i, j] : tpps)
+        {
+            total_tpp += tpp;
+            if (total_tpp >= ran_tpp)
+            {
+                return std::make_tuple(i, j);
+            }
+        }
+    }
+
 private:
     bool hotspots{false};
     double proton_width_2{0.0};

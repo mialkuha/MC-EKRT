@@ -26,6 +26,8 @@ struct dijet_specs
     particle_id final2{0};
     bool valence1{false};
     bool valence2{false};
+    double pro_pdf{0};
+    double tar_pdf{0};
 };
 
 struct envelope_func
@@ -49,6 +51,8 @@ struct xsection_id
     particle_id init2;
     particle_id final1;
     particle_id final2;
+    double pro_pdf{0};
+    double tar_pdf{0};
 };
 
 enum class B2_normalization_mode

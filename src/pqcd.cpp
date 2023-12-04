@@ -243,6 +243,8 @@ auto pqcd::generate_2_to_2_scatt
                     event.init2 = xsect.init2;
                     event.final1 = xsect.final1;
                     event.final2 = xsect.final2;
+                    event.pro_pdf = xsect.pro_pdf;
+                    event.tar_pdf = xsect.tar_pdf;
                     break;
                 }
             }
@@ -666,6 +668,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = 0;
         process.final2 = 0;
+        process.pro_pdf = f_i_x1[0];
+        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -682,6 +686,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_i_x1[0];
+        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -700,6 +706,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_i_x1[0];
+        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -712,6 +720,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_i_x1[0];
+        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -724,6 +734,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = 0;
+        process.pro_pdf = f_i_x1[flavor];
+        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -736,6 +748,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = 0;
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = 0;
+        process.pro_pdf = f_ai_x1[flavor];
+        process.tar_pdf = f_i_x2[0];
         xsection.push_back(process);
         if (debug)
         {
@@ -754,6 +768,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_i_x1[flavor];
+        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -766,6 +782,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_ai_x1[flavor];
+        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -786,6 +804,8 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor2);
                 process.final1 = static_cast<int_fast8_t>(flavor1);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
+                process.pro_pdf = f_i_x1[flavor1];
+                process.tar_pdf = f_i_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -798,6 +818,8 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor2);
                 process.final1 = -static_cast<int_fast8_t>(flavor1);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
+                process.pro_pdf = f_ai_x1[flavor1];
+                process.tar_pdf = f_ai_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -810,6 +832,8 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor2);
                 process.final1 = static_cast<int_fast8_t>(flavor1);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
+                process.pro_pdf = f_i_x1[flavor1];
+                process.tar_pdf = f_ai_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -822,6 +846,8 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor2);
                 process.final1 = -static_cast<int_fast8_t>(flavor1);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
+                process.pro_pdf = f_ai_x1[flavor1];
+                process.tar_pdf = f_i_x2[flavor2];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -840,6 +866,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = static_cast<int_fast8_t>(flavor);
         process.final2 = -static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_i_x1[flavor];
+        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -852,6 +880,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = -static_cast<int_fast8_t>(flavor);
         process.final2 = static_cast<int_fast8_t>(flavor);
+        process.pro_pdf = f_ai_x1[flavor];
+        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -868,6 +898,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = -static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = 0;
+        process.pro_pdf = f_i_x1[flavor];
+        process.tar_pdf = f_ai_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -880,6 +912,8 @@ auto pqcd::diff_cross_section_2jet
         process.init2 = static_cast<int_fast8_t>(flavor);
         process.final1 = 0;
         process.final2 = 0;
+        process.pro_pdf = f_ai_x1[flavor];
+        process.tar_pdf = f_i_x2[flavor];
         xsection.push_back(process);
         if (debug)
         {
@@ -900,6 +934,8 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = -static_cast<int_fast8_t>(flavor1);
                 process.final1 = static_cast<int_fast8_t>(flavor2);
                 process.final2 = -static_cast<int_fast8_t>(flavor2);
+                process.pro_pdf = f_i_x1[flavor1];
+                process.tar_pdf = f_ai_x2[flavor1];
                 xsection.push_back(process);
                 if (debug)
                 {
@@ -912,6 +948,8 @@ auto pqcd::diff_cross_section_2jet
                 process.init2 = static_cast<int_fast8_t>(flavor1);
                 process.final1 = -static_cast<int_fast8_t>(flavor2);
                 process.final2 = static_cast<int_fast8_t>(flavor2);
+                process.pro_pdf = f_ai_x1[flavor1];
+                process.tar_pdf = f_i_x2[flavor1];
                 xsection.push_back(process);
                 if (debug)
                 {
