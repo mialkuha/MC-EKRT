@@ -416,19 +416,40 @@ auto mcaa::filter_end_state
     std::shared_ptr<std::mt19937> random_generator,
     const std::vector<nucleon> &pro, 
     const std::vector<nucleon> &tar, 
-    const bool sat_first
+    const bool sat_first,
+    std::vector<std::vector<bool> > &coll_matrix 
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
     candidates.reserve(binary_collisions.size()*10); //10 events on average is just an overhead guess
 
-    std::unordered_map<nucleon*, double> x1s;
-    std::unordered_map<nucleon*, double> x2s;
+    auto NA = pro.size();
+    auto NB = tar.size();
+
+    std::vector<std::vector<uint_fast16_t> > pro_collisions(NA, std::vector<uint_fast16_t>());
+    std::vector<std::vector<double> > pro_tpps(NA, std::vector<double>());
+    std::vector<std::vector<uint_fast16_t> > tar_collisions(NB, std::vector<uint_fast16_t>());
+    std::vector<std::vector<double> > tar_tpps(NB, std::vector<double>());
+    for (uint_fast16_t iA=0; iA<NA; iA++)
+    {
+        for (uint_fast16_t iB=0; iB<NB; iB++)
+        {
+            if (coll_matrix.at(iA).at(iB))
+            {
+                pro_collisions.at(iA).push_back(iB);
+                tar_collisions.at(iB).push_back(iA);
+                pro_tpps.at(iA).push_back(this->Tpp->at(pro.at(iA), tar.at(iB)));
+                tar_tpps.at(iB).push_back(this->Tpp->at(pro.at(iA), tar.at(iB)));
+            }
+        }
+    }
+
+    std::vector<double> x1_maxs(NA, 1.0);
+    std::vector<double> x2_maxs(NB, 1.0);
 
     std::unordered_map<nucleon*, std::tuple<uint_fast8_t, uint_fast8_t> > valence1_nums;
     std::unordered_map<nucleon*, std::tuple<uint_fast8_t, uint_fast8_t> > valence2_nums;
     
-
     std::normal_distribution<double> normal_dist(0,0);
 
     for (auto &col : binary_collisions)
@@ -449,7 +470,7 @@ auto mcaa::filter_end_state
     
     double kt;
     double y1, y2;
-    double i_x1_sum_to_be, i_x2_sum_to_be;
+    std::vector<double> x1_maxs_to_be, x2_maxs_to_be;
     bool valence_down;
     bool proton;
     double num_vu1_to_be, num_vd1_to_be;
@@ -552,30 +573,94 @@ auto mcaa::filter_end_state
                 //MOMENTUM CONSERVATION
 
                 auto x1 = (kt / this->sqrt_s) * (exp(y1) + exp(y2));
-                auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
-
-                i_x1_sum_to_be = x1;
-                i_x2_sum_to_be = x2;
-
-                auto i_x1_sum = x1s.find(cand.pro_nucleon);
-                if (i_x1_sum != x1s.end())
+                auto colliding_pro = tar_collisions.at(cand.tar_nucleon->index);
+                auto x1_max_sum = 0.0;
+                for (auto ind : colliding_pro)
                 {
-                    i_x1_sum_to_be = i_x1_sum->second + x1;
+                    x1_max_sum += x1_maxs.at(ind);
+                }
+                if (x1 > x1_max_sum) //Energy budget broken --> discard
+                {
+                    continue;
+                }
 
-                    if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
+                auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
+                auto colliding_tar = pro_collisions.at(cand.pro_nucleon->index);
+                auto x2_max_sum = 0.0;
+                for (auto ind : colliding_tar)
+                {
+                    x2_max_sum += x2_maxs.at(ind);
+                }
+                if (x2 > x2_max_sum) //Energy budget broken --> discard
+                {
+                    continue;
+                }
+
+                x1_maxs_to_be = x1_maxs;
+                auto weights_list = tar_tpps.at(cand.tar_nucleon->index);
+                std::vector<uint_fast16_t> colliding_pro_indices(colliding_pro.size());
+                std::iota(colliding_pro_indices.begin(), colliding_pro_indices.end(), 0);
+                auto available_indices = colliding_pro_indices;
+                auto leftover = x1;
+                while (leftover > 1e-10)
+                {
+                    x1 = leftover;
+                    colliding_pro_indices = available_indices;
+                    available_indices = std::vector<uint_fast16_t>();
+                    auto tppsum = 0.0;
+                    for (auto i : colliding_pro_indices)
                     {
-                        continue;
+                        tppsum += weights_list.at(i);
+                    }
+                    for (auto i : colliding_pro_indices)
+                    {
+                        auto target = x1*weights_list.at(i)/tppsum;
+                        auto remaining = x1_maxs_to_be.at(colliding_pro.at(i)) - target;
+                        leftover -= target;
+                        if (remaining < 0.0)
+                        {
+                            x1_maxs_to_be.at(colliding_pro.at(i)) = 0.0;
+                            leftover -= remaining;
+                        }
+                        else
+                        {
+                            x1_maxs_to_be.at(colliding_pro.at(i)) = remaining;
+                            available_indices.push_back(i);
+                        }
                     }
                 }
 
-                auto i_x2_sum = x2s.find(cand.tar_nucleon);
-                if (i_x2_sum != x2s.end())
+                x2_maxs_to_be = x2_maxs;
+                weights_list = pro_tpps.at(cand.pro_nucleon->index);
+                std::vector<uint_fast16_t> colliding_tar_indices(colliding_tar.size());
+                std::iota(colliding_tar_indices.begin(), colliding_tar_indices.end(), 0);
+                available_indices = colliding_tar_indices;
+                leftover = x2;
+                while (leftover > 1e-10)
                 {
-                    i_x2_sum_to_be = i_x2_sum->second + x2;
-
-                    if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
+                    x2 = leftover;
+                    colliding_tar_indices = available_indices;
+                    available_indices = std::vector<uint_fast16_t>();
+                    auto tppsum = 0.0;
+                    for (auto i : colliding_tar_indices)
                     {
-                        continue;
+                        tppsum += weights_list.at(i);
+                    }
+                    for (auto i : colliding_tar_indices)
+                    {
+                        auto target = x2*weights_list.at(i)/tppsum;
+                        auto remaining = x2_maxs_to_be.at(colliding_tar.at(i)) - target;
+                        leftover -= target;
+                        if (remaining < 0.0)
+                        {
+                            x2_maxs_to_be.at(colliding_tar.at(i)) = 0.0;
+                            leftover -= remaining;
+                        }
+                        else
+                        {
+                            x2_maxs_to_be.at(colliding_tar.at(i)) = remaining;
+                            available_indices.push_back(i);
+                        }
                     }
                 }
             }
@@ -633,8 +718,8 @@ auto mcaa::filter_end_state
 
             if (this->mom_cons)
             {
-                x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
-                x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
+                x1_maxs = x1_maxs_to_be;
+                x2_maxs = x2_maxs_to_be;
             }
 
             filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, tata, cand.pro_nucleon, cand.tar_nucleon});
@@ -779,30 +864,94 @@ auto mcaa::filter_end_state
                 //MOMENTUM CONSERVATION
 
                 auto x1 = (kt / this->sqrt_s) * (exp(y1) + exp(y2));
-                auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
-
-                i_x1_sum_to_be = x1;
-                i_x2_sum_to_be = x2;
-
-                auto i_x1_sum = x1s.find(cand.pro_nucleon);
-                if (i_x1_sum != x1s.end())
+                auto colliding_pro = tar_collisions.at(cand.tar_nucleon->index);
+                auto x1_max_sum = 0.0;
+                for (auto ind : colliding_pro)
                 {
-                    i_x1_sum_to_be = i_x1_sum->second + x1;
+                    x1_max_sum += x1_maxs.at(ind);
+                }
+                if (x1 > x1_max_sum) //Energy budget broken --> discard
+                {
+                    continue;
+                }
 
-                    if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
+                auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
+                auto colliding_tar = pro_collisions.at(cand.pro_nucleon->index);
+                auto x2_max_sum = 0.0;
+                for (auto ind : colliding_tar)
+                {
+                    x2_max_sum += x2_maxs.at(ind);
+                }
+                if (x2 > x2_max_sum) //Energy budget broken --> discard
+                {
+                    continue;
+                }
+
+                x1_maxs_to_be = x1_maxs;
+                auto weights_list = tar_tpps.at(cand.tar_nucleon->index);
+                std::vector<uint_fast16_t> colliding_pro_indices(colliding_pro.size());
+                std::iota(colliding_pro_indices.begin(), colliding_pro_indices.end(), 0);
+                auto available_indices = colliding_pro_indices;
+                auto leftover = x1;
+                while (leftover > 1e-10)
+                {
+                    x1 = leftover;
+                    colliding_pro_indices = available_indices;
+                    available_indices = std::vector<uint_fast16_t>();
+                    auto tppsum = 0.0;
+                    for (auto i : colliding_pro_indices)
                     {
-                        continue;
+                        tppsum += weights_list.at(i);
+                    }
+                    for (auto i : colliding_pro_indices)
+                    {
+                        auto target = x1*weights_list.at(i)/tppsum;
+                        auto remaining = x1_maxs_to_be.at(colliding_pro.at(i)) - target;
+                        leftover -= target;
+                        if (remaining < 0.0)
+                        {
+                            x1_maxs_to_be.at(colliding_pro.at(i)) = 0.0;
+                            leftover -= remaining;
+                        }
+                        else
+                        {
+                            x1_maxs_to_be.at(colliding_pro.at(i)) = remaining;
+                            available_indices.push_back(i);
+                        }
                     }
                 }
 
-                auto i_x2_sum = x2s.find(cand.tar_nucleon);
-                if (i_x2_sum != x2s.end())
+                x2_maxs_to_be = x2_maxs;
+                weights_list = pro_tpps.at(cand.pro_nucleon->index);
+                std::vector<uint_fast16_t> colliding_tar_indices(colliding_tar.size());
+                std::iota(colliding_tar_indices.begin(), colliding_tar_indices.end(), 0);
+                available_indices = colliding_tar_indices;
+                leftover = x2;
+                while (leftover > 1e-10)
                 {
-                    i_x2_sum_to_be = i_x2_sum->second + x2;
-
-                    if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
+                    x2 = leftover;
+                    colliding_tar_indices = available_indices;
+                    available_indices = std::vector<uint_fast16_t>();
+                    auto tppsum = 0.0;
+                    for (auto i : colliding_tar_indices)
                     {
-                        continue;
+                        tppsum += weights_list.at(i);
+                    }
+                    for (auto i : colliding_tar_indices)
+                    {
+                        auto target = x2*weights_list.at(i)/tppsum;
+                        auto remaining = x2_maxs_to_be.at(colliding_tar.at(i)) - target;
+                        leftover -= target;
+                        if (remaining < 0.0)
+                        {
+                            x2_maxs_to_be.at(colliding_tar.at(i)) = 0.0;
+                            leftover -= remaining;
+                        }
+                        else
+                        {
+                            x2_maxs_to_be.at(colliding_tar.at(i)) = remaining;
+                            available_indices.push_back(i);
+                        }
                     }
                 }
             }
@@ -828,8 +977,8 @@ auto mcaa::filter_end_state
 
             if (this->mom_cons)
             {
-                x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
-                x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
+                x1_maxs = x1_maxs_to_be;
+                x2_maxs = x2_maxs_to_be;
             }
 
             filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, tata, cand.pro_nucleon, cand.tar_nucleon});
@@ -1162,6 +1311,7 @@ auto mcaa::run() -> void
                     {
                         std::vector<nn_coll> binary_collisions_onepass;
                         std::vector<dijet_with_coords> filtered_scatterings_onepass;
+                        std::vector<std::vector<bool> > coll_matrix; 
 
                         //Demand at least one hard scattering
                         do //while (NColl<1)
@@ -1187,7 +1337,8 @@ auto mcaa::run() -> void
                                 this->M_factor,
                                 this->proton_width,
                                 this->hotspot_width,
-                                this->is_sat_y_dep
+                                this->is_sat_y_dep,
+                                coll_matrix
                             );
                             
                             NColl = static_cast<uint_fast32_t>(binary_collisions_onepass.size());
@@ -1202,7 +1353,8 @@ auto mcaa::run() -> void
                                 eng,
                                 pro,
                                 tar,
-                                this->sat_first
+                                this->sat_first,
+                                coll_matrix
                             );
 
                             // std::vector<std::tuple<double, double> > new_jets;

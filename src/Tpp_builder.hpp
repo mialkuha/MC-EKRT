@@ -67,6 +67,31 @@ public:
 
     auto at
     (
+        const nucleon &A,
+        const nucleon &B
+    ) const noexcept -> double
+    {
+        if (hotspots)
+        {
+            std::vector<double> bsquareds{};
+            for (auto pro : A.hotspots)
+            {
+                for (auto tar : B.hotspots)
+                {
+                    bsquareds.push_back(std::pow(pro.co.x - tar.co.x, 2) + std::pow(pro.co.y - tar.co.y, 2));
+                }
+            }
+            return this->func(0.0, &bsquareds);
+        }
+        else
+        {
+            auto b2 = std::pow(A.co.x -B.co.x, 2) + std::pow(A.co.y - B.co.y, 2);
+            return this->func(b2, nullptr);
+        }
+    }
+
+    auto at
+    (
         const double &b2
     ) const noexcept -> double
     {

@@ -209,9 +209,10 @@ private:
         std::vector<nn_coll> &binary_collisions, 
         std::vector<dijet_with_coords> &filtered_scatterings,
         std::shared_ptr<std::mt19937> random_generator,
-        const std::vector<nucleon> &pro = {}, 
-        const std::vector<nucleon> &tar = {}, 
-        const bool sat_first = false
+        const std::vector<nucleon> &pro, 
+        const std::vector<nucleon> &tar, 
+        const bool sat_first,
+        std::vector<std::vector<bool> > &coll_matrix    
     ) noexcept -> void;
 };
 
