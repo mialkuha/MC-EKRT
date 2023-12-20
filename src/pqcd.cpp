@@ -269,6 +269,10 @@ auto pqcd::generate_2_to_2_scatt
         event.valence2 = pdf->check_valence(x2, kt*kt, event.init2, nn_params.target_neutron, rando);
     }
 
+    event.dijet_x = 0.0;
+    event.dijet_y = 0.0;
+
+
     return event;
 }
 

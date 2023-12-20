@@ -775,6 +775,7 @@ public:
         const bool &verbose,
         const double &M_factor,
         const double &proton_width,
+        const double &hotspot_width,
         const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
@@ -904,17 +905,35 @@ public:
                                 auto kt2 = std::pow(new_dijet.kt,2);
                                 auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
 
-                                auto param = std::normal_distribution<double>::param_type{0., proton_width};
-                                std::normal_distribution<double> normal_dist(0,0);
-                                auto dx = normal_dist(*eng,param);
-                                auto dy = normal_dist(*eng,param);
+                                auto dijet_x = 0.0;
+                                auto dijet_y = 0.0;
 
-                                auto dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
-                                auto dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
-                                nucleon dummy_nucleon{coords{dijet_x, dijet_y, 0.0}, 0.0, 0};
-                                auto dijet_tppa = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, pro);
-                                auto dijet_tppb = AA_params.Tpp->calculate_sum_tpp(dummy_nucleon, tar);
+                                if (A->hotspots.size()<=1)
+                                {
+                                    auto param = std::normal_distribution<double>::param_type{0., proton_width};
+                                    std::normal_distribution<double> normal_dist(0,0);
+                                    auto dx = normal_dist(*eng,param);
+                                    auto dy = normal_dist(*eng,param);
 
+                                    dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
+                                    dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
+                                }
+                                else
+                                {
+                                    auto param = std::normal_distribution<double>::param_type{0., hotspot_width};
+                                    std::normal_distribution<double> normal_dist(0,0);
+                                    auto dx = normal_dist(*eng,param);
+                                    auto dy = normal_dist(*eng,param);
+
+                                    auto [ fst, snd ]  = AA_params.Tpp->throw_random_peak_indices(A->hotspots, B->hotspots, eng);
+                                    dijet_x = 0.5*(A->hotspots.at(fst).co.x + B->hotspots.at(snd).co.x + M_SQRT2*dx);
+                                    dijet_y = 0.5*(A->hotspots.at(fst).co.y + B->hotspots.at(snd).co.y + M_SQRT2*dy);
+                                }
+                                new_dijet.dijet_x = dijet_x;
+                                new_dijet.dijet_y = dijet_y;
+                                
+                                auto dijet_tppa = AA_params.Tpp->calculate_TA(dijet_x, dijet_y, pro);
+                                auto dijet_tppb = AA_params.Tpp->calculate_TA(dijet_x, dijet_y, tar);
                                 if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
                                 {
                                     continue;
@@ -970,7 +989,7 @@ public:
                                 B->is_neutron,
                                 A->is_neutron
                             );
-                            new_pair.dijets.push_back(pqcd::generate_2_to_2_scatt
+                            auto new_dijet = pqcd::generate_2_to_2_scatt
                             (
                                 sqrt_s,
                                 kt0,
@@ -982,7 +1001,60 @@ public:
                                 power_law,
                                 env_func_,
                                 dummy
-                            ));
+                            );
+
+                            if (is_sat_y_dep == 6)
+                            {
+                                auto kt2 = std::pow(new_dijet.kt,2);
+                                auto dijet_area = p_p_pdf->alphasQ2(kt2)/kt2;
+
+                                auto dijet_x = 0.0;
+                                auto dijet_y = 0.0;
+
+                                if (A->hotspots.size()<=1)
+                                {
+                                    auto param = std::normal_distribution<double>::param_type{0., proton_width};
+                                    std::normal_distribution<double> normal_dist(0,0);
+                                    auto dx = normal_dist(*eng,param);
+                                    auto dy = normal_dist(*eng,param);
+
+                                    dijet_x = 0.5*(A->co.x + B->co.x + M_SQRT2*dx);
+                                    dijet_y = 0.5*(A->co.y + B->co.y + M_SQRT2*dy);
+                                }
+                                else
+                                {
+                                    auto param = std::normal_distribution<double>::param_type{0., hotspot_width};
+                                    std::normal_distribution<double> normal_dist(0,0);
+                                    auto dx = normal_dist(*eng,param);
+                                    auto dy = normal_dist(*eng,param);
+                                    
+                                    auto [ fst, snd ]  = AA_params.Tpp->throw_random_peak_indices(A->hotspots, B->hotspots, eng);
+                                    dijet_x = 0.5*(A->hotspots.at(fst).co.x + B->hotspots.at(snd).co.x + M_SQRT2*dx);
+                                    dijet_y = 0.5*(A->hotspots.at(fst).co.y + B->hotspots.at(snd).co.y + M_SQRT2*dy);
+                                }
+
+                                new_dijet.dijet_x = dijet_x;
+                                new_dijet.dijet_y = dijet_y;
+                                
+                                auto dijet_tppa = AA_params.Tpp->calculate_TA(dijet_x, dijet_y, pro);
+                                auto dijet_tppb = AA_params.Tpp->calculate_TA(dijet_x, dijet_y, tar);
+                                if (dijet_tppa * new_dijet.pro_pdf * dijet_area > M_factor)
+                                {
+                                    continue;
+                                }
+                                else if (dijet_tppb * new_dijet.tar_pdf * dijet_area > M_factor)
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    new_pair.dijets.push_back(new_dijet);
+                                }
+                            }
+                            else
+                            {
+                                new_pair.dijets.push_back(new_dijet);
+                            }
                         }
                     }
 
@@ -1016,6 +1088,7 @@ public:
         const bool &verbose,
         const double &M_factor,
         const double &proton_width,
+        const double &hotspot_width,
         const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
@@ -1038,6 +1111,7 @@ public:
                 verbose,
                 M_factor,
                 proton_width,
+                hotspot_width,
                 is_sat_y_dep
             );
         }

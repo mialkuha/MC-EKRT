@@ -28,6 +28,8 @@ struct dijet_specs
     bool valence2{false};
     double pro_pdf{0};
     double tar_pdf{0};
+    double dijet_x{0};
+    double dijet_y{0};
 };
 
 struct envelope_func

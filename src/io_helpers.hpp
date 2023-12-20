@@ -431,123 +431,128 @@ public:
         file.close();
     }
 
-    static auto save_event(
-        std::ofstream &event_file,
-        const std::vector<nucleon> &pro,
-        const std::vector<nucleon> &tar,
-        const double &impact_parameter) noexcept -> void
+    static auto save_event
+    (
+        std::ofstream &event_file, 
+        const std::vector<nucleon> &pro, 
+        const std::vector<nucleon> &tar, 
+        const double &impact_parameter
+    ) noexcept -> void
     {
-        event_file << "{" << std::endl;
-        event_file << "    " << impact_parameter << ',' << std::endl;
-        event_file << "    {" << std::endl;
-        for (const auto &n : pro)
+        //event_file << "{"<<std::endl;
+        event_file <<impact_parameter<<std::endl;
+        event_file << ""<<std::endl;
+        for (const auto & n : pro)
         {
-            event_file << "        {" << std::endl;
-            event_file << "            " << n.co << ',' << std::endl;
-            event_file << "            " << n.mom << ',' << std::endl;
-            event_file << "            " << n.wounded << ',' << std::endl;
-            event_file << "            " << n.is_neutron << std::endl;
+            //event_file << "        {"<<std::endl;
+            event_file <<n.co<<std::endl;
+            //event_file << "            "<<n.mom<<','<<std::endl;
+            //event_file << "            "<<n.wounded<<','<<std::endl;
+            //event_file << "            "<<n.is_neutron<<std::endl;
             if (&n != &pro.back())
             {
-                event_file << "        }," << std::endl;
+            //    event_file << "        },"<<std::endl;
             }
             else
             {
-                event_file << "        }" << std::endl;
+            //    event_file << "        }"<<std::endl;
             }
         }
-        event_file << "    }," << std::endl;
-        event_file << "    {" << std::endl;
+        //event_file << ""<<std::endl;
+        event_file << ""<<std::endl;
         for (auto n : tar)
         {
-            event_file << "        {" << std::endl;
-            event_file << "            " << n.co << std::endl;
-            event_file << "            " << n.mom << std::endl;
-            event_file << "            " << n.wounded << std::endl;
-            event_file << "            " << n.is_neutron << std::endl;
+            //event_file << "        {"<<std::endl;
+            event_file <<n.co<<std::endl;
+            //event_file << "            "<<n.mom<<std::endl;
+            //event_file << "            "<<n.wounded<<std::endl;
+            //event_file << "            "<<n.is_neutron<<std::endl;
             if (&n != &tar.back())
             {
-                event_file << "        }," << std::endl;
+            //    event_file << "        },"<<std::endl;
             }
             else
             {
-                event_file << "        }" << std::endl;
+            //    event_file << "        }"<<std::endl;
             }
         }
-        event_file << "    }" << std::endl;
-        event_file << "}," << std::endl;
+        event_file << ""<<std::endl;
+        //event_file << "},"<<std::endl;
     }
 
-    static auto save_event(
-        std::ofstream &event_file,
-        const std::vector<nucleon> &pro,
-        const std::vector<nucleon> &tar,
+    static auto save_event
+    (
+        std::ofstream &event_file, 
+        const std::vector<nucleon> &pro, 
+        const std::vector<nucleon> &tar, 
         const double &impact_parameter,
-        const std::vector<dijet_with_coords> &filtered_scatterings) noexcept -> void
+        const std::vector<dijet_with_coords> &filtered_scatterings
+    ) noexcept -> void
     {
-        event_file << "{" << std::endl;
-        event_file << "    " << impact_parameter << ',' << std::endl;
-        event_file << "    {" << std::endl;
-        for (const auto &n : pro)
+        event_file << "{"<<std::endl;
+        event_file << "    "<<impact_parameter<<','<<std::endl;
+        event_file << "    {"<<std::endl;
+        for (const auto & n : pro)
         {
-            event_file << "        {" << std::endl;
-            event_file << "            " << n.co << ',' << std::endl;
-            event_file << "            " << n.mom << ',' << std::endl;
-            event_file << "            " << n.wounded << ',' << std::endl;
-            event_file << "            " << n.is_neutron << std::endl;
+            event_file << "        {"<<std::endl;
+            event_file << "            "<<n.co<<','<<std::endl;
+            //event_file << "            "<<n.mom<<','<<std::endl;
+            //event_file << "            "<<n.wounded<<','<<std::endl;
+            //event_file << "            "<<n.is_neutron<<std::endl;
             if (&n != &pro.back())
             {
-                event_file << "        }," << std::endl;
+                event_file << "        },"<<std::endl;
             }
             else
             {
-                event_file << "        }" << std::endl;
+                event_file << "        }"<<std::endl;
             }
         }
-        event_file << "    }," << std::endl;
-        event_file << "    {" << std::endl;
-        for (const auto &n : tar)
+        event_file << "    },"<<std::endl;
+        event_file << "    {"<<std::endl;
+        for (const auto & n : tar)
         {
-            event_file << "        {" << std::endl;
-            event_file << "            " << n.co << ',' << std::endl;
-            event_file << "            " << n.mom << ',' << std::endl;
-            event_file << "            " << n.wounded << ',' << std::endl;
-            event_file << "            " << n.is_neutron << std::endl;
+            event_file << "        {"<<std::endl;
+            event_file << "            "<<n.co<<','<<std::endl;
+            //event_file << "            "<<n.mom<<','<<std::endl;
+            //event_file << "            "<<n.wounded<<','<<std::endl;
+            //event_file << "            "<<n.is_neutron<<std::endl;
             if (&n != &tar.back())
             {
-                event_file << "        }," << std::endl;
+                event_file << "        },"<<std::endl;
             }
             else
             {
-                event_file << "        }" << std::endl;
+                event_file << "        }"<<std::endl;
             }
         }
-        event_file << "    }," << std::endl;
-        event_file << "    {" << std::endl;
-        for (const auto &scc : filtered_scatterings)
+        event_file << "    },"<<std::endl;
+        event_file << "    {"<<std::endl;
+        for (const auto & scc : filtered_scatterings)
         {
             const auto sc = scc.dijet;
 
-            event_file << "        {" << std::endl;
-            event_file << "            " << sc.kt << ',' << std::endl;
-            event_file << "            " << sc.y1 << ',' << std::endl;
-            event_file << "            " << sc.y2 << ',' << std::endl;
-            event_file << "            " << sc.init1 << ',' << std::endl;
-            event_file << "            " << sc.init2 << ',' << std::endl;
-            event_file << "            " << sc.final1 << ',' << std::endl;
-            event_file << "            " << sc.final2 << std::endl;
+            event_file << "        {"<<std::endl;
+            event_file << "            "<<sc.kt<<','<<std::endl;
+            event_file << "            "<<sc.y1<<','<<std::endl;
+            event_file << "            "<<sc.y2<<','<<std::endl;
+            event_file << "            "<<sc.init1<<','<<std::endl;
+            event_file << "            "<<sc.init2<<','<<std::endl;
+            event_file << "            "<<sc.final1<<','<<std::endl;
+            event_file << "            "<<sc.final2<<std::endl;
             if (&scc != &filtered_scatterings.back())
             {
-                event_file << "        }," << std::endl;
+                event_file << "        },"<<std::endl;
             }
             else
             {
-                event_file << "        }" << std::endl;
+                event_file << "        }"<<std::endl;
             }
         }
-        event_file << "    }" << std::endl;
-        event_file << "}," << std::endl;
+        event_file << "    }"<<std::endl;
+        event_file << "},"<<std::endl;
     }
+
 
     /*
         static auto save_single_coll_csv
@@ -1202,6 +1207,7 @@ public:
         is_saturation,
         is_sat_y_dep,
         pt_ordering,
+        sat_first,
         t03_ordering
     };
 
@@ -1269,6 +1275,7 @@ public:
             {"is_saturation", is_saturation},
             {"is_sat_y_dep", is_sat_y_dep},
             {"pt_ordering", pt_ordering},
+            {"sat_first", sat_first},
             {"t03_ordering", t03_ordering}};
         std::string name{"example_name"};
         std::string sigmajet_filename{"example_sigma_jet.dat"};
@@ -1329,6 +1336,7 @@ public:
         bool is_saturation{true};
         uint_fast16_t is_sat_y_dep{0};
         bool pt_ordering{true};
+        bool sat_first{false};
         bool t03_ordering{false};
 
         uint_fast16_t count = 0;
@@ -1537,6 +1545,9 @@ public:
                 case io::Param::pt_ordering:
                     line_stream >> std::boolalpha >> pt_ordering;
                     break;
+                case io::Param::sat_first:
+                    line_stream >> std::boolalpha >> sat_first;
+                    break;
                 case io::Param::t03_ordering:
                     line_stream >> std::boolalpha >> t03_ordering;
                     break;
@@ -1614,6 +1625,7 @@ public:
             is_saturation,
             is_sat_y_dep,
             pt_ordering,
+            sat_first,
             t03_ordering);
     }
 

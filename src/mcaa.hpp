@@ -57,6 +57,7 @@ public:
     bool verbose{false};                   // lots of printing all around
     uint_fast16_t is_sat_y_dep{0};         // if the saturation criterion should be y-dependent
     bool pt_ordering{false};               // if the jets should be ordered by p_T
+    bool sat_first{false};               // if the jets should be ordered by p_T
     bool t03_ordering{false};              // if the jets should be ordered by t03
     // simulation parameters 
     std::string name{"example_name"};               // name of the run, affects output filenames and such 
@@ -73,6 +74,7 @@ public:
     double M_factor{2.5};                           // saturation criterion for jets i, j: d_ij < (1/p_Ti + 1/p_Tj)/M_sat
     double nn_min_dist{0.4};                        // (fm) minimum distance between the nucleons in a nucleus
     double mand_s{5020*5020};                       // (GeV^2) mandelstam s for the hard process 
+    double hotspot_width{0.2*0.573};                // (fm) hotspot width
     double proton_width{0.573};                     // (fm) proton width
     double proton_width_2{0.573*0.573};             // (fm^2) proton width squared
     double rad_max{30.0};                           // (fm) nucleons' maximum distance from the center of the nucleus
@@ -208,7 +210,8 @@ private:
         std::vector<dijet_with_coords> &filtered_scatterings,
         std::shared_ptr<std::mt19937> random_generator,
         const std::vector<nucleon> &pro = {}, 
-        const std::vector<nucleon> &tar = {}
+        const std::vector<nucleon> &tar = {}, 
+        const bool sat_first = false
     ) noexcept -> void;
 };
 

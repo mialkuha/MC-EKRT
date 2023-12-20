@@ -434,7 +434,7 @@ public:
         return std::make_tuple(ave_R_vector,c_vector);
     }
 
-    auto throw_random_peak_indices
+auto throw_random_peak_indices
     (
         const std::vector<hotspot_info> &pro_hotspots,
         const std::vector<hotspot_info> &tar_hotspots,

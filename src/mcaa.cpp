@@ -70,6 +70,7 @@ mcaa::mcaa
         p_is_saturation,
         p_is_sat_y_dep,
         p_is_pt_ordering,
+        p_is_sat_first,
         p_is_t03_ordering
     ] = io::read_conf(initfile);
 
@@ -97,6 +98,7 @@ mcaa::mcaa
     this->snPDFs_new                 = p_snpdfs_new;
     this->is_sat_y_dep               = p_is_sat_y_dep;
     this->pt_ordering                = p_is_pt_ordering;
+    this->sat_first                  = p_is_sat_first;
     this->t03_ordering               = p_is_t03_ordering;
     this->name                       = p_name;
     this->sigmajet_filename          = p_sjet_name;
@@ -157,6 +159,7 @@ mcaa::mcaa
     {
         p_hotspot_width = 0.2*p_proton_width;
     }
+    this->hotspot_width = p_hotspot_width;
 
     this->Tpp = std::make_shared<Tpp_builder>(this->proton_width_2, p_hotspot_width, p_hotspots);
 
@@ -372,20 +375,25 @@ auto mcaa::throw_location_for_dijet
     std::shared_ptr<std::mt19937> random_generator
 ) noexcept -> std::tuple<double, double, double>
 {
-    auto param = std::normal_distribution<double>::param_type{0., this->proton_width};
-    auto dx = normal_dist(*random_generator,param);
-    auto dy = normal_dist(*random_generator,param);
     auto dz = 0.0;
     auto retx = 0.0;
     auto rety = 0.0;
 
     if (!this->hotspots)
     {
+        auto param = std::normal_distribution<double>::param_type{0., this->proton_width};
+        auto dx = normal_dist(*random_generator,param);
+        auto dy = normal_dist(*random_generator,param);
+        
         retx = 0.5*(dijet.pro_nucleon->co.x + dijet.tar_nucleon->co.x + M_SQRT2*dx);
         rety = 0.5*(dijet.pro_nucleon->co.y + dijet.tar_nucleon->co.y + M_SQRT2*dy);
     }
     else
     {
+        auto param = std::normal_distribution<double>::param_type{0., this->hotspot_width};
+        auto dx = normal_dist(*random_generator,param);
+        auto dy = normal_dist(*random_generator,param);
+        
         auto [ fst, snd ]  = this->Tpp->throw_random_peak_indices(dijet.pro_nucleon->hotspots, dijet.tar_nucleon->hotspots, random_generator);
         retx = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.x + dijet.tar_nucleon->hotspots.at(snd).co.x + M_SQRT2*dx);
         rety = 0.5*(dijet.pro_nucleon->hotspots.at(fst).co.y + dijet.tar_nucleon->hotspots.at(snd).co.y + M_SQRT2*dy);
@@ -407,7 +415,8 @@ auto mcaa::filter_end_state
     std::vector<dijet_with_coords> &filtered_scatterings,
     std::shared_ptr<std::mt19937> random_generator,
     const std::vector<nucleon> &pro, 
-    const std::vector<nucleon> &tar
+    const std::vector<nucleon> &tar, 
+    const bool sat_first
 ) noexcept -> void
 {
     std::vector<dijet_with_ns> candidates;
@@ -447,181 +456,384 @@ auto mcaa::filter_end_state
     double num_vu2_to_be, num_vd2_to_be;
     double tata = 0.0;
 
-
-    for (auto & cand : candidates)
+    if (!sat_first)
     {
-        kt = cand.dijet.kt;
-        y1 = cand.dijet.y1;
-        y2 = cand.dijet.y2;
-
-        if (this->val_cons)
+        for (auto & cand : candidates)
         {
-            //VALENCE QUARKS CONSERVATION
+            kt = cand.dijet.kt;
+            y1 = cand.dijet.y1;
+            y2 = cand.dijet.y2;
 
-            if (cand.dijet.valence1)
+            if (this->val_cons)
             {
-                proton = !cand.pro_nucleon->is_neutron;
-                if (cand.dijet.init1 == 1)
-                {
-                    valence_down = true;
-                    num_vu1_to_be = 0;
-                    num_vd1_to_be = 1;
-                }
-                else if (cand.dijet.init1 == 2)
-                {
-                    valence_down = false;
-                    num_vu1_to_be = 1;
-                    num_vd1_to_be = 0;
-                }
-                else
-                {
-                    std::cout<<"init1="<<cand.dijet.init1<<" claims to be valence"<<std::endl;
-                    exit(1); 
-                }
-                
-                auto valence_nums = valence1_nums.find(cand.pro_nucleon);
-                if (valence_nums != valence1_nums.end())
-                {
-                    auto [num_vu, num_vd] = valence_nums->second;
-                    num_vu1_to_be = num_vu + (!valence_down);
-                    num_vd1_to_be = num_vd + valence_down;
+                //VALENCE QUARKS CONSERVATION
 
-                    if (num_vu1_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                if (cand.dijet.valence1)
+                {
+                    proton = !cand.pro_nucleon->is_neutron;
+                    if (cand.dijet.init1 == 1)
+                    {
+                        valence_down = true;
+                        num_vu1_to_be = 0;
+                        num_vd1_to_be = 1;
+                    }
+                    else if (cand.dijet.init1 == 2)
+                    {
+                        valence_down = false;
+                        num_vu1_to_be = 1;
+                        num_vd1_to_be = 0;
+                    }
+                    else
+                    {
+                        std::cout<<"init1="<<cand.dijet.init1<<" claims to be valence"<<std::endl;
+                        exit(1); 
+                    }
+                    
+                    auto valence_nums = valence1_nums.find(cand.pro_nucleon);
+                    if (valence_nums != valence1_nums.end())
+                    {
+                        auto [num_vu, num_vd] = valence_nums->second;
+                        num_vu1_to_be = num_vu + (!valence_down);
+                        num_vd1_to_be = num_vd + valence_down;
+
+                        if (num_vu1_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                        if (num_vd1_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                    }
+                }
+
+                if (cand.dijet.valence2)
+                {
+                    proton = !cand.tar_nucleon->is_neutron;
+                    if (cand.dijet.init2 == 1)
+                    {
+                        valence_down = true;
+                        num_vu2_to_be = 0;
+                        num_vd2_to_be = 1;
+                    }
+                    else if (cand.dijet.init2 == 2)
+                    {
+                        valence_down = false;
+                        num_vu2_to_be = 1;
+                        num_vd2_to_be = 0;
+                    }
+                    else
+                    {
+                        std::cout<<"init2="<<cand.dijet.init2<<" claims to be valence"<<std::endl;
+                        exit(1); 
+                    }
+                    
+                    auto valence_nums = valence2_nums.find(cand.tar_nucleon);
+                    if (valence_nums != valence2_nums.end())
+                    {
+                        auto [num_vu, num_vd] = valence_nums->second;
+                        num_vu2_to_be = num_vu + (!valence_down);
+                        num_vd2_to_be = num_vd + valence_down;
+
+                        if (num_vu2_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                        if (num_vd2_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            if (this->mom_cons)
+            {
+                //MOMENTUM CONSERVATION
+
+                auto x1 = (kt / this->sqrt_s) * (exp(y1) + exp(y2));
+                auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
+
+                i_x1_sum_to_be = x1;
+                i_x2_sum_to_be = x2;
+
+                auto i_x1_sum = x1s.find(cand.pro_nucleon);
+                if (i_x1_sum != x1s.end())
+                {
+                    i_x1_sum_to_be = i_x1_sum->second + x1;
+
+                    if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
                     {
                         continue;
                     }
-                    if (num_vd1_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                }
+
+                auto i_x2_sum = x2s.find(cand.tar_nucleon);
+                if (i_x2_sum != x2s.end())
+                {
+                    i_x2_sum_to_be = i_x2_sum->second + x2;
+
+                    if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
+                    {
+                        continue;
+                    }
+                }
+            }
+            
+            auto [cand_x, cand_y, cand_z] = this->throw_location_for_dijet(cand, normal_dist, random_generator);
+            if (this->is_sat_y_dep == 6)
+            {
+                cand_x = cand.dijet.dijet_x;
+                cand_y = cand.dijet.dijet_y;
+            }
+
+
+            if (this->saturation)
+            {
+                //SATURATION
+
+                double upstairs = 1.0;
+                if (this->is_sat_y_dep == 4)
+                {
+                    upstairs = this->sqrtalphas(cand.dijet.kt);
+                }
+                else if  (this->is_sat_y_dep == 5)
+                {
+                    double dy = y1-y2;
+                    double dsigma = std::pow((1 + 2.0*std::cosh(dy))/(2 + 2.0*std::cosh(dy)), 1.5);
+                    upstairs = this->sqrtalphas(cand.dijet.kt)*dsigma;
+                }
+
+                auto cand_circle = std::make_tuple(cand_x, cand_y, upstairs/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
+
+                if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
+                {
+                    continue; //Did not fit into saturated PS --> discard
+                }
+            }
+
+            if (this->calculate_tata)
+            {
+                //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+                //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
+                tata = this->Tpp->calculate_TA(cand_x, cand_y, pro) * this->Tpp->calculate_TA(cand_x, cand_y, tar);
+            }
+
+            if (this->val_cons)
+            {
+                if (cand.dijet.valence1)
+                {
+                    valence1_nums.insert_or_assign(cand.pro_nucleon, std::make_tuple(num_vu1_to_be, num_vd1_to_be));
+                }
+                if (cand.dijet.valence2)
+                {
+                    valence2_nums.insert_or_assign(cand.tar_nucleon, std::make_tuple(num_vu2_to_be, num_vd2_to_be));
+                }
+            }
+
+            if (this->mom_cons)
+            {
+                x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
+                x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
+            }
+
+            filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, tata, cand.pro_nucleon, cand.tar_nucleon});
+        }
+    }
+    else
+    {
+        std::vector<std::tuple<dijet_with_ns, double, double, double> > candidates_sat;
+
+        for (auto & cand : candidates)
+        {
+            kt = cand.dijet.kt;
+            y1 = cand.dijet.y1;
+            y2 = cand.dijet.y2;
+            
+            auto [cand_x, cand_y, cand_z] = this->throw_location_for_dijet(cand, normal_dist, random_generator);
+            if (this->is_sat_y_dep == 6)
+            {
+                cand_x = cand.dijet.dijet_x;
+                cand_y = cand.dijet.dijet_y;
+            }
+
+
+            if (this->saturation)
+            {
+                //SATURATION
+
+                double upstairs = 1.0;
+                if (this->is_sat_y_dep == 4)
+                {
+                    upstairs = this->sqrtalphas(cand.dijet.kt);
+                }
+                else if  (this->is_sat_y_dep == 5)
+                {
+                    double dy = y1-y2;
+                    double dsigma = std::pow((1 + 2.0*std::cosh(dy))/(2 + 2.0*std::cosh(dy)), 1.5);
+                    upstairs = this->sqrtalphas(cand.dijet.kt)*dsigma;
+                }
+
+                auto cand_circle = std::make_tuple(cand_x, cand_y, upstairs/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
+
+                if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
+                {
+                    continue; //Did not fit into saturated PS --> discard
+                }
+            }
+
+            candidates_sat.push_back({cand, cand_x, cand_y, cand_z});
+        }
+
+        for (auto & [cand, cand_x, cand_y, cand_z] : candidates_sat)
+        {
+            kt = cand.dijet.kt;
+            y1 = cand.dijet.y1;
+            y2 = cand.dijet.y2;
+
+            if (this->val_cons)
+            {
+                //VALENCE QUARKS CONSERVATION
+
+                if (cand.dijet.valence1)
+                {
+                    proton = !cand.pro_nucleon->is_neutron;
+                    if (cand.dijet.init1 == 1)
+                    {
+                        valence_down = true;
+                        num_vu1_to_be = 0;
+                        num_vd1_to_be = 1;
+                    }
+                    else if (cand.dijet.init1 == 2)
+                    {
+                        valence_down = false;
+                        num_vu1_to_be = 1;
+                        num_vd1_to_be = 0;
+                    }
+                    else
+                    {
+                        std::cout<<"init1="<<cand.dijet.init1<<" claims to be valence"<<std::endl;
+                        exit(1); 
+                    }
+                    
+                    auto valence_nums = valence1_nums.find(cand.pro_nucleon);
+                    if (valence_nums != valence1_nums.end())
+                    {
+                        auto [num_vu, num_vd] = valence_nums->second;
+                        num_vu1_to_be = num_vu + (!valence_down);
+                        num_vd1_to_be = num_vd + valence_down;
+
+                        if (num_vu1_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                        if (num_vd1_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                    }
+                }
+
+                if (cand.dijet.valence2)
+                {
+                    proton = !cand.tar_nucleon->is_neutron;
+                    if (cand.dijet.init2 == 1)
+                    {
+                        valence_down = true;
+                        num_vu2_to_be = 0;
+                        num_vd2_to_be = 1;
+                    }
+                    else if (cand.dijet.init2 == 2)
+                    {
+                        valence_down = false;
+                        num_vu2_to_be = 1;
+                        num_vd2_to_be = 0;
+                    }
+                    else
+                    {
+                        std::cout<<"init2="<<cand.dijet.init2<<" claims to be valence"<<std::endl;
+                        exit(1); 
+                    }
+                    
+                    auto valence_nums = valence2_nums.find(cand.tar_nucleon);
+                    if (valence_nums != valence2_nums.end())
+                    {
+                        auto [num_vu, num_vd] = valence_nums->second;
+                        num_vu2_to_be = num_vu + (!valence_down);
+                        num_vd2_to_be = num_vd + valence_down;
+
+                        if (num_vu2_to_be > 1 + proton) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                        if (num_vd2_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
+                        {
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            if (this->mom_cons)
+            {
+                //MOMENTUM CONSERVATION
+
+                auto x1 = (kt / this->sqrt_s) * (exp(y1) + exp(y2));
+                auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
+
+                i_x1_sum_to_be = x1;
+                i_x2_sum_to_be = x2;
+
+                auto i_x1_sum = x1s.find(cand.pro_nucleon);
+                if (i_x1_sum != x1s.end())
+                {
+                    i_x1_sum_to_be = i_x1_sum->second + x1;
+
+                    if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
+                    {
+                        continue;
+                    }
+                }
+
+                auto i_x2_sum = x2s.find(cand.tar_nucleon);
+                if (i_x2_sum != x2s.end())
+                {
+                    i_x2_sum_to_be = i_x2_sum->second + x2;
+
+                    if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
                     {
                         continue;
                     }
                 }
             }
 
-            if (cand.dijet.valence2)
+            if (this->calculate_tata)
             {
-                proton = !cand.tar_nucleon->is_neutron;
-                if (cand.dijet.init2 == 1)
-                {
-                    valence_down = true;
-                    num_vu2_to_be = 0;
-                    num_vd2_to_be = 1;
-                }
-                else if (cand.dijet.init2 == 2)
-                {
-                    valence_down = false;
-                    num_vu2_to_be = 1;
-                    num_vd2_to_be = 0;
-                }
-                else
-                {
-                    std::cout<<"init2="<<cand.dijet.init2<<" claims to be valence"<<std::endl;
-                    exit(1); 
-                }
-                
-                auto valence_nums = valence2_nums.find(cand.tar_nucleon);
-                if (valence_nums != valence2_nums.end())
-                {
-                    auto [num_vu, num_vd] = valence_nums->second;
-                    num_vu2_to_be = num_vu + (!valence_down);
-                    num_vd2_to_be = num_vd + valence_down;
-
-                    if (num_vu2_to_be > 1 + proton) //Too many valence quarks interacting --> discard
-                    {
-                        continue;
-                    }
-                    if (num_vd2_to_be > 1 + (!proton)) //Too many valence quarks interacting --> discard
-                    {
-                        continue;
-                    }
-                }
+                //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
+                //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
+                tata = this->Tpp->calculate_TA(cand_x, cand_y, pro) * this->Tpp->calculate_TA(cand_x, cand_y, tar);
             }
-        }
 
-        if (this->mom_cons)
-        {
-            //MOMENTUM CONSERVATION
-
-            auto x1 = (kt / this->sqrt_s) * (exp(y1) + exp(y2));
-            auto x2 = (kt / this->sqrt_s) * (exp(-y1) + exp(-y2));
-
-            i_x1_sum_to_be = x1;
-            i_x2_sum_to_be = x2;
-
-            auto i_x1_sum = x1s.find(cand.pro_nucleon);
-            if (i_x1_sum != x1s.end())
+            if (this->val_cons)
             {
-                i_x1_sum_to_be = i_x1_sum->second + x1;
-
-                if (i_x1_sum_to_be > 1.0) //Energy budget broken --> discard
+                if (cand.dijet.valence1)
                 {
-                    continue;
+                    valence1_nums.insert_or_assign(cand.pro_nucleon, std::make_tuple(num_vu1_to_be, num_vd1_to_be));
+                }
+                if (cand.dijet.valence2)
+                {
+                    valence2_nums.insert_or_assign(cand.tar_nucleon, std::make_tuple(num_vu2_to_be, num_vd2_to_be));
                 }
             }
 
-            auto i_x2_sum = x2s.find(cand.tar_nucleon);
-            if (i_x2_sum != x2s.end())
+            if (this->mom_cons)
             {
-                i_x2_sum_to_be = i_x2_sum->second + x2;
-
-                if (i_x2_sum_to_be > 1.0) //Energy budget broken --> discard
-                {
-                    continue;
-                }
+                x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
+                x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
             }
+
+            filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, tata, cand.pro_nucleon, cand.tar_nucleon});
         }
-        
-        auto [cand_x, cand_y, cand_z] = this->throw_location_for_dijet(cand, normal_dist, random_generator);
-
-        if (this->saturation)
-        {
-            //SATURATION
-
-            double upstairs = 1.0;
-            if (this->is_sat_y_dep == 4)
-            {
-                upstairs = this->sqrtalphas(cand.dijet.kt);
-            }
-            else if  (this->is_sat_y_dep == 5)
-            {
-                double dy = y1-y2;
-                double dsigma = std::pow((1 + 2.0*std::cosh(dy))/(2 + 2.0*std::cosh(dy)), 1.5);
-                upstairs = this->sqrtalphas(cand.dijet.kt)*dsigma;
-            }
-
-            auto cand_circle = std::make_tuple(cand_x, cand_y, upstairs/(cand.dijet.kt*this->M_factor*FMGEV), 1, y1, y2);
-
-            if (!mcaa::check_and_place_circle_among_others(std::move(cand_circle), final_circles, this->is_sat_y_dep))
-            {
-                continue; //Did not fit into saturated PS --> discard
-            }
-        }
-
-        if (this->calculate_tata)
-        {
-            //nucleon dummy{coords{cand_x, cand_y, cand_z}, 0};
-            //tata = this->Tpp.calculate_sum_tpp(dummy, pro) * this->Tpp.calculate_sum_tpp(dummy, tar);
-            tata = this->Tpp->calculate_TA(cand_x, cand_y, pro) * this->Tpp->calculate_TA(cand_x, cand_y, tar);
-        }
-
-        if (this->val_cons)
-        {
-            if (cand.dijet.valence1)
-            {
-                valence1_nums.insert_or_assign(cand.pro_nucleon, std::make_tuple(num_vu1_to_be, num_vd1_to_be));
-            }
-            if (cand.dijet.valence2)
-            {
-                valence2_nums.insert_or_assign(cand.tar_nucleon, std::make_tuple(num_vu2_to_be, num_vd2_to_be));
-            }
-        }
-
-        if (this->mom_cons)
-        {
-            x1s.insert_or_assign(cand.pro_nucleon, i_x1_sum_to_be);
-            x2s.insert_or_assign(cand.tar_nucleon, i_x2_sum_to_be);
-        }
-
-        filtered_scatterings.push_back({cand.dijet, coords{cand_x, cand_y, cand_z}, tata, cand.pro_nucleon, cand.tar_nucleon});
     }
 
     binary_collisions.clear();
@@ -799,7 +1011,7 @@ auto mcaa::run() -> void
     /*T_AA_0=                   */this->T_AA_0
     };
 
-    std::vector<std::tuple<io::Coll, std::vector<dijet_with_coords> > > colls_scatterings;
+    std::vector<std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double > > colls_scatterings;
 
     // auto cmpLambda = [](const std::tuple<double, double> &lhs, const std::tuple<double, double> &rhs) { return std::get<0>(lhs) < std::get<0>(rhs); }; /////
     // std::map<io::Coll, std::tuple<double, double>, decltype(cmpLambda)> colls_sumet_midet(cmpLambda); /////
@@ -874,7 +1086,6 @@ auto mcaa::run() -> void
                 do //while (g_bug_bool)
                 {
                     uint_fast32_t NColl = 0;
-                    std::vector<nn_coll> binary_collisions;
                     std::vector<dijet_with_coords> filtered_scatterings;
                     double impact_parameter;
                     double b_min2 = this->b_min*this->b_min;
@@ -943,149 +1154,161 @@ auto mcaa::run() -> void
 
                     } while (!triggered || bugged);
 
-                    //Demand at least one hard scattering
-                    do //while (NColl<1)
-                    {
-                        binary_collisions.clear();
-                        if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
-
-                        calcs::collide_nuclei
-                        (
-                            pro, 
-                            tar, 
-                            binary_collisions, 
-                            sigma_jet,
-                            unirand, 
-                            eng, 
-                            coll_params, 
-                            this->jet_params,
-                            this->kt0,
-                            this->pdf,
-                            this->power_law,
-                            env_func,
-                            verbose,
-                            this->M_factor,
-                            this->proton_width,
-                            this->is_sat_y_dep
-                        );
-                        
-                        NColl = static_cast<uint_fast32_t>(binary_collisions.size());
-                    } while (NColl<1);
-                    
-
+                    uint_fast16_t oversample_N = 1; //Monestiko ydinpari ylisämplätään
+                    double sum_E = 0;
                     double sum_ET = 0;
                     double sum_ET_midrap = 0;
-
-                    if (end_state_filtering)
+                    for (uint_fast16_t over_ind = 0; over_ind < oversample_N; over_ind++)
                     {
-                        double sum_E = 0;
-                        this->filter_end_state
-                        (
-                            binary_collisions, 
-                            filtered_scatterings,
-                            eng,
-                            pro,
-                            tar
-                        );
+                        std::vector<nn_coll> binary_collisions_onepass;
+                        std::vector<dijet_with_coords> filtered_scatterings_onepass;
 
-                        // std::vector<std::tuple<double, double> > new_jets;
-                        // std::vector<std::tuple<double, double> > new_dijets;
-                        // std::vector<std::tuple<double, double> > new_ET_y;
-                        // std::vector<std::tuple<double, double> > new_E_y;
-                        // std::vector<std::tuple<double, double> > new_N_y;
-                        // std::vector<std::tuple<double, double> > new_ET_eta;
-                        // std::vector<std::tuple<double, double> > new_E_eta;
-                        
-                        for (auto e_co : filtered_scatterings)
+                        //Demand at least one hard scattering
+                        do //while (NColl<1)
                         {
-                            auto e = e_co.dijet;
+                            binary_collisions_onepass.clear();
+                            if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
-                            // new_jets.emplace_back(e.kt, e.y1);
-                            // new_jets.emplace_back(e.kt, e.y2);
+                            calcs::collide_nuclei
+                            (
+                                pro, 
+                                tar, 
+                                binary_collisions_onepass, 
+                                sigma_jet,
+                                unirand, 
+                                eng, 
+                                coll_params, 
+                                this->jet_params,
+                                this->kt0,
+                                this->pdf,
+                                this->power_law,
+                                env_func,
+                                verbose,
+                                this->M_factor,
+                                this->proton_width,
+                                this->hotspot_width,
+                                this->is_sat_y_dep
+                            );
                             
-                            // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
-                            
-                            // new_ET_y.emplace_back(e.y1, e.kt);
-                            // new_ET_y.emplace_back(e.y2, e.kt);
-                            
-                            // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
-                            
-                            // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                            // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
-                            
-                            // new_N_y.emplace_back(e.y1, 1);
-                            // new_N_y.emplace_back(e.y2, 1);
-                            
-                            // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
-                            
-                            sum_ET += 2*e.kt;
-                            sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
+                            NColl = static_cast<uint_fast32_t>(binary_collisions_onepass.size());
+                        } while (NColl<1);
 
-                            if (e.y1 >= -0.5 && e.y1 <= 0.5)
+                        if (end_state_filtering)
+                        {
+                            this->filter_end_state
+                            (
+                                binary_collisions_onepass, 
+                                filtered_scatterings_onepass,
+                                eng,
+                                pro,
+                                tar,
+                                this->sat_first
+                            );
+
+                            // std::vector<std::tuple<double, double> > new_jets;
+                            // std::vector<std::tuple<double, double> > new_dijets;
+                            // std::vector<std::tuple<double, double> > new_ET_y;
+                            // std::vector<std::tuple<double, double> > new_E_y;
+                            // std::vector<std::tuple<double, double> > new_N_y;
+                            // std::vector<std::tuple<double, double> > new_ET_eta;
+                            // std::vector<std::tuple<double, double> > new_E_eta;
+                            
+                            for (auto e_co : filtered_scatterings_onepass)
                             {
-                                sum_ET_midrap += e.kt;
+                                auto e = e_co.dijet;
+
+                                // new_jets.emplace_back(e.kt, e.y1);
+                                // new_jets.emplace_back(e.kt, e.y2);
+                                
+                                // new_dijets.emplace_back(e.kt, 0.5*(e.y1+e.y2));
+                                
+                                // new_ET_y.emplace_back(e.y1, e.kt);
+                                // new_ET_y.emplace_back(e.y2, e.kt);
+                                
+                                // new_ET_eta.emplace_back(0.5*(e.y1+e.y2), 2*e.kt);
+                                
+                                // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                                // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                                
+                                // new_N_y.emplace_back(e.y1, 1);
+                                // new_N_y.emplace_back(e.y2, 1);
+                                
+                                // new_E_eta.emplace_back(0.5*(e.y1+e.y2), e.kt*(cosh(e.y1) + cosh(e.y2)));
+                                
+                                sum_ET += 2*e.kt;
+                                sum_E += e.kt*(cosh(e.y1) + cosh(e.y2));/////
+
+                                if (e.y1 >= -0.5 && e.y1 <= 0.5)
+                                {
+                                    sum_ET_midrap += e.kt;
+                                }
+                                if (e.y2 >= -0.5 && e.y2 <= 0.5)
+                                {
+                                    sum_ET_midrap += e.kt;
+                                }
                             }
-                            if (e.y2 >= -0.5 && e.y2 <= 0.5)
+
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(jets_mutex);
+                            //    jets.add(new_jets);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dijets_mutex);
+                            //    dijets.add(new_dijets);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
+                            //    dETdy.add(new_ET_y);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
+                            //    dEdy.add(new_E_y);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
+                            //    dNdy.add(new_N_y);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
+                            //    dETdeta.add(new_ET_eta);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
+                            //    dEdeta.add(new_E_eta);
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
+                            //    dNdET.add(std::make_tuple(sum_ET, 1));
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
+                            //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
+                            // }
+                            
+                            // {
+                            //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
+                            //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
+                            // }
+
+                            for (auto sc : filtered_scatterings_onepass)
                             {
-                                sum_ET_midrap += e.kt;
+                                filtered_scatterings.push_back(sc);
                             }
                         }
-
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(jets_mutex);
-                        //    jets.add(new_jets);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dijets_mutex);
-                        //    dijets.add(new_dijets);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdy_mutex);
-                        //    dETdy.add(new_ET_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdy_mutex);
-                        //    dEdy.add(new_E_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dNdy_mutex);
-                        //    dNdy.add(new_N_y);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdeta_mutex);
-                        //    dETdeta.add(new_ET_eta);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdeta_mutex);
-                        //    dEdeta.add(new_E_eta);
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dNdET_mutex);
-                        //    dNdET.add(std::make_tuple(sum_ET, 1));
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dETdb_mutex);
-                        //    dETdb.add(std::make_tuple(impact_parameter, sum_ET));
-                        // }
-                        
-                        // {
-                        //    const std::lock_guard<std::mutex> lock(dEdb_mutex);
-                        //    dEdb.add(std::make_tuple(impact_parameter, sum_E));
-                        // }
-                        
-                        {/////
-                            const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
-                            total_energy << sum_ET << ' ' << sum_E << std::endl;/////
-                        }/////
                     }
+                            
+                    {/////
+                        const std::lock_guard<std::mutex> lock(total_energy_mutex);/////
+                        total_energy << sum_ET << ' ' << sum_E << std::endl;/////
+                    }/////
 
                     {
                         const std::lock_guard<std::mutex> lock(AA_events_mutex);
@@ -1121,7 +1344,7 @@ auto mcaa::run() -> void
                         
                         if (save_endstate_jets)
                         {
-                            colls_scatterings.push_back({coll, filtered_scatterings});
+                            colls_scatterings.push_back({coll, filtered_scatterings, pro, tar, impact_parameter});
                         }
                     }
                 } while (g_bug_bool);
@@ -1194,19 +1417,23 @@ auto mcaa::run() -> void
             std::string name_pfs{this->name+".dat"};
 
             std::ofstream jet_file;
+            std::ofstream nucleus_file;
  
-            std::sort(colls_scatterings.begin(), colls_scatterings.end(), [](const std::tuple<io::Coll, std::vector<dijet_with_coords> > &a, const std::tuple<io::Coll, std::vector<dijet_with_coords> > &b)
+            std::sort(colls_scatterings.begin(), colls_scatterings.end(), [](const std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double > &a, const std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double > &b)
             {
-                auto [ac, as] = a;
-                auto [bc, bs] = b;
+                auto [ac, as, d11, d21, d31] = a;
+                auto [bc, bs, d12, d22, d32] = b;
                 return ac.getET() < bc.getET();
             });
 
             for (auto [centLow, centHigh] : centBins)
             {
                 std::stringstream jetsname{""};
+                std::stringstream nucleusname{""};
                 jetsname<<"jets_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
+                nucleusname<<"nuclei_"<<static_cast<uint_fast16_t>(centLow*100)<<"_"<<static_cast<uint_fast16_t>(centHigh*100)<<"_"<<name_pfs;
                 jet_file.open(jetsname.str(), std::ios::out | std::ios::binary);
+                nucleus_file.open(nucleusname.str());
 
                 histo_1d dETdy_by_cent{y_bins};
                 histo_1d dEdy_by_cent{y_bins};
@@ -1229,7 +1456,7 @@ auto mcaa::run() -> void
 
                 for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
                 {
-                    auto [co, sc] = *it;
+                    auto [co, sc, pro, tar, impact_parameter] = *it;
                     for (auto e_co : sc)
                     {
                         auto e = e_co.dijet;
@@ -1241,9 +1468,11 @@ auto mcaa::run() -> void
                         new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
                     }
                     io::append_single_coll_binary(jet_file, sc, unirand, eng_shared);
+                    io::save_event(nucleus_file, pro, tar, impact_parameter);
                 }
                 jet_file.close();
-                
+                nucleus_file.close();
+
                 dETdy_by_cent.add(new_ET_y);
                 dEdy_by_cent.add(new_E_y);
 
