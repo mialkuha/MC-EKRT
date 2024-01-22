@@ -418,7 +418,7 @@ auto mcaa::filter_end_state
     const std::vector<nucleon> &tar, 
     const bool sat_first,
     std::vector<std::vector<bool> > &coll_matrix 
-) noexcept -> void
+) noexcept -> std::tuple<double, double, int, int>
 {
     std::vector<dijet_with_ns> candidates;
     candidates.reserve(binary_collisions.size()*10); //10 events on average is just an overhead guess
@@ -986,6 +986,32 @@ auto mcaa::filter_end_state
     }
 
     binary_collisions.clear();
+
+    int A_wounded = 0;
+    double x1_avg = 0.0;
+    for (auto x : x1_maxs)
+    {
+        if (x < 1.0)
+        {
+            A_wounded++;
+            x1_avg += x;
+        }
+    }
+    x1_avg = x1_avg/A_wounded;
+
+    int B_wounded = 0;
+    double x2_avg = 0.0;
+    for (auto x : x2_maxs)
+    {
+        if (x < 1.0)
+        {
+            B_wounded++;
+            x2_avg += x;
+        }
+    }
+    x2_avg = x2_avg/B_wounded;
+
+    return std::make_tuple(x1_avg, x2_avg, A_wounded, B_wounded);
 }
 
 //--------------------------------------------//
@@ -1160,7 +1186,7 @@ auto mcaa::run() -> void
     /*T_AA_0=                   */this->T_AA_0
     };
 
-    std::vector<std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double > > colls_scatterings;
+    std::vector<std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double, std::tuple<double, double, int, int> > > colls_scatterings;
 
     // auto cmpLambda = [](const std::tuple<double, double> &lhs, const std::tuple<double, double> &rhs) { return std::get<0>(lhs) < std::get<0>(rhs); }; /////
     // std::map<io::Coll, std::tuple<double, double>, decltype(cmpLambda)> colls_sumet_midet(cmpLambda); /////
@@ -1194,6 +1220,211 @@ auto mcaa::run() -> void
 
     std::ofstream total_energy;/////
     std::mutex total_energy_mutex;/////
+    /*
+    double y1_min = static_cast<double>(-log(this->sqrt_s / this->kt0));
+    double y1_max = static_cast<double>( log(this->sqrt_s / this->kt0));
+    double y2_min = static_cast<double>(-log(this->sqrt_s / this->kt0));
+    double y2_max = static_cast<double>( log(this->sqrt_s / this->kt0));
+
+    uint_fast16_t n_bins = 100;
+
+    {
+        total_energy.open("dsigma_NN_dpT2dy1dy2_ave_13");/////
+
+        double delta = (y1_max - y1_min)/n_bins;
+        for (int i = 0; i < n_bins+1; i++)
+        {
+            total_energy << y1_min + i*delta << ',';
+        }
+        total_energy << std::endl;
+        total_energy << std::endl;
+
+        double pt = 1.3;
+        double pt2 = pt*pt;
+        double sumtpp = 0.3;
+        auto nn_params = pqcd::nn_coll_params
+        (
+            0.3,
+            0.05,
+            false,
+            false
+        );
+        
+        for (uint_fast16_t i = 0; i < n_bins; i++)
+        {
+            double y1 = y1_min + i*delta;
+        
+            for (uint_fast16_t j = 0; j < n_bins; j++)
+            {
+                double y2 = y2_min + j*delta;
+                
+                auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, pt, y1, y2, pdf, this->jet_params, nn_params, false, false);
+
+                double total_xsection = 0;
+
+                for (auto xsect : xsection)
+                {
+                    total_xsection += xsect.sigma;
+                }
+
+                total_xsection /= 2.0*pt;
+                        
+                total_energy << total_xsection << ',';
+            }
+            total_energy << std::endl;
+        }
+        total_energy.close();
+    }
+
+    {
+        total_energy.open("dsigma_NN_dpT2dy1dy2_ave_30");/////
+
+        double delta = (y1_max - y1_min)/n_bins;
+        for (int i = 0; i < n_bins+1; i++)
+        {
+            total_energy << y1_min + i*delta << ',';
+        }
+        total_energy << std::endl;
+        total_energy << std::endl;
+
+        double pt = 3.0;
+        double pt2 = pt*pt;
+        double sumtpp = 0.3;
+        auto nn_params = pqcd::nn_coll_params
+        (
+            0.3,
+            0.05,
+            false,
+            false
+        );
+        
+        for (uint_fast16_t i = 0; i < n_bins; i++)
+        {
+            double y1 = y1_min + i*delta;
+        
+            for (uint_fast16_t j = 0; j < n_bins; j++)
+            {
+                double y2 = y2_min + j*delta;
+                
+                auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, pt, y1, y2, pdf, this->jet_params, nn_params, false, false);
+
+                double total_xsection = 0;
+
+                for (auto xsect : xsection)
+                {
+                    total_xsection += xsect.sigma;
+                }
+
+                total_xsection /= 2.0*pt;
+                        
+                total_energy << total_xsection << ',';
+            }
+            total_energy << std::endl;
+        }
+        total_energy.close();
+    }
+
+    // {
+    //     total_energy.open("dsigma_NN_dpT2dy1dy2_asy2_13");/////
+
+    //     double delta = (y1_max - y1_min)/n_bins;
+    //     for (int i = 0; i < n_bins+1; i++)
+    //     {
+    //         total_energy << y1_min + i*delta << ',';
+    //     }
+    //     total_energy << std::endl;
+    //     total_energy << std::endl;
+
+    //     double pt = 1.3;
+    //     double pt2 = pt*pt;
+    //     double sumtpp = 0.05;
+    //     auto nn_params = pqcd::nn_coll_params
+    //     (
+    //         0.05,
+    //         0.3,
+    //         false,
+    //         false
+    //     );
+        
+    //     for (uint_fast16_t i = 0; i < n_bins; i++)
+    //     {
+    //         double y1 = y1_min + i*delta;
+        
+    //         for (uint_fast16_t j = 0; j < n_bins; j++)
+    //         {
+    //             double y2 = y2_min + j*delta;
+                
+    //             auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, pt, y1, y2, pdf, this->jet_params, nn_params, false, false);
+
+    //             double total_xsection = 0;
+
+    //             for (auto xsect : xsection)
+    //             {
+    //                 total_xsection += xsect.sigma;
+    //             }
+
+    //             total_xsection /= 2.0*pt;
+                        
+    //             total_energy << total_xsection << ',';
+    //         }
+    //         total_energy << std::endl;
+    //     }
+    //     total_energy.close();
+    // }
+
+    // {
+    //     total_energy.open("dsigma_NN_dpT2dy1dy2_asy2_30");/////
+
+    //     double delta = (y1_max - y1_min)/n_bins;
+    //     for (int i = 0; i < n_bins+1; i++)
+    //     {
+    //         total_energy << y1_min + i*delta << ',';
+    //     }
+    //     total_energy << std::endl;
+    //     total_energy << std::endl;
+
+    //     double pt = 3.0;
+    //     double pt2 = pt*pt;
+    //     double sumtpp = 0.05;
+    //     auto nn_params = pqcd::nn_coll_params
+    //     (
+    //         0.05,
+    //         0.3,
+    //         false,
+    //         false
+    //     );
+        
+    //     for (uint_fast16_t i = 0; i < n_bins; i++)
+    //     {
+    //         double y1 = y1_min + i*delta;
+        
+    //         for (uint_fast16_t j = 0; j < n_bins; j++)
+    //         {
+    //             double y2 = y2_min + j*delta;
+                
+    //             auto xsection = pqcd::diff_cross_section_2jet(sqrt_s, pt, y1, y2, pdf, this->jet_params, nn_params, false, false);
+
+    //             double total_xsection = 0;
+
+    //             for (auto xsect : xsection)
+    //             {
+    //                 total_xsection += xsect.sigma;
+    //             }
+
+    //             total_xsection /= 2.0*pt;
+                        
+    //             total_energy << total_xsection << ',';
+    //         }
+    //         total_energy << std::endl;
+    //     }
+    //     total_energy.close();
+    // }
+
+
+    return;
+
+*/
+
  
     total_energy.open("total_energies_"+this->name+".dat");/////
     total_energy << "///Sum E_T Sum E" << std::endl;/////
@@ -1307,6 +1538,7 @@ auto mcaa::run() -> void
                     double sum_E = 0;
                     double sum_ET = 0;
                     double sum_ET_midrap = 0;
+                    std::tuple<double, double, int, int> momcons_result;
                     for (uint_fast16_t over_ind = 0; over_ind < oversample_N; over_ind++)
                     {
                         std::vector<nn_coll> binary_collisions_onepass;
@@ -1346,7 +1578,7 @@ auto mcaa::run() -> void
 
                         if (end_state_filtering)
                         {
-                            this->filter_end_state
+                            momcons_result = this->filter_end_state
                             (
                                 binary_collisions_onepass, 
                                 filtered_scatterings_onepass,
@@ -1496,7 +1728,7 @@ auto mcaa::run() -> void
                         
                         if (save_endstate_jets)
                         {
-                            colls_scatterings.push_back({coll, filtered_scatterings, pro, tar, impact_parameter});
+                            colls_scatterings.push_back({coll, filtered_scatterings, pro, tar, impact_parameter, momcons_result});
                         }
                     }
                 } while (g_bug_bool);
@@ -1571,12 +1803,13 @@ auto mcaa::run() -> void
             std::ofstream jet_file;
             std::ofstream nucleus_file;
  
-            std::sort(colls_scatterings.begin(), colls_scatterings.end(), [](const std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double > &a, const std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double > &b)
+            std::sort(colls_scatterings.begin(), colls_scatterings.end(), [](const std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double, std::tuple<double, double, int, int> > &a, const std::tuple<io::Coll, std::vector<dijet_with_coords>, std::vector<nucleon>, std::vector<nucleon>, double, std::tuple<double, double, int, int> > &b)
             {
-                auto [ac, as, d11, d21, d31] = a;
-                auto [bc, bs, d12, d22, d32] = b;
+                auto [ac, as, d11, d21, d31, d41] = a;
+                auto [bc, bs, d12, d22, d32, d42] = b;
                 return ac.getET() < bc.getET();
             });
+
 
             for (auto [centLow, centHigh] : centBins)
             {
@@ -1606,22 +1839,41 @@ auto mcaa::run() -> void
                 auto it = colls_scatterings.crbegin();
                 std::advance(it, lower_ind);
 
+                int A_wounded_avg = 0;
+                double x1_avg_avg = 0.0;
+                int B_wounded_avg = 0;
+                double x2_avg_avg = 0.0;
+
+                double E_avg = 0.0;
                 for (uint_fast64_t ii = 0; ii<n_in_bin; it++, ii++)
                 {
-                    auto [co, sc, pro, tar, impact_parameter] = *it;
+                    auto [co, sc, pro, tar, impact_parameter, momcons_result] = *it;
+                    auto [x1_avg, x2_avg, A_wounded, B_wounded] = momcons_result;
+                    A_wounded_avg += A_wounded;
+                    x1_avg_avg += x1_avg;
+                    B_wounded_avg += B_wounded;
+                    x2_avg_avg += x2_avg;                    
                     for (auto e_co : sc)
                     {
                         auto e = e_co.dijet;
 
-                        new_ET_y.emplace_back(e.y1, e.kt);
-                        new_ET_y.emplace_back(e.y2, e.kt);
+                        // new_ET_y.emplace_back(e.y1, e.kt);
+                        // new_ET_y.emplace_back(e.y2, e.kt);
 
-                        new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
-                        new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                        // new_E_y.emplace_back(e.y1, e.kt*cosh(e.y1));
+                        // new_E_y.emplace_back(e.y2, e.kt*cosh(e.y2));
+                        E_avg += e.kt*cosh(e.y1) + e.kt*cosh(e.y2);
                     }
-                    io::append_single_coll_binary(jet_file, sc, unirand, eng_shared);
-                    io::save_event(nucleus_file, pro, tar, impact_parameter);
+                    // io::append_single_coll_binary(jet_file, sc, unirand, eng_shared);
+                    // io::save_event(nucleus_file, pro, tar, impact_parameter);
                 }
+                A_wounded_avg /= n_in_bin;
+                x1_avg_avg /= n_in_bin;
+                B_wounded_avg /= n_in_bin;
+                x2_avg_avg /= n_in_bin;
+                std::cout << " A_wounded_avg: " << A_wounded_avg << " x1_avg_avg: " << x1_avg_avg << " B_wounded_avg: " << B_wounded_avg << " x2_avg_avg: " << x2_avg_avg << std::endl;
+                E_avg /= 416*n_in_bin;
+                std::cout << " E_avg: " << E_avg << std::endl;
                 jet_file.close();
                 nucleus_file.close();
 

@@ -213,7 +213,7 @@ private:
         const std::vector<nucleon> &tar, 
         const bool sat_first,
         std::vector<std::vector<bool> > &coll_matrix    
-    ) noexcept -> void;
+    ) noexcept -> std::tuple<double, double, int, int>;
 };
 
 #endif // MCAA_HPP
