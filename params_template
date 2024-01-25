@@ -53,7 +53,7 @@ only_protons false               # If the nucleons are all protons
 use_npdfs true                   # If there should be nuclear corrections in nucleus' PDFs
 use_snpdfs true                  # If the used nPDF should be spatially dependent or average
 snpdfs_linear false              # If the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
-snpdfs_new false                  # If the used spatial nuclear modification should be exp(cT) (false) or the new model (true)
+snpdfs_new true                  # If the used spatial nuclear modification should be exp(cT) (false) or the new model (true)
 calculate_spatial_cutoff false   # If to calculate the spatial cutoff (T_p(0))/(3T_A(0)) or if it's something user provided (Only relevant with linear snPDFs)
 # OUTPUT FLAGS
 calculate_end_state true         # false=no jets will be calculated, only collisions
@@ -66,4 +66,5 @@ is_mom_cons true                 # If the momentum conservation should be forced
 is_saturation true               # If the EKRT saturation should be used
 is_sat_y_dep 0                   # If the saturation criterion should be y-dependent (REDUNDANT, KEEP 0)
 pt_ordering true                 # If the jets should be ordered by p_T (REDUNDANT, KEEP true)
+sat_first true
 t03_ordering false               # If the jets should be ordered by t03 (REDUNDANT, KEEP falsex)

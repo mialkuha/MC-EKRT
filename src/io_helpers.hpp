@@ -1202,6 +1202,7 @@ public:
         is_saturation,
         is_sat_y_dep,
         pt_ordering,
+        sat_first,
         t03_ordering
     };
 
@@ -1269,6 +1270,7 @@ public:
             {"is_saturation", is_saturation},
             {"is_sat_y_dep", is_sat_y_dep},
             {"pt_ordering", pt_ordering},
+            {"sat_first", sat_first},
             {"t03_ordering", t03_ordering}};
         std::string name{"example_name"};
         std::string sigmajet_filename{"example_sigma_jet.dat"};
@@ -1329,6 +1331,7 @@ public:
         bool is_saturation{true};
         uint_fast16_t is_sat_y_dep{0};
         bool pt_ordering{true};
+        bool sat_first{false};
         bool t03_ordering{false};
 
         uint_fast16_t count = 0;
@@ -1537,6 +1540,9 @@ public:
                 case io::Param::pt_ordering:
                     line_stream >> std::boolalpha >> pt_ordering;
                     break;
+                case io::Param::sat_first:
+                    line_stream >> std::boolalpha >> sat_first;
+                    break;
                 case io::Param::t03_ordering:
                     line_stream >> std::boolalpha >> t03_ordering;
                     break;
@@ -1614,6 +1620,7 @@ public:
             is_saturation,
             is_sat_y_dep,
             pt_ordering,
+            sat_first,
             t03_ordering);
     }
 
