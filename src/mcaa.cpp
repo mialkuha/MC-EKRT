@@ -23,6 +23,7 @@ mcaa::mcaa
         p_proton_width,
         p_sigma_inel,
         p_sigma_inel_AA,
+        p_hotspot_trigger,
         p_T_AA_0_for_snpdfs,
         p_spatial_cutoff,
         p_envelope_marginal,
@@ -116,6 +117,7 @@ mcaa::mcaa
     this->rad_min                    = p_rad_min;
     this->sigma_inel                 = p_sigma_inel;
     this->sigma_inel_AA              = p_sigma_inel_AA;
+    this->hotspot_trigger            = p_hotspot_trigger;
     this->sqrt_s                     = p_sqrt_s;
     this->T_AA_0                     = p_T_AA_0_for_snpdfs;
     this->envelope_marginal          = p_envelope_marginal;
@@ -1125,7 +1127,17 @@ auto mcaa::run() -> void
                             for (auto B : tar)
                             {
                                 // "ball" diameter = distance at which two nucleons interact
-                                const double dij2 = A.calculate_bsquared(B);
+                                double dij2 = 100.0;
+                                
+                                // Nucleon distance is the distance of the closest hotspots
+                                if (hotspot_trigger)
+                                {
+                                    dij2 = A.calculate_bsquared_hotspot(B);
+                                }
+                                else // Nucleon distance is the distance of the nucleon centers
+                                {
+                                    dij2 = A.calculate_bsquared(B);
+                                }
 
                                 if (dij2 <= d2) // triggering condition
                                 {

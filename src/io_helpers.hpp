@@ -1155,6 +1155,7 @@ public:
         proton_width,
         sigma_inel,
         sigma_inel_AA,
+        hotspot_trigger,
         T_AA_0_for_snpdfs,
         spatial_cutoff,
         envelope_marginal,
@@ -1223,6 +1224,7 @@ public:
             {"proton_width", proton_width},
             {"sigma_inel", sigma_inel},
             {"sigma_inel_AA", sigma_inel_AA},
+            {"hotspot_trigger", hotspot_trigger},
             {"T_AA_0_for_snpdfs", T_AA_0_for_snpdfs},
             {"spatial_cutoff", spatial_cutoff},
             {"envelope_marginal", envelope_marginal},
@@ -1284,6 +1286,7 @@ public:
         double proton_width{0.573};
         double sigma_inel{70.0};
         double sigma_inel_AA{0.0};
+        bool hotspot_trigger{false};
         double T_AA_0_for_snpdfs{0.0};
         double spatial_cutoff{0.0};
         double envelope_marginal{1.05};
@@ -1398,6 +1401,9 @@ public:
                     break;
                 case io::Param::sigma_inel_AA:
                     line_stream >> sigma_inel_AA;
+                    break;
+                case io::Param::hotspot_trigger:
+                    line_stream >> std::boolalpha >> hotspot_trigger;
                     break;
                 case io::Param::T_AA_0_for_snpdfs:
                     line_stream >> T_AA_0_for_snpdfs;
@@ -1573,6 +1579,7 @@ public:
             proton_width,
             sigma_inel,
             sigma_inel_AA,
+            hotspot_trigger,
             T_AA_0_for_snpdfs,
             spatial_cutoff,
             envelope_marginal,

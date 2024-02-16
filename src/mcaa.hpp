@@ -57,8 +57,9 @@ public:
     bool verbose{false};                   // lots of printing all around
     uint_fast16_t is_sat_y_dep{0};         // if the saturation criterion should be y-dependent
     bool pt_ordering{false};               // if the jets should be ordered by p_T
-    bool sat_first{false};
+    bool sat_first{false};                 // if the saturation filter is to be done before all the other filters
     bool t03_ordering{false};              // if the jets should be ordered by t03
+    bool hotspot_trigger{false};           // if the AA triggering is done with the minimal distance of two hotspots or two nucleon centers
     // simulation parameters 
     std::string name{"example_name"};               // name of the run, affects output filenames and such 
     std::string sigmajet_filename{"sigma_jet.dat"}; // filename for the spatially dependent sigma_jet grid 
