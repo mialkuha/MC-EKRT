@@ -776,8 +776,7 @@ public:
         const double &M_factor,
         const double &proton_width,
         const double &hotspot_width,
-        const uint_fast16_t &is_sat_y_dep,
-        std::vector<std::vector<bool> > &coll_matrix 
+        const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
         uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
@@ -787,8 +786,6 @@ public:
             std::cout<<"SPATIAL NPDFS REQUESTED IN PROTON-PROTON COLLISION!!!"<<std::endl;
             exit(1);
         }
-
-        coll_matrix = std::vector<std::vector<bool> >(pro.size(), std::vector<bool>(tar.size(), false));
 
         double tAA_0 = AA_params.T_AA_0;
         double tBB_0 = AA_params.T_AA_0;
@@ -865,7 +862,6 @@ public:
                     continue;
                 }
                 //collision
-                coll_matrix.at(A->index).at(B->index) = true;
                 if (AA_params.calculate_end_state)
                 {
                     double sigma_jet;
@@ -981,11 +977,6 @@ public:
                         uint_fast16_t nof_dijets = dist(*eng);
                         new_pair.dijets.reserve(nof_dijets);
 
-                        if (nof_dijets != 0)
-                        {        
-                            coll_matrix.at(A->index).at(B->index) = true;
-                        }
-
                         const double sqrt_s = new_pair.getcr_sqrt_s();
 
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
@@ -1097,8 +1088,7 @@ public:
         const double &M_factor,
         const double &proton_width,
         const double &hotspot_width,
-        const uint_fast16_t &is_sat_y_dep,
-        std::vector<std::vector<bool> > &coll_matrix 
+        const uint_fast16_t &is_sat_y_dep
     ) noexcept -> void
     {
         if (AA_params.spatial_pdfs)
@@ -1121,8 +1111,7 @@ public:
                 M_factor,
                 proton_width,
                 hotspot_width,
-                is_sat_y_dep,
-                coll_matrix
+                is_sat_y_dep
             );
         }
         else

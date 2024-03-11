@@ -27,6 +27,23 @@ public:
         return std::pow(other.co.x - this->co.x, 2) + std::pow(other.co.y - this->co.y, 2);
     }
 
+    double calculate_bsquared_hotspot(const nucleon &other) noexcept
+    {
+        double bsquared = 100.0;
+        for (auto pro : this->hotspots)
+        {
+            for (auto tar : other.hotspots)
+            {
+                double dummy = std::pow(pro.co.x - tar.co.x, 2) + std::pow(pro.co.y - tar.co.y, 2);
+                if (dummy < bsquared)
+                {
+                    bsquared = dummy;
+                }
+            }
+        }
+        return bsquared;
+    }
+
     coords co{0,0,0};
     double mom{0};
     std::vector<hotspot_info> hotspots;
