@@ -1179,7 +1179,11 @@ auto mcaa::run() -> void
                             this->is_sat_y_dep
                         );
                         
-                        NColl = static_cast<uint_fast32_t>(binary_collisions.size());
+                        NColl = 0;
+                        for (auto bc : binary_collisions)
+                        {
+                            NColl += static_cast<uint_fast32_t>(bc.dijets.empty());
+                        }
                     } while (NColl<1);
                     
 
