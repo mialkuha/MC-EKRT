@@ -488,9 +488,9 @@ public:
         const double &power_law,
         variant_envelope_pars &env_func,
         const bool &verbose
-    ) noexcept -> void
+    ) noexcept -> uint_fast32_t
     {
-        uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
+        uint_fast32_t n_pairs = 0, mombroke = 0, skipped = 0, nof_softs = 0, NColl = 0;
         
         std::vector<std::tuple<nucleon* const, nucleon* const> > binary_pairs;
         
@@ -568,6 +568,8 @@ public:
                         uint_fast16_t nof_dijets = dist(*eng);
                         newpair.dijets.reserve(nof_dijets);                        
 
+                        NColl += static_cast<uint_fast32_t>(nof_dijets!=0);
+
                         const double sqrt_s = newpair.getcr_sqrt_s();
 
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
@@ -619,6 +621,10 @@ public:
                     {
                         newpair.push_end_states_to_collider_frame();
                     }
+                }
+                else
+                {
+                    NColl += 1;
                 }
                 newpair.wound();
                 binary_collisions.push_back(std::move(newpair));
@@ -693,6 +699,8 @@ public:
                         uint_fast16_t nof_dijets = dist(*eng);
                         newpair.dijets.reserve(nof_dijets);
 
+                        NColl += static_cast<uint_fast32_t>(nof_dijets!=0);
+
                         const double sqrt_s = newpair.getcr_sqrt_s();
 
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
@@ -745,6 +753,10 @@ public:
                         newpair.push_end_states_to_collider_frame();
                     }
                 }
+                else
+                {
+                    NColl += 1;
+                }
                 newpair.wound();
                 binary_collisions.push_back(std::move(newpair));
             }
@@ -754,6 +766,7 @@ public:
         {
             std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , double threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
         }
+        return NColl;
     }
 
     //collide_nuclei<true>
@@ -776,10 +789,11 @@ public:
         const double &M_factor,
         const double &proton_width,
         const uint_fast16_t &is_sat_y_dep
-    ) noexcept -> void
+    ) noexcept -> uint_fast32_t
     {
 
-        uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0;
+        uint_fast32_t n_pairs = 0, mombroke = 0, skipped=0, nof_softs = 0, NColl = 0;
+
 
         if (AA_params.pp_scattering)
         {
@@ -875,6 +889,8 @@ public:
                         uint_fast16_t nof_dijets = dist(*eng);
                         new_pair.dijets.reserve(nof_dijets);
 
+                        NColl += static_cast<uint_fast32_t>(nof_dijets!=0);
+
                         const double sqrt_s = new_pair.getcr_sqrt_s();
                         for (uint_fast16_t i=0; i < nof_dijets; i++)
                         {
@@ -939,6 +955,10 @@ public:
                         new_pair.push_end_states_to_collider_frame();
                     }
                 }
+                else
+                {
+                    NColl += 1;
+                }
                 new_pair.wound();
                 binary_collisions.push_back(std::move(new_pair));
             }
@@ -958,6 +978,8 @@ public:
                         std::poisson_distribution<uint_fast16_t> dist(sigma_jet*AA_params.Tpp->at(new_pair));
                         uint_fast16_t nof_dijets = dist(*eng);
                         new_pair.dijets.reserve(nof_dijets);
+
+                        NColl += static_cast<uint_fast32_t>(nof_dijets!=0);
 
                         const double sqrt_s = new_pair.getcr_sqrt_s();
 
@@ -988,6 +1010,10 @@ public:
 
                     new_pair.push_end_states_to_collider_frame();
                 }
+                else
+                {
+                    NColl += 1;
+                }
                 new_pair.wound();
                 binary_collisions.push_back(std::move(new_pair));
             }
@@ -997,6 +1023,7 @@ public:
         {
             std::cout << "Bruteforced " << n_pairs << " pairs, got " << binary_collisions.size()+nof_softs << " collisions, of which softs "<< nof_softs<< " and hards "<< binary_collisions.size()<<" , double threshold broke " << mombroke << " times, skipped "<< skipped << " pairs that were too far apart" << std::endl;
         }
+        return NColl;
     }
 
     static auto collide_nuclei
@@ -1017,11 +1044,13 @@ public:
         const double &M_factor,
         const double &proton_width,
         const uint_fast16_t &is_sat_y_dep
-    ) noexcept -> void
+    ) noexcept -> uint_fast32_t
     {
+        uint_fast32_t NColl = 0;
+
         if (AA_params.spatial_pdfs)
         {
-            collide_nuclei_snPDF
+            NColl = collide_nuclei_snPDF
             (
                 pro, 
                 tar, 
@@ -1043,7 +1072,7 @@ public:
         }
         else
         {
-            collide_nuclei_no_snPDF
+            NColl = collide_nuclei_no_snPDF
             (
                 pro, 
                 tar, 
@@ -1060,6 +1089,7 @@ public:
                 verbose
             );
         }
+        return NColl;
     }
 
     static auto read_nucleon_configs_from_file() noexcept

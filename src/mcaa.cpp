@@ -1154,12 +1154,14 @@ auto mcaa::run() -> void
                     } while (!triggered || bugged);
 
                     //Demand at least one hard scattering
+                    uint_fast16_t times_collided = 0;
                     do //while (NColl<1)
                     {
+                        times_collided++;
                         binary_collisions.clear();
                         if (verbose) std::cout<<"impact_parameter: "<<impact_parameter<<std::endl;
 
-                        calcs::collide_nuclei
+                        NColl = calcs::collide_nuclei
                         (
                             pro, 
                             tar, 
@@ -1178,11 +1180,13 @@ auto mcaa::run() -> void
                             this->proton_width,
                             this->is_sat_y_dep
                         );
-                        
-                        NColl = 0;
-                        for (auto bc : binary_collisions)
+                
+                        if (times_collided > 1000)
                         {
-                            NColl += static_cast<uint_fast32_t>(bc.dijets.empty());
+                            std::cout<<std::endl<<"The same collision is collided 1000 times with no "
+                                        <<"jets in the output. Check the triggering condition."
+                                        <<std::endl;
+                            times_collided = 0;
                         }
                     } while (NColl<1);
                     
