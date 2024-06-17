@@ -190,8 +190,8 @@ mcaa::mcaa(
     double hotspot_distr_width = std::sqrt(this->proton_width_2 - std::pow(p_hotspot_width, 2));
     this->nuc_params = nucleus_generator::nucleus_params(
         /*A=                        */ this->A,
-        /*ZA=                       */ this->B,
-        /*B=                        */ this->ZA,
+        /*ZA=                       */ this->ZA,
+        /*B=                        */ this->B,
         /*ZB=                       */ this->ZB,
         /*RA=                       */ p_nuclear_RA,
         /*RB=                       */ p_nuclear_RB,
