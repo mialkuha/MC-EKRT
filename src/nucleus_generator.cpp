@@ -23,6 +23,10 @@ std::vector<nucleon> nucleus_generator::generate_nucleus(const nucleus_params & 
     if (N==1)
     {
         generated_nucleus.emplace_back(coords({xshift,0.0,0.0}), mom, 0);
+        if (params.hotspots)
+        {
+            nucleus_generator::throw_hotspots(&generated_nucleus, params.n_hotspots, params.hotspot_distr_width, random_generator);
+        }
         return generated_nucleus;
     }
 
