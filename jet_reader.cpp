@@ -1,9 +1,9 @@
-// Copyright (c) 2025 Mikko Kuha.
+// Copyright (c) 2025 Mikko Kuha (University of Jyväskylä).
 // This program is free software: you can redistribute it and/or modify it under the
-// terms of the GNU General Public License as published by the Free Software 
+// terms of the GNU General Public License as published by the Free Software
 // Foundation, either version 3 of the License, or (at your option) any later version.
 // This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details. You should have received a copy
 // of the GNU General Public License along with this program. If not, see
 // <http://www.gnu.org/licenses/>.
@@ -69,7 +69,7 @@ int main()
     uint_fast16_t ia, ib;
     double xa, ya, za, xb, yb, zb;
     bool a_is_neutron, b_is_neutron;
-    std::vector<std::vector<dijet> > events_jets;
+    std::vector<std::vector<dijet>> events_jets;
 
     if (sizeof n_jets != 8 || sizeof t01 != 8)
     {
@@ -123,7 +123,6 @@ int main()
 
             jets.emplace_back(t01, t02, x, y, pt, y1, y2, phi, tata, init1, init2,
                               final1, final2, ia, ib, xa, ya, za, xb, yb, zb, a_is_neutron, b_is_neutron);
-
         }
         events_jets.emplace_back(std::move(jets));
     }
@@ -132,10 +131,10 @@ int main()
     std::cout << "Done! Read " << events_jets.size() << " events totaling "
               << n_dijet_total << " dijets" << std::endl;
 
-    double delta = (0 + 11.0)/n_bins;
-    for (int i = 0; i < n_bins+1; i++)
+    double delta = (0 + 11.0) / n_bins;
+    for (int i = 0; i < n_bins + 1; i++)
     {
-        std::cout << i*delta << ',';
+        std::cout << i * delta << ',';
     }
     std::cout << std::endl;
 
@@ -148,13 +147,13 @@ int main()
     {
         for (auto dijet : event)
         {
-            bool found =false;
+            bool found = false;
             double x = dijet.x;
             double y = dijet.y;
-            double r = std::sqrt(x*x + y*y);
-            for (int i = 0; i < n_bins-1; i++)
+            double r = std::sqrt(x * x + y * y);
+            for (int i = 0; i < n_bins - 1; i++)
             {
-                if ( (i+1)*delta > r)
+                if ((i + 1) * delta > r)
                 {
                     found = true;
                     tata_in_bin[i] += dijet.tata;
@@ -162,18 +161,18 @@ int main()
                     break;
                 }
             }
-            
+
             if (!found)
             {
-                tata_in_bin[n_bins-1] += dijet.tata;
-                jets_in_bin[n_bins-1]++;
+                tata_in_bin[n_bins - 1] += dijet.tata;
+                jets_in_bin[n_bins - 1]++;
             }
         }
     }
-        
+
     for (int i = 0; i < n_bins; i++)
     {
-        std::cout << tata_in_bin[i] / static_cast<double>(jets_in_bin[i]* /*events_jets.size()**/delta/**((i+0.5)*delta)*/) << ',';
+        std::cout << tata_in_bin[i] / static_cast<double>(jets_in_bin[i] * /*events_jets.size()**/ delta /**((i+0.5)*delta)*/) << ',';
     }
     std::cout << std::endl;
 }

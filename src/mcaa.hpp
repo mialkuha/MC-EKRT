@@ -1,16 +1,16 @@
 // A Monte Carlo EKRT event generator, see https://doi.org/10.48550/arXiv.2406.17592
-// <Citation>. 
-// Copyright (c) 2025 Mikko Kuha.
+// <Citation>.
+// Copyright (c) 2025 Mikko Kuha (University of Jyväskylä).
 // This program is free software: you can redistribute it and/or modify it under the
-// terms of the GNU General Public License as published by the Free Software 
+// terms of the GNU General Public License as published by the Free Software
 // Foundation, either version 3 of the License, or (at your option) any later version.
 // This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details. You should have received a copy
 // of the GNU General Public License along with this program. If not, see
 // <http://www.gnu.org/licenses/>.
-// 
-// This program uses OpenMP, which is licensed under the Apache License, Version 2.0 
+//
+// This program uses OpenMP, which is licensed under the Apache License, Version 2.0
 // (the "License"); you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -54,34 +54,34 @@ class mcaa
 public:
     // PUBLIC ATTRIBUTES //////////////////////////////////////////////////////////////////////////////////////////////
     // technical flags
-    bool hotspots{false};                 // false=protons don't have hotspots
-    uint_fast16_t n_hotspots{3};          // the number of proton hotspots
-    bool calculate_end_state{true};       // false=no jets will be calculated, only collisions
-    bool calculate_tata{true};            // if TA(x)TA(x) should be calculated for each dijet (takes time)
-    bool end_state_filtering{true};       // false=no any filtering in the end state
-    bool is_AA{true};                     // if the run is nucleus-nucleus
-    bool is_pA{false};                    // if the run is proton-nucleus
-    bool is_pp{false};                    // if the run is proton-proton
-    bool nPDFs{true};                     // if there should be nuclear corrections in nucleus' PDFs
-    bool MC_Glauber{true};                // if true, nucleon-nucleon collisions are decided like with hard spheres
-    bool val_cons{true};                  // if the valence quark number should be conserved
-    bool mom_cons{true};                  // if the momentum should be conserved
-    bool read_sigmajets_from_file{false}; // if the sigma_jets are precalculated
-    bool proton_width_static{false};      // if the proton width should be a static value or depend on sqrt(s)
-    bool saturation{true};                // if EKRT saturation is enforced
-    bool save_endstate_jets{true};        // if all the jets should be saved in binary (see jet_reader.cpp)
-    bool sigma_inel_from_sigma_jet{false};// is sigma_inel static or from eikonal model
-    bool AA_inel_same_as_NN{false};       // is the triggering sigma the same as NN-sigma
-    bool only_protons{false};             // if the nucleons are all protons
-    bool snPDFs{true};                    // if the used nPDF should be spatially dependent or average
-    bool snPDFs_linear{false};            // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
-    bool snPDFs_new{true};                // if the used spatial nuclear modification should be exp(cT) (false) or the new model (true)
-    bool verbose{false};                  // lots of printing all around
-    uint_fast16_t is_sat_y_dep{0};        // if the saturation criterion should be y-dependent
-    bool pt_ordering{true};               // if the jets should be ordered by p_T
-    bool sat_first{false};                // if the saturation filter is to be done before all the other filters
-    bool t03_ordering{false};             // if the jets should be ordered by t03
-    bool hotspot_trigger{false};          // if the AA triggering is done with the minimal distance of two hotspots or two nucleon centers
+    bool hotspots{false};                  // false=protons don't have hotspots
+    uint_fast16_t n_hotspots{3};           // the number of proton hotspots
+    bool calculate_end_state{true};        // false=no jets will be calculated, only collisions
+    bool calculate_tata{true};             // if TA(x)TA(x) should be calculated for each dijet (takes time)
+    bool end_state_filtering{true};        // false=no any filtering in the end state
+    bool is_AA{true};                      // if the run is nucleus-nucleus
+    bool is_pA{false};                     // if the run is proton-nucleus
+    bool is_pp{false};                     // if the run is proton-proton
+    bool nPDFs{true};                      // if there should be nuclear corrections in nucleus' PDFs
+    bool MC_Glauber{true};                 // if true, nucleon-nucleon collisions are decided like with hard spheres
+    bool val_cons{true};                   // if the valence quark number should be conserved
+    bool mom_cons{true};                   // if the momentum should be conserved
+    bool read_sigmajets_from_file{false};  // if the sigma_jets are precalculated
+    bool proton_width_static{false};       // if the proton width should be a static value or depend on sqrt(s)
+    bool saturation{true};                 // if EKRT saturation is enforced
+    bool save_endstate_jets{true};         // if all the jets should be saved in binary (see jet_reader.cpp)
+    bool sigma_inel_from_sigma_jet{false}; // is sigma_inel static or from eikonal model
+    bool AA_inel_same_as_NN{false};        // is the triggering sigma the same as NN-sigma
+    bool only_protons{false};              // if the nucleons are all protons
+    bool snPDFs{true};                     // if the used nPDF should be spatially dependent or average
+    bool snPDFs_linear{false};             // if the used spatial nuclear modification should be (1+cT) (true) or exp(cT) (false)
+    bool snPDFs_new{true};                 // if the used spatial nuclear modification should be exp(cT) (false) or the new model (true)
+    bool verbose{false};                   // lots of printing all around
+    uint_fast16_t is_sat_y_dep{0};         // if the saturation criterion should be y-dependent
+    bool pt_ordering{true};                // if the jets should be ordered by p_T
+    bool sat_first{false};                 // if the saturation filter is to be done before all the other filters
+    bool t03_ordering{false};              // if the jets should be ordered by t03
+    bool hotspot_trigger{false};           // if the AA triggering is done with the minimal distance of two hotspots or two nucleon centers
     // simulation parameters
     std::string name{"example_name"};                       // name of the run, affects output filenames and such
     std::string sigmajet_filename{"sigma_jet.dat"};         // filename for the spatially dependent sigma_jet grid

@@ -1,9 +1,9 @@
-// Copyright (c) 2025 Mikko Kuha.
+// Copyright (c) 2025 Mikko Kuha (University of Jyväskylä).
 // This program is free software: you can redistribute it and/or modify it under the
-// terms of the GNU General Public License as published by the Free Software 
+// terms of the GNU General Public License as published by the Free Software
 // Foundation, either version 3 of the License, or (at your option) any later version.
 // This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
-// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
+// without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 // See the GNU General Public License for more details. You should have received a copy
 // of the GNU General Public License along with this program. If not, see
 // <http://www.gnu.org/licenses/>.
@@ -21,14 +21,14 @@
 class nucleon
 {
 public:
-    nucleon(coords co_, const double &mom_, const int_fast16_t &index_) noexcept 
+    nucleon(coords co_, const double &mom_, const int_fast16_t &index_) noexcept
         : co(std::move(co_)), mom(mom_), wounded(false), is_neutron(false), index(index_) {};
 
-    nucleon(coords co_, const double & mom_, const bool & wounded_, const bool & is_neutron_, const int_fast16_t &index_) noexcept 
+    nucleon(coords co_, const double &mom_, const bool &wounded_, const bool &is_neutron_, const int_fast16_t &index_) noexcept
         : co(std::move(co_)), mom(mom_), wounded(wounded_), is_neutron(is_neutron_), index(index_) {};
 
-    //nucleon& operator=(const nucleon &) = default;
-    //nucleon(const nucleon &) = default;
+    // nucleon& operator=(const nucleon &) = default;
+    // nucleon(const nucleon &) = default;
 
     double calculate_bsquared(const nucleon &other) noexcept
     {
@@ -52,7 +52,7 @@ public:
         return bsquared;
     }
 
-    coords co{0,0,0};
+    coords co{0, 0, 0};
     double mom{0};
     std::vector<hotspot_info> hotspots;
     bool wounded{false};
@@ -61,13 +61,13 @@ public:
 
     friend bool operator==(const nucleon &lhs, const nucleon &rhs)
     {
-        return (lhs.co == rhs.co)&&
-            (lhs.mom == rhs.mom)&&
-            (lhs.wounded == rhs.wounded)&&
-            (lhs.is_neutron == rhs.is_neutron)&&
-            (lhs.index == rhs.index);
+        return (lhs.co == rhs.co) &&
+               (lhs.mom == rhs.mom) &&
+               (lhs.wounded == rhs.wounded) &&
+               (lhs.is_neutron == rhs.is_neutron) &&
+               (lhs.index == rhs.index);
     }
-    
+
 protected:
 private:
 };
