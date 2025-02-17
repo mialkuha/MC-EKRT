@@ -15,4 +15,4 @@ This program makes use of cubature software (Copyright (c) 2005-2013 Steven G. J
 which is licensed under GNU GPL v2. See src/cubature.h for further information. Also 
 linear interpolation library linterp (Copyright (c) 2012 Ronaldo Carpio) is used in this
 program, see src/linterp.h for further details. A c++ version of EPS09 nPDF interpolation 
-library (Copyright (c) 2009 Thomas Ullrich) is also used.
+library (Copyright (c) 2009 Thomas Ullrich) is also used, see src/eps09.cxx for details.
