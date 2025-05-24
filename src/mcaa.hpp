@@ -1,6 +1,7 @@
-// A Monte Carlo EKRT event generator, see https://doi.org/10.48550/arXiv.2406.17592
-// <Citation>.
+// A Monte Carlo EKRT event generator, see Phys. Rev. C 111, no.5, 054914 (2025)
+// doi:10.1103/PhysRevC.111.054914 https://doi.org/10.48550/arXiv.2406.17592
 // Copyright (c) 2025 Mikko Kuha (University of Jyväskylä).
+//
 // This program is free software: you can redistribute it and/or modify it under the
 // terms of the GNU General Public License as published by the Free Software
 // Foundation, either version 3 of the License, or (at your option) any later version.
